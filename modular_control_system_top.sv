@@ -16,7 +16,7 @@
 `define ENABLE_ARDUINO
 `define ENABLE_GPIO
 
-module DE10_LITE_Golden_Top(
+module modular_control_system_top(
 
 	//////////// ADC CLOCK: 3.3-V LVTTL //////////
 `ifdef ENABLE_ADC_CLOCK

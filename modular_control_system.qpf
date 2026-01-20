@@ -19,13 +19,13 @@
 #
 # Quartus Prime
 # Version 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
-# Date created = 21:25:13  December 13, 2025
+# Date created = 12:38:39  January 20, 2026
 #
 # -------------------------------------------------------------------------- #
 
 QUARTUS_VERSION = "25.1"
-DATE = "21:25:13  December 13, 2025"
+DATE = "12:38:39  January 20, 2026"
 
 # Revisions
 
-PROJECT_REVISION = "test_top"
+PROJECT_REVISION = "modular_control_system"
