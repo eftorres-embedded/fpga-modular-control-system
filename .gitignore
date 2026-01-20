@@ -1,0 +1,37 @@
+# Quartus generated
+db/
+incremental_db/
+output_files/
+simulation/modelsim/
+*.rpt
+*.chg
+*.smsg
+*.done
+*.bak
+*.qws
+*.jdi
+*.pof
+*.sof
+*.cdf
+
+# Questa/ModelSim generated
+simulation/questa/
+simulation/modelsim/
+vsim.wlf
+wlf*
+transcript
+*.wlf
+*.qdb
+*.qpg
+*.qtl
+*.vo
+*.sft
+msim_transcript
+modelsim.ini
+*.do.bak*
+rtl_work/
+work/
+
+#OS
+.DS_Store
+Thumbs.db
