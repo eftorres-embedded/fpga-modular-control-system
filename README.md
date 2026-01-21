@@ -60,16 +60,7 @@ Exact UART parameters and command formats will be documented as the interface st
 
 ---
 
-## Design Goals
-
-- Maintain clean, readable RTL
-- Avoid board-specific assumptions where possible
-- Support incremental feature development without major refactors
-- Keep synthesis and simulation artifacts out of version control
-
----
-
 ## Notes
 
-This repository reflects an evolving system. Interfaces and module boundaries may change
-as new features are added and refined.
+This repository reflects an improving system. Interfaces and modules may change
+as new features are added.
