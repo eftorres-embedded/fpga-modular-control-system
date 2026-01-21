@@ -60,6 +60,36 @@ Exact UART parameters and command formats will be documented as the interface st
 
 ---
 
+## DIAGRAM
+                         Current (implemented)                    Planned (future)
++------------------+      +-------------------+      +---------------------+
+| PC / UART Host   |----->| UART Interface    |----->| FIFO Buffer         |
+| (terminal)       |      | (RX/TX)           |      | (sync_fifo.sv)      |
++------------------+      +-------------------+      +----------+----------+
+                                                                |
+                                                                v
+                                                     +---------------------+
+                                                     | Peripheral Router / |
+                                                     | Control Logic       |
+                                                     | (top + utilities)   |
+                                                     +----+----------+-----+
+                                                          |          |
+                                      +-------------------+          +-------------------+
+                                      |                                      |
+                                      v                                      v
+                          +---------------------+                 +---------------------+
+                          | FIFO -> LCD Adapter |                 | Planned Interfaces  |
+                          | (fifo_to_lcd_...)   |                 | - SPI               |
+                          +----------+----------+                 | - PWM               |
+                                     |                            | - Quadrature Enc.   |
+                                     v                            | - MMIO regs         |
+                          +---------------------+                 | - Nios V softcore   |
+                          | HD44780 LCD Driver  |                 +---------------------+
+                          | (hd44780_...lcd)    |
+                          +---------------------+
+
+---
+
 ## Notes
 
 This repository reflects an improving system. Interfaces and modules may change
