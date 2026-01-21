@@ -92,6 +92,7 @@ Exact UART parameters and command formats will be documented as the interface st
                           | (hd44780_...lcd)    |
                           +---------------------+
 
+
 ---
 
 ## Notes
