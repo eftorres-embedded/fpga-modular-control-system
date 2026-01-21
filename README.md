@@ -91,7 +91,7 @@ Exact UART parameters and command formats will be documented as the interface st
                           | HD44780 LCD Driver  |                 +---------------------+
                           | (hd44780_...lcd)    |
                           +---------------------+
-
+```
 
 ---
 
