@@ -61,6 +61,10 @@ Exact UART parameters and command formats will be documented as the interface st
 ---
 
 ## DIAGRAM
+
+## Architecture Overview
+
+```text
                          Current (implemented)                    Planned (future)
 +------------------+      +-------------------+      +---------------------+
 | PC / UART Host   |----->| UART Interface    |----->| FIFO Buffer         |
