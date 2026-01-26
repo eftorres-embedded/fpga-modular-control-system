@@ -27,7 +27,7 @@ module uart_rx_engine(
 	state_t	current_state,	state_next;
 	
 	//tick counter (16 bits per bit)
-	logic	[3:0]	tick_counter, tick_counter_next; //count ticks, 0-15 (16 tickes per bit)
+	logic	[3:0]	tick_counter, tick_counter_next; //count ticks, 0-15 (16 ticks per bit)
 	
 	//bit index (8 data bits)
 	logic	[2:0] bit_index, bit_index_next;
@@ -40,7 +40,7 @@ module uart_rx_engine(
 	logic			output_valid, output_valid_next;
 	
 	////////////fire signals/////////////////////
-	logic x16_fire;		//alis for baud_x16_tick
+	logic x16_fire;		//alias for baud_x16_tick
 	logic	sample_fire;	//center-sample event within a bit
 	logic	bit_end_fire;	//end-of-bit event (tick_counter==15)
 	logic	rx_fire;			//output stream transfer
