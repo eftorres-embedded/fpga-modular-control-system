@@ -77,7 +77,9 @@ module uart_rx_engine(
 			//Wait for the start bit (when the rx line goes low)
 			S_IDLE:
 			begin
-				if(uart_rx == 1'b0)
+				if(output_valid)
+					state_next	= S_HOLD;
+				else if(uart_rx == 1'b0)
 					state_next = S_START;
 			end
 			
