@@ -310,7 +310,6 @@ assign tx_fire = tx_in_valid && tx_in_ready;
 
 always_ff @(posedge MAX10_CLK1_50 or negedge rst_n)
 begin
-
 	if(!rst_n)
 		rom_idx <= '0;
 	else if(tx_fire)
@@ -321,7 +320,6 @@ begin
 			rom_idx <= rom_idx + 1'b1;
 	end
 end
-
 		
 endmodule
 

@@ -15,6 +15,28 @@ module uart_rx_engine(
 	//status bit
 	output	logic			rx_busy);
 	
+	
+	//Synchronizer for rx signal (since it's asynchrounous)
+	//to avoid metastability
+	logic uart_rx_ff1, uart_rx_ff2;
+	logic uart_rx_sync;
+	always_ff	@(posedge clk or negedge rst_n)
+	begin
+		if(!rst_n)
+		begin
+			uart_rx_ff1	<=	1'b1;
+			uart_rx_ff2	<= 1'b1;
+		end
+		else
+		begin
+			uart_rx_ff1		<=	uart_rx;
+			uart_rx_ff2		<=	uart_rx_ff1;
+		end
+	end
+	
+	assign uart_rx_sync = uart_rx_ff2;
+	
+	
 	typedef enum logic	[2:0]
 	{
 		S_IDLE	=	3'd0,
@@ -79,7 +101,7 @@ module uart_rx_engine(
 			begin
 				if(output_valid)
 					state_next	= S_HOLD;
-				else if(uart_rx == 1'b0)
+				else if(uart_rx_sync == 1'b0)
 					state_next = S_START;
 			end
 			
@@ -88,7 +110,7 @@ module uart_rx_engine(
 			begin
 				if(sample_fire) //tick_counter == 7 and on that tick. 
 				begin
-					if(uart_rx	==	1'b0)
+					if(uart_rx_sync	==	1'b0)
 						state_next	= 	S_DATA;
 					else
 						state_next	=	S_IDLE;
@@ -162,7 +184,7 @@ module uart_rx_engine(
 			//Center-sample each data bit (LSB-First)
 			if(sample_fire)
 			begin
-				shift_reg_next[bit_index]	=	uart_rx;
+				shift_reg_next[bit_index]	=	uart_rx_sync;
 			end
 		end
 	end
