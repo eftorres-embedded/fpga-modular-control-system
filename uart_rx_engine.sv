@@ -61,11 +61,15 @@ module uart_rx_engine(
 	logic	[7:0] output_buffer, output_buffer_next;
 	logic			output_valid, output_valid_next;
 	
+	//make sure S_START doesn't end early and gets read as data[0]
+	logic			start_valid, start_valid_next;
+	
 	////////////fire signals/////////////////////
 	logic x16_fire;		//alias for baud_x16_tick
 	logic	sample_fire;	//center-sample event within a bit
 	logic	bit_end_fire;	//end-of-bit event (tick_counter==15)
 	logic	rx_fire;			//output stream transfer
+	
 	
 	//alias for baud_x16_tick input
 	assign x16_fire	=	baud_x16_tick;
@@ -95,6 +99,7 @@ module uart_rx_engine(
 	always_comb
 	begin
 		state_next	= current_state;
+		
 		unique	case	(current_state)
 			//Wait for the start bit (when the rx line goes low)
 			S_IDLE:
@@ -108,13 +113,13 @@ module uart_rx_engine(
 			//At the 7th tick, it checks if the signal still low and not a glitch has occured
 			S_START:
 			begin
-				if(sample_fire) //tick_counter == 7 and on that tick. 
+				if(bit_end_fire) //on tick_counter == 15 check if it's okay to go to S_DATA
 				begin
-					if(uart_rx_sync	==	1'b0)
+					if(start_valid)
 						state_next	= 	S_DATA;
 					else
 						state_next	=	S_IDLE;
-				end
+				end		
 			end
 			
 			S_DATA:
@@ -217,6 +222,21 @@ module uart_rx_engine(
 			output_valid_next	=	1'b1;
 	end
 	
+	/////////////////////////////////////////////
+	/////////////Datapath: start_valid///////////
+	/////////////////////////////////////////////	
+	always_comb
+	begin
+		start_valid_next	=	start_valid;
+		
+		//start okay should be zero in all states, and can only be 1'b1 in state S_START
+		if(current_state != S_START)
+			start_valid_next	=	1'b0;
+		else if(sample_fire)
+			start_valid_next	=	!uart_rx_sync;
+	end
+	
+	
 	///////////////////////////////////////////
 	//////////////Registers////////////////////
 	///////////////////////////////////////////
@@ -230,6 +250,7 @@ module uart_rx_engine(
 			shift_reg		<=	8'd0;
 			output_buffer	<=	8'd0;
 			output_valid	<=	1'b0;
+			start_valid			<=	1'b0;
 		end
 		
 		else
@@ -240,6 +261,7 @@ module uart_rx_engine(
 			shift_reg		<=	shift_reg_next;
 			output_buffer	<=	output_buffer_next;
 			output_valid	<=	output_valid_next;
+			start_valid			<=	start_valid_next;
 		end
 	end
 endmodule

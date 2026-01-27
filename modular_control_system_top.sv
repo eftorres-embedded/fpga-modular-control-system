@@ -121,7 +121,7 @@ wire [7:0]counter1;
 wire dp;
 wire rst_n;
 wire arst_n = KEY[1] | KEY[0];
-wire assertion_pulse;
+wire KEY0_pulse;
 
 wire [7:0]lcd_data_o;
 wire [7:0]lcd_data_i;
@@ -151,7 +151,7 @@ reset_sync	u_reset_synchronizer(
 	.arst_n(arst_n),
 	.rst_n(rst_n));
 
-signal_to_pulse	u0(.clock(MAX10_CLK1_50), 	.signal(!KEY[0]), 	.pulse(assertion_pulse));
+signal_to_pulse	u0(.clock(MAX10_CLK1_50), 	.signal(!KEY[0]), 	.pulse(KEY0_pulse));
 
 hex_to_sseg			u_SW0(.hex(SW[3:0]), 	.dp_in(dp), 		.sseg(HEX0));
 
@@ -274,17 +274,17 @@ logic tx_busy;
 logic	uart_tx;
 logic	[7:0] tx_in_data;
 
-assign	GPIO[6]		=	tx_in_valid;
+assign	GPIO[2]		=	tx_in_valid;
 assign	GPIO[3]		= 	tx_in_ready;
 assign	GPIO[4]		=	tx_busy;
 assign	GPIO[5]		=	uart_tx;
 //assign	tx_in_data	=	8'hAA;
 
 //logic analyzer
-assign GPIO[35] = rst_n;
-assign GPIO[0] = baud_1x_tick;
-assign GPIO[1] = baud_x16_tick;
-
+assign GPIO[35] 	= rst_n;
+assign GPIO[0] 	= baud_1x_tick;
+assign GPIO[1] 	= baud_x16_tick;
+assign GPIO[34]	= rst_n;
 //tester ROM
 localparam int ROM_LEN = 4;
 logic [7:0] rom [0:ROM_LEN-1];
@@ -320,7 +320,35 @@ begin
 			rom_idx <= rom_idx + 1'b1;
 	end
 end
-		
+
+
+uart_rx_engine	u_uart_rx(
+	.clk(MAX10_CLK1_50),
+	.rst_n(rst_n),
+	
+	.baud_x16_tick(baud_x16_tick),		//1-cycle pulse at 16x baud rate
+	.uart_rx(uart_rx),									//async pin, iddle high
+	
+	//RX output (interface to FIFO adapter or MMIO)
+	.rx_out_valid(rx_out_valid),
+	.rx_out_ready(rx_out_ready),
+	.rx_out_data(rx_out_data),
+	
+	//status bit
+	.rx_busy(rx_busy));
+
+logic 		uart_rx;
+logic			rx_out_valid;
+logic			rx_out_ready;
+logic	[7:0] rx_out_data;
+logic			rx_busy;	
+
+assign 		uart_rx			=	GPIO[6];
+assign		GPIO[7]			=	rx_out_valid;
+assign		rx_out_ready	=	1'b1;
+assign		GPIO[15:8]			=	rx_out_data;
+//assign		GPIO[9]			=	rx_busy;
+
 endmodule
 
 
