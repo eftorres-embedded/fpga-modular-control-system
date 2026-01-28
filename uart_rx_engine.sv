@@ -261,7 +261,7 @@ module uart_rx_engine(
 			shift_reg		<=	shift_reg_next;
 			output_buffer	<=	output_buffer_next;
 			output_valid	<=	output_valid_next;
-			start_valid			<=	start_valid_next;
+			start_valid		<=	start_valid_next;
 		end
 	end
 endmodule

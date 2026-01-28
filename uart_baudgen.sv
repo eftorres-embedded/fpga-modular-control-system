@@ -5,7 +5,7 @@
 module uart_baudgen #(
 	parameter int unsigned DIV_WIDTH		=	9,//slowest baud requires div_x16 to be 326
 	parameter int unsigned CLK_HZ			=	50_000_000,
-	parameter int unsigned DEFAULT_BAUD	=	9_600
+	parameter int unsigned DEFAULT_BAUDRATE		=	9_600
 )
 (
 	input	logic	clk,
@@ -49,7 +49,7 @@ module uart_baudgen #(
 		end
 	endfunction
 	
-	localparam	longint	unsigned	DEFAULT_DIV_X16_LONG_INT = calc_div_x16(CLK_HZ, DEFAULT_BAUD);
+	localparam	longint	unsigned	DEFAULT_DIV_X16_LONG_INT = calc_div_x16(CLK_HZ, DEFAULT_BAUDRATE);
 	
 	//clamp helpers (curated values to avoid edge cases issues
 	logic [DIV_WIDTH-1:0] div_req; //will become the requested divider (divider I tend to use, override or default)

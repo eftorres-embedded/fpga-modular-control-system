@@ -175,7 +175,6 @@ counter	u_counter1(
 /////////////////////////////////////////////
 //lcd 1602 character
 /////////////////////////////////////////////
-/*
 hd44780_parallel_lcd		#(.CLOCK_HZ(50000000))											
 	u_lcd(.clk(MAX10_CLK1_50),
 	.rst_n(rst_n),
@@ -195,7 +194,7 @@ hd44780_parallel_lcd		#(.CLOCK_HZ(50000000))
 								
 	assign GPIO[7:0] = lcd_data_oe ? lcd_data_o	: 8'hzz;
 	assign lcd_data_i	= GPIO[7:0];
-	*/
+
 /////////////////////////////////////////////	
 // FIFO instance
 /////////////////////////////////////////////
@@ -207,7 +206,7 @@ hd44780_parallel_lcd		#(.CLOCK_HZ(50000000))
     .srst_n (rst_n),
 
 	//FIFO write side
-    .wr_en  (assertion_pulse),
+    .wr_en  (KEY0_pulse),
     .din    (SW[8:0]),
     .full   (),
 	 
@@ -238,53 +237,30 @@ hd44780_parallel_lcd		#(.CLOCK_HZ(50000000))
 		.host_rs(lcd_txn[8]),
 		.host_data(lcd_txn[7:0]));
 		
-///////////////////////////////////////////
-//Uart baud generator
-/////////////////////////////////////
-uart_baudgen #(
-	.DIV_WIDTH(9),//slowest baud requires div_x16 to be 326
-	.CLK_HZ(50_000_000),
-	.DEFAULT_BAUD(9_600)
-)
-u_uart_baudgen(
-	.clk(MAX10_CLK1_50),
-	.rst_n(rst_n),
-	.en(SW[0]),		//enable tick generation
-	
-	//Runtime override baudrate: set to 0 to use default baudrate
-	.div_x16(0),
-	
-	.baud_x16_tick(baud_x16_tick),
-	.baud_1x_tick(baud_1x_tick)
-);
+//////////////////////////////////////////
+//////////TX signals and testing ROM/////////
+/////////////////////////////////////////////
 
-uart_tx_engine u_uart_tx_engine(
-.clk(MAX10_CLK1_50),
-.rst_n(rst_n),
-.baud_x16_tick(baud_x16_tick),
-.tx_in_valid(tx_in_valid),
-.tx_in_ready(tx_in_ready),
-.tx_in_data(tx_in_data),
-.uart_tx(uart_tx),
-.tx_busy(tx_busy));
+//assign	GPIO[2]		=	tx_in_valid;
+//assign	GPIO[3]		= 	tx_in_ready;
+//assign	GPIO[4]		=	tx_busy;
+//assign	GPIO[5]		=	uart_tx;
+//assign	tx_in_data	=	8'hAA;
 
+//logic analyzer
+//assign GPIO[35] 	= rst_n;
+//assign GPIO[0] 	= baud_1x_tick;
+//assign GPIO[1] 	= baud_x16_tick;
+//assign GPIO[34]	= rst_n;
+
+//tx engine
 logic tx_in_valid;
 logic	tx_in_ready;
 logic tx_busy;
 logic	uart_tx;
 logic	[7:0] tx_in_data;
+	
 
-assign	GPIO[2]		=	tx_in_valid;
-assign	GPIO[3]		= 	tx_in_ready;
-assign	GPIO[4]		=	tx_busy;
-assign	GPIO[5]		=	uart_tx;
-//assign	tx_in_data	=	8'hAA;
-
-//logic analyzer
-assign GPIO[35] 	= rst_n;
-assign GPIO[0] 	= baud_1x_tick;
-assign GPIO[1] 	= baud_x16_tick;
-assign GPIO[34]	= rst_n;
 //tester ROM
 localparam int ROM_LEN = 4;
 logic [7:0] rom [0:ROM_LEN-1];
@@ -322,20 +298,9 @@ begin
 end
 
 
-uart_rx_engine	u_uart_rx(
-	.clk(MAX10_CLK1_50),
-	.rst_n(rst_n),
-	
-	.baud_x16_tick(baud_x16_tick),		//1-cycle pulse at 16x baud rate
-	.uart_rx(uart_rx),									//async pin, iddle high
-	
-	//RX output (interface to FIFO adapter or MMIO)
-	.rx_out_valid(rx_out_valid),
-	.rx_out_ready(rx_out_ready),
-	.rx_out_data(rx_out_data),
-	
-	//status bit
-	.rx_busy(rx_busy));
+////////////////////////////////////////////
+////////////RX Signasl//////////////////////
+///////////////////////////////////////////
 
 logic 		uart_rx;
 logic			rx_out_valid;
@@ -343,11 +308,31 @@ logic			rx_out_ready;
 logic	[7:0] rx_out_data;
 logic			rx_busy;	
 
-assign 		uart_rx			=	GPIO[6];
-assign		GPIO[7]			=	rx_out_valid;
-assign		rx_out_ready	=	1'b1;
-assign		GPIO[15:8]			=	rx_out_data;
+
+//assign		GPIO[7]			=	rx_out_valid;
+//assign		rx_out_ready	=	1'b1;
+//assign		GPIO[15:8]		=	rx_out_data;
 //assign		GPIO[9]			=	rx_busy;
+
+
+////////////////////////////////////////////
+////////////ESP Wi-Fi Module////////////////
+////////////////////////////////////////////
+logic		esp_01s_en; 	//GPIO[13]
+logic		esp_01s_rst;	//GPIO[14]
+logic		esp_01s_tx;		//GPIO[11]
+logic		esp_01s_rx;		//GPIO[12]
+
+//alias for uart_rx and uart_tx;
+assign	esp_01s_rx	=	uart_rx;
+assign	uart_tx		=	esp_01s_tx;
+
+assign	GPIO[11]		=	esp_01s_tx;
+assign	esp_01s_rx	=	GPIO[12];
+assign	GPIO[13]		=	esp_01s_en;
+assign	GPIO[14]		=	esp_01s_rst;
+
+assign esp_01s_en =	SW[0];
 
 endmodule
 

@@ -6,7 +6,8 @@
 // -A read transaction occurs on a rising clk edge when (rd_en && !empty)
 // -Registred-output FIFO: dout updates on the cycle a read ouccurs, when empty==1,
 // dout is not valid (typically holds last value read)
-// -srst_n should be synchronized with the same clock domain externally, 
+// -srst_n should be synchronized with the same clock domain externally
+//	to add: fifo_to_stream_stable.sv  wrapper for AXI out_valid signal
 /////////////////////////////////////////////////////////////////////////////////////
 
 module sync_fifo #(
