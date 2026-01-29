@@ -1,4 +1,4 @@
-module pwm_timebase()
+module pwm_timebase();
 
 
 endmodule

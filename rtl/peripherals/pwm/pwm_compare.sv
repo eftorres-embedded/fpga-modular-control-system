@@ -1,3 +1,3 @@
-module pwm_compare()
+module pwm_compare();
 
 endmodule

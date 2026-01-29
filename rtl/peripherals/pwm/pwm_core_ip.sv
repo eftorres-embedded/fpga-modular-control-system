@@ -1,3 +1,4 @@
-module pwm_core_ip()
+//
+module pwm_core_ip();
 
 endmodule
