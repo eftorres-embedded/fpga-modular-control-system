@@ -75,7 +75,7 @@ Rule: notebook = “what happened & why”; bringup = “how to reproduce safely
 
 ---
 
-## Anti-maze rules (do these and the repo stays clean)
+## Anti-maze rules
 1) Testbenches go in `tb/` only.
 2) Generated outputs go in `build/` only.
 3) Documentation lives in `docs/` only.
