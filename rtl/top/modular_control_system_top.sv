@@ -164,14 +164,6 @@ hex_to_sseg			count1(.hex(lcd_fifo_count[7:4]), 	.dp_in(dp), 		.sseg(HEX3));
 hex_to_sseg			count2(.hex({1'b0,1'b0,lcd_fifo_count[9:8]}), 	.dp_in(dp), 		.sseg(HEX4));
 
 
-counter	u_counter1(
-.clk(MAX10_CLK1_50),
-.rst_n(rst_n),
-.d_in(SW[7:0]),
-.set(1'b0),
-.en(1),
-.q_out(LEDR[7:0]));
-
 /////////////////////////////////////////////
 //lcd 1602 character
 /////////////////////////////////////////////
@@ -203,7 +195,7 @@ hd44780_parallel_lcd		#(.CLOCK_HZ(50000000))
     .WIDTH(9)) 
   u_fifo (
     .clk    (MAX10_CLK1_50),
-    .srst_n (rst_n),
+    .rst_n (rst_n),
 
 	//FIFO write side
     .wr_en  (KEY0_pulse),

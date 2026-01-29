@@ -2,7 +2,6 @@
 db/
 incremental_db/
 output_files/
-simulation/modelsim/
 *.rpt
 *.chg
 *.smsg
@@ -13,6 +12,9 @@ simulation/modelsim/
 *.pof
 *.sof
 *.cdf
+quartus/project/db/
+quartus/project/incremental_db/
+quartus/project/output_files
 
 # Questa/ModelSim generated
 simulation/questa/

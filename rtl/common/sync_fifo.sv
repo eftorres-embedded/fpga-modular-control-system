@@ -52,7 +52,7 @@ module sync_fifo #(
 	//sequential logic (single clock, synchrnous reset)
 	always_ff	@(posedge clk)
 	begin
-		if(!srst_n)
+		if(!rst_n)
 		begin
 			wr_ptr	<=	'0;
 			rd_ptr	<=	'0;
