@@ -35,3 +35,11 @@ work/
 #OS
 .DS_Store
 Thumbs.db
+
+
+#diagrams.net/ draw.io temp + backup files
+**/*.drawio.bkp
+**/*.drawio~
+**/*.drawio.dtmp
+**/*.drawio.autosave
+**/*.~lock.*

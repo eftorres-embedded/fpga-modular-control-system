@@ -99,26 +99,26 @@ module uart_port	#(
 	
 	//Fire signals to trigger events
 	logic		rx_fifo_wr_fire;
-	logic		rx_fifo_rd_fire;
+	logic		rx_fifo_rd_en;
 	logic		rx_fire;
 	
+	//registers to hold the data
+	logic			out_valid,	out_valid_next;
+	logic	[7:0]	out_data,	out_data_next;
+	
+	//signal will be valid one cycle after rd_en
+	logic			fifo_dout_valid;
+	
+	//Internal FIFO signals
+	logic	[7:0]	rx_fifo_dout;
+	logic			rx_fifo_empty_int;
+
 	//FIFO stores when RX	engine has a byte and FIFO is not full
 	assign	rx_fifo_wr_fire	=	rx_engine_valid	&&	rx_engine_ready;
 	
-	//read the FIFO (pop), only if the buffer has not valid data and
-	//if it's not empty. If out_valid == 1, then buffer is full.
-	assign 	rx_fifo_rd_fire	=	(!out_valid)	&&	(!rx_fifo_empty);
-	
-	//Stream transfer event: downstream consumes one byte this cycle
-	assign	rx_fire				=	rx_valid	&&	rx_ready;
-
 	//FIFO is ready to read as long as it's not full
 	assign	rx_engine_ready	=	!rx_fifo_full;
 	
-	
-	//Internal FIFO signals
-	
-	logic	[7:0]	rx_fifo_dout;
 	
 	////////////////////////////////////////////////
 	///////////RX FIFO instantiation////////////////
@@ -129,7 +129,7 @@ module uart_port	#(
 		
 	u_rx_fifo(
 		.clk		(clk),
-		.srst_n	(rst_n),
+		.rst_n	(rst_n),
 		
 		//write side
 		.wr_en	(rx_fifo_wr_fire),
@@ -137,78 +137,81 @@ module uart_port	#(
 		.full		(rx_fifo_full),
 		
 		//read side
-		.rd_en	(rx_fifo_rd_fire),
+		.rd_en	(rx_fifo_rd_en),
 		.dout		(rx_fifo_dout),
-		.empty	(rx_fifo_empty),
+		.empty	(rx_fifo_empty_int), //internal signal: FIFO storage only
 		
 		.count());//how many items in the fifo
 		
-		/////////////////////////////////////////////
-		///////Adding delay on out_valid/////////////
-		///////because fifo has a registered/////////
-		///////output////////////////////////////////
-		/////////////////////////////////////////////
+	/////////////////////////////////////////////
+	///////Adding delay on out_valid/////////////
+	///////because fifo has a registered/////////
+	///////output////////////////////////////////
+	/////////////////////////////////////////////
 		
-		//registers to hold the data
-		logic			out_valid,	out_valid_next;
-		logic	[7:0]	out_data,	out_data_next;
-		
-		//signal will be valid one cycle after rd_en
-		logic			fifo_dout_valid;
-		
-		//Exposed RX stream interface
-		assign	rx_valid	=	out_valid;
-		assign	rx_data	=	out_data;
-		
-		//Set FIFO dout valid
-		always_ff	@(posedge clk or negedge rst_n)
-		begin
-			if(!rst_n)
-				fifo_dout_valid 	<=	1'b0;
-			else
-				fifo_dout_valid	<=	rx_fifo_rd_fire; //rx_fifo_rd_en
-		end
-		
-		
-		
-		//Next-state logic for out_valid
-		always_comb
-		begin
-			out_valid_next	=	out_valid;
-		//consume buffered byte: if rx_fire and fifo_dout_valid are both 1 
-		//in the same cycle, we refill immediately (out_valid_next ends high)
-			if(rx_fire)
-				out_valid_next	=	1'b0;
-			if(fifo_dout_valid)
-				out_valid_next	=	1'b1;
-		end
-		
-		always_ff @(posedge clk or negedge rst_n)
-		begin
-			if(!rst_n)
-				out_valid	<=	1'b0;
-			else
-				out_valid	<=	out_valid_next;
-		end
-		
-		
-		
-		//Next-state logic for out_data_next;
-		always_comb
-		begin
-			out_data_next	=	out_data;
-			//Refill from FIFO (dout is valid this cycle)
-			if(fifo_dout_valid)
-				out_data_next	=	rx_fifo_dout;
-		end
-		
-		always_ff @(posedge clk or negedge rst_n)
-		begin
-			if(!rst_n)
-				out_data	<=	8'd0;
-			else
-				out_data	<=	out_data_next;
-		end
-		
+	//Exposed RX stream interface
+	assign	rx_valid			=	out_valid;
+	assign	rx_data			=	out_data;
+	
+	//Stream transfer event: downstream consumes one byte this cycle
+	assign	rx_fire				=	rx_valid	&&	rx_ready;
+	
+	//read the FIFO (pop), only if the buffer has not valid data and
+	//if it's not empty. If out_valid == 1, then buffer is full.
+	//Also, if rx_fire (output is being consumed this cycle, also pop from FIFO
+	assign 	rx_fifo_rd_en	=	(!out_valid || rx_fire)	&&	(!rx_fifo_empty_int);
+	//external empty status: no byte available to downstream
+	assign	rx_fifo_empty	=	rx_fifo_empty_int && !out_valid; 
+	
+	//Set FIFO dout valid
+	always_ff	@(posedge clk or negedge rst_n)
+	begin
+		if(!rst_n)
+			fifo_dout_valid 	<=	1'b0;
+		else
+			fifo_dout_valid	<=	rx_fifo_rd_en; //rx_fifo_rd_en
+	end
+	
+	
+	
+	//Next-state logic for out_valid
+	always_comb
+	begin
+		out_valid_next	=	out_valid;
+	//consume buffered byte: if rx_fire and fifo_dout_valid are both 1 
+	//in the same cycle, we refill immediately (out_valid_next ends high)
+		if(rx_fire)
+			out_valid_next	=	1'b0;
+		if(fifo_dout_valid)
+			out_valid_next	=	1'b1;
+	end
+	
+	always_ff @(posedge clk or negedge rst_n)
+	begin
+		if(!rst_n)
+			out_valid	<=	1'b0;
+		else
+			out_valid	<=	out_valid_next;
+	end
+	
+	
+	
+	//Next-state logic for out_data_next;
+	always_comb
+	begin
+		out_data_next	=	out_data;
+		//Refill from FIFO (dout is valid this cycle)
+		if(fifo_dout_valid)
+			out_data_next	=	rx_fifo_dout;
+	end
+	
+	always_ff @(posedge clk or negedge rst_n)
+	begin
+		if(!rst_n)
+			out_data	<=	8'd0;
+		else
+			out_data	<=	out_data_next;
+	end
+	
 	endmodule
 	

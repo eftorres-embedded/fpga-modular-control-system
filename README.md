@@ -95,6 +95,8 @@ Exact UART parameters and command formats will be documented as the interface st
 
 ---
 
+![UART Port Block Diagram](docs/uart_port_block_diagram_light.svg)
+
 ## Notes
 
 This repository reflects an improving system. Interfaces and modules may change
