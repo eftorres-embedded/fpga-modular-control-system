@@ -15,7 +15,7 @@ module sync_fifo #(
 	parameter int unsigned	WIDTH = 9)
 	(
 	input		logic					clk,
-	input		logic					rst_n,	//expecting synchronized reset
+	input		logic					rst_n,	//active-low asynchrounous reset
 	
 	input		logic 				wr_en,	// produces asserts when wr_data is valid, ingnored when full
 	input		logic [WIDTH-1:0] din,		// Data input written into FIFO when (wr_en && !full)

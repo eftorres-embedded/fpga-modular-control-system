@@ -160,6 +160,7 @@ module uart_port	#(
 	//if it's not empty. If out_valid == 1, then buffer is full.
 	//Also, if rx_fire (output is being consumed this cycle, also pop from FIFO
 	assign 	rx_fifo_rd_en	=	(!out_valid || rx_fire)	&&	(!rx_fifo_empty_int);
+	
 	//external empty status: no byte available to downstream
 	assign	rx_fifo_empty	=	rx_fifo_empty_int && !out_valid; 
 	
