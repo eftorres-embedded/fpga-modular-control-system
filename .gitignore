@@ -14,7 +14,7 @@ output_files/
 *.cdf
 quartus/project/db/
 quartus/project/incremental_db/
-quartus/project/output_files
+quartus/project/output_files/
 
 # Questa/ModelSim generated
 simulation/questa/
