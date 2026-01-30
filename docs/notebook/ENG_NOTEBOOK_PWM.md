@@ -31,3 +31,45 @@
   | Counter width | 32 bits | Cheap, avoids future limits |
   | Disable bahvior | force `cnt=0`, `pwm_raw=0` | Safe for motors; deterministic|
   | Period update | immedate (core); boundary-sync later | Keep core portable; Apply hande in regs layer |
+
+
+## Procedure
+- [ ] add RTL files:
+  -`rtl/peripherals/pwm/pwm_timebase.sv`
+  -`rtl/perifpherals/pwm/pwm_compare.sv`
+  -`rtl/peripherals/pwm/pwm_core_ip.sv`
+
+- [ ] Add testbench:
+  - `tb/unit/pwm/tb_pwm_core_ip.sv`
+
+- [ ] Write the code:
+  - [ ] `pwm_timebase`
+  - [ ] `pwm_compare.sv`
+  - [ ] `pwm_core_ip.sv`
+
+- [ ] Write the testbench:
+  - [ ] `tb_pwm_core_ip`
+
+- [ ] Run simulation (Questa Altera)
+  - [ ] Create work library under `build/sim/work`
+  - [ ] Compile RTL + TB
+  - [ ] Run TB in command-line mode
+  - [ ] Save transcript to `build/sim/logs/tb_pwm_core_ip.txt`
+  - [ ] Dump waveform to `build/simwaves/tb_pwm_core_ip.wlf`
+
+- [ ] Open waveform:
+  - [ ] Inspect `cnt`, `period_end`, `period_cycles`, `duty_cycles`, `pwm_raw`
+  - [ ] Screenshot: `docs/notebook/img/date_pwm_core10khz_50pct.png`
+
+### Test Plan (core)
+- [ ] T1 Reset: `cnt=0`, `pwm_raw=0`
+- [ ] T2 Period: `period_end` every 5000 cycles
+- [ ] T3 Duty extremes:
+  - [ ] `duty=0` always low
+  - [ ] `duty=2500` exactly 2500 high per period
+  - [ ] `duty=5000` always high
+- [ ] T4 Saturation: `duty=6000` behaves like 100%
+
+### Results
+| Test | Expected | Observed | Pass/Fail | Notes|
+|---|---|---|---|

@@ -33,6 +33,8 @@ modelsim.ini
 *.do.bak*
 rtl_work/
 work/
+quartus/project/simulation/
+quartus/project/simulation/**
 
 #OS
 .DS_Store
