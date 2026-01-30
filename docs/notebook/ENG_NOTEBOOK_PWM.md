@@ -73,3 +73,20 @@
 ### Results
 | Test | Expected | Observed | Pass/Fail | Notes|
 |---|---|---|---|
+| T1 | - | - | - |
+| T2 | - | - | - |
+| T3a | - | - | - |
+| T3b | - | - | - |
+| T3c | - | - | - |
+
+### Evidence (wvaeforms / screenshots)
+- Waveform capture: `docs/notebook/img/file.png`
+- VCD file: `sim/out/tb_pwm_cre.vcd`
+
+### Issues / Debug Notes
+- None today
+
+### Next Steps
+- [ ] Add randomized tst for (perio, duty) pairs
+- [ ] Decid if `period_start` is need by higher layers
+- [ ] Start `pwm_regs.sv` with shadow+APPLY
