@@ -11,7 +11,7 @@
 
 ### Objective
 - Implement portable PWM core:
-    -   `pwm_timebase.sv` (counter + period_end)
+    -   `pwm_timebase.sv` (up-counter + period_end-pulse + period_start_pulse)
     -   `pwm_compare.sv` (cnt<duty)
     -   `pwm_core.sv` wrapper (defaults + clamping policy)
 - Create minimal testbench  `tb_pwm_core.sv`:
