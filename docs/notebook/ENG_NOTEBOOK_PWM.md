@@ -43,7 +43,7 @@
   - `tb/unit/pwm/tb_pwm_core_ip.sv`
 
 - [ ] Write the code:
-  - [ ] `pwm_timebase`
+  - [x] `pwm_timebase`
   - [ ] `pwm_compare.sv`
   - [ ] `pwm_core_ip.sv`
 
@@ -51,7 +51,7 @@
   - [ ] `tb_pwm_core_ip`
 
 - [ ] Run simulation (Questa Altera)
-  - [ ] Create work library under `build/sim/work`
+  - [x] Create work library under `build/sim/work`
   - [ ] Compile RTL + TB
   - [ ] Run TB in command-line mode
   - [ ] Save transcript to `build/sim/logs/tb_pwm_core_ip.txt`
