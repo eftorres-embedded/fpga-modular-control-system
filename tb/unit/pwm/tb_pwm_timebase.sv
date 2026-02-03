@@ -43,38 +43,11 @@ module tb_pwm_timebase;
 		repeat (n) @(posedge clk);
 	endtask
 
-	/*//Measure the number of clock cycles between period_end pulses
-	task automatic expect_period_end_spacing(input int expected);
-		int between;
-		begin
-			//ensure we're not already inside a pulse
-			wait(!period_end);
-			//sync to a clean pulse edge
-			@(posedge period_end);
-			between = 0;
-
-			//count cycles until the next period_end
-			while(1) 
-			begin
-				@(posedge clk);
-				between++;
-				#0;
-
-				if(period_end)
-				begin
-					if(between != expected)
-						$fatal(1,"FAIL: expected %0d cycles between period_end pulses, got %0d", expected, between);
-					else
-						$display("PASS: period_end spacing = %0d cycles", expected);
-					return;
-				end
-			end
-		end
-	endtask*/
-
+	//period_end is combinational from cnt.
+	//edge-toedge measurment with for/join_any was used to avoid sampling races
+	//at @(posedge clk)
 	task automatic expect_period_end_spacing(input int expected);
 	int between;
-
 	begin
 		// Start at a clean pulse edge
 		wait (!period_end);
@@ -167,15 +140,21 @@ $display("DBG: period_cycles=%0d cand=%0d eff=%0d cnt=%0d term=%0d period_end=%0
 		period_cycles = CNT_WIDTH'(10);
 
 		wait_clks(3);    	//cnt should advance 3 cycles
+
+		@(negedge clk);
 		enable	=	1'b0;	//disable the counter
-		wait_clks(1);
+	
+		@(posedge clk);		//give DUT one clock edge to aplly !enable behavior
+		@(negedge clk);
 
 		if(cnt !== '0)
-			$fatal("FAIL: expected cnt == 0 after disable, got %0d", cnt);
+			$fatal(1, "FAIL: expected cnt == 0 after disable, got %0d", cnt);
 		else
 			$display("PASS: cnt reset on disable");
 		
 		$display(" === tb_pwm_timebase PASS ===");
+
+
 		$finish;
 	end
 
