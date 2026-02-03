@@ -43,12 +43,14 @@ module tb_pwm_timebase;
 		repeat (n) @(posedge clk);
 	endtask
 
-	//Measure the number of clock cycles between period_end pulses
+	/*//Measure the number of clock cycles between period_end pulses
 	task automatic expect_period_end_spacing(input int expected);
 		int between;
 		begin
-			//sync to a known period_end pulse first
-			wait (period_end);
+			//ensure we're not already inside a pulse
+			wait(!period_end);
+			//sync to a clean pulse edge
+			@(posedge period_end);
 			between = 0;
 
 			//count cycles until the next period_end
@@ -56,18 +58,55 @@ module tb_pwm_timebase;
 			begin
 				@(posedge clk);
 				between++;
+				#0;
 
 				if(period_end)
 				begin
 					if(between != expected)
-						$fatal("FAIL: expected %0d cycles between period_end pulses, got %0d", expected, between);
+						$fatal(1,"FAIL: expected %0d cycles between period_end pulses, got %0d", expected, between);
 					else
 						$display("PASS: period_end spacing = %0d cycles", expected);
 					return;
 				end
 			end
 		end
+	endtask*/
+
+	task automatic expect_period_end_spacing(input int expected);
+	int between;
+
+	begin
+		// Start at a clean pulse edge
+		wait (!period_end);
+		@(posedge period_end);
+
+		between = 0;
+
+		// Count clk edges until the NEXT period_end edge happens
+		fork : measure
+		begin : clk_counter
+			forever begin
+			@(posedge clk);
+			between++;
+			end
+		end
+
+		begin : wait_next_pulse
+			wait (!period_end);
+			@(posedge period_end);
+		end
+		join_any
+
+		disable measure;
+
+		if (between != expected)
+		$fatal(1, "FAIL: expected %0d cycles between period_end pulses, got %0d",
+				expected, between);
+		else
+		$display("PASS: period_end spacing = %0d cycles", expected);
+	end
 	endtask
+
 
 
 	//Test sequence
@@ -91,6 +130,17 @@ module tb_pwm_timebase;
 		$display("TEST 1: period_cycles = 10 cadence");
 		period_cycles	=	CNT_WIDTH'(10);
 		enable			=	1'b1;
+
+		wait_clks(1);
+$display("DBG: period_cycles=%0d cand=%0d eff=%0d cnt=%0d term=%0d period_end=%0b",
+         period_cycles,
+         dut.period_cycles_candidate,
+         dut.period_cycles_eff,
+         cnt,
+         (dut.period_cycles_eff - CNT_WIDTH'(1)),
+         period_end);
+
+
 		expect_period_end_spacing(10);
 
 

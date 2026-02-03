@@ -67,5 +67,17 @@ So in summary `-do "run -all; quit"` means: Run the simulation to completion, th
 - If it passes, the PASS message will be displayed and then it exits
 - If it fails, the $fatal message will be displayed and then it exits with an error. 
 
-  
+# February 2, 2026
+- The tb_pwm_timebase.sv was initially written with a basic "hello world!" test bench to make sure everything ran correctly. 
+- The test bench has been re-written with a correct testbench and it needs to be rerun, since the directories exist and the library is already created. I only need to Recompile and re-run. So I just run the commands
 
+```powershell
+vlog -work build/sim/work -sv ./rtl/peripherals/pwm/pwm_timebase.sv ./tb/unit/pwm/tb_pwm_timebase.sv
+```
+
+and then...
+
+```powershell
+vsim -c -work build/sim/work tb_pwm_timebase -do "run -all; quit"
+```
+this time I used forward slashes and it worked, I'm still not sure which one is best.
