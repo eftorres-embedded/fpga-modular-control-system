@@ -96,6 +96,27 @@ module tb_pwm_timebase;
 		wait_clks(5);
 		rst_n = 1'b1;
 		wait_clks(2);
+		
+		//DEMO: short period so waveforms show activity
+		$display("DEMO: short period waveform activity");
+		period_cycles = CNT_WIDTH'(8);
+		enable        = 1'b1;
+
+		// Let it run for a few periods (8 cycles each)
+		wait_clks(40);
+
+		// Change period on the fly to show effect (will take effect immediately in this core)
+		$display("DEMO: change period to 12");
+		period_cycles = CNT_WIDTH'(12);
+		wait_clks(48);
+
+		// Optional: disable/enable once to show reset behavior in the wave
+		$display("DEMO: disable/enable");
+		@(negedge clk); enable = 1'b0;
+		wait_clks(5);
+		@(negedge clk); enable = 1'b1;
+		wait_clks(24);
+
 
 		////////////////////////////////////////////////////////////
 		//////////////TEST 1: period_cycles = 10////////////////////

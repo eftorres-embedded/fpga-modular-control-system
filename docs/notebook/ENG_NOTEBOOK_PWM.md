@@ -34,7 +34,7 @@
 
 
 ## Procedure
-- [ ] add RTL files:
+- [x] add RTL files:
   -`rtl/peripherals/pwm/pwm_timebase.sv`
   -`rtl/perifpherals/pwm/pwm_compare.sv`
   -`rtl/peripherals/pwm/pwm_core_ip.sv`
@@ -51,6 +51,7 @@
   - [ ] `tb_pwm_core_ip`
 
 - [ ] Run simulation (Questa Altera)
+  - [x] Create waveform for tb_pwm_timebase
   - [x] Create work library under `build/sim/work`
   - [ ] Compile RTL + TB
   - [ ] Run TB in command-line mode
@@ -84,9 +85,15 @@
 - VCD file: `sim/out/tb_pwm_cre.vcd`
 
 ### Issues / Debug Notes
-- None today
+- 2/2/2026: Test #4 was erroring out, issue was with testbench, `fixed`.
 
 ### Next Steps
 - [ ] Add randomized tst for (perio, duty) pairs
 - [ ] Decid if `period_start` is need by higher layers
 - [ ] Start `pwm_regs.sv` with shadow+APPLY
+
+### PWM Timebase - 10-cycle period
+![PWM timebase 10-cycle](img/2026-Feb-03_pwm_timebase_10cycles_reset.png)
+
+- `period_end` asserts once every 10 clocks
+- `cnt` wraps to 0 on the same edge
