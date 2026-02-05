@@ -24,7 +24,7 @@ module pwm_timebase #(
 	
 	//Due to the logic, period can have an unsafe value, it shoulnd't be 0 or 1, 
 	//We can't expect for the software to follow this so it will be inforced in hardware
-	assign period_cycles_candidate		=	(period_cycles == '0)			? DEFAULT_PERIOD_CYCLES			:	period_cycles;
+	assign period_cycles_candidate		=	(period_cycles == '0)			? DEFAULT_PERIOD_CYCLES		:	period_cycles;
 	assign period_cycles_eff			=	(period_cycles_candidate < CNT_WIDTH'(2)) ? CNT_WIDTH'(2)	:	period_cycles_candidate;
 	
 	//Pulses derived from current count

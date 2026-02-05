@@ -95,7 +95,7 @@ vsim -c -work build/sim/work tb_pwm_timebase -do "run -all; quit"
 -- Force cleaning was not necessary, the issue was with raceconditions on the testbench.
 
 # February 3, 2026
-- After all the test have passed, I added a "demo" section that runs for a shorter time in order to see a better waveform.  Then I generate a waveform, I will do it through the command line by running the following command:
+- After all the test have passed, I added a "demo" section that runs for a shorter time in order to see a better waveform.  Then I generated a waveform, through the command line by running the following command (being on the project root directory):
 ```powershell
 vsim -c -work build/sim/work tb_pwm_timebase -voptargs=+acc -wlf build/sim/waves/tb_pwm_timebase.wlf -do "log -r /tb_pwm_timebase/*; log -r /tb_pwm_timebase/dut/*; run -all; quit"
 ```
@@ -103,14 +103,9 @@ vsim -c -work build/sim/work tb_pwm_timebase -voptargs=+acc -wlf build/sim/waves
 ```powershell
 vsim -view build/sim/waves/tb_pwm_timebase.wlf
 ```
-
-
-- Once the waveform is successfully generated, the objects need to be added to the Wave window. Only those selected signals will be displayed. 
+- Once the waveform is successfully generated, the objects need to be added to the Wave window. I added the relevant signals by clicking on `DUT` and dragging the signals of interest.
 - Once the signals are added, I changed the radix of some signals to make it more readable such as cnt -> Radix -> Decimal
-- A command that can be run that can automatically open, add and zoom is:
+- A command that can be run to automatically open, add and zoom is:
 ```powershell
 vsim -view build/sim/waves/tb_pwm_timebase.wlf -do "add wave -r /tb_pwm_timebase/*; add wave -r /tb_pwm_timebase/dut/*; wave zoom full"
 ```
-## Taking a Screenshot of the wave
-- After running the command, I selected the most relevants signal to stay, and removed the rest. 
-- I placed the signals logically (top -> bottom)
