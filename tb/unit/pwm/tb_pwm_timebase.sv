@@ -3,7 +3,7 @@
 module tb_pwm_timebase;
 
 	// We match the parameters of our DUT
-	localparam	int	unsigned			CNT_WIDTH				=	32;
+	localparam	int	unsigned				CNT_WIDTH					=	32;
 	localparam	logic	[CNT_WIDTH-1:0]	DEFAULT_PERIOD_CYCLES	=	5_000;
 
 
