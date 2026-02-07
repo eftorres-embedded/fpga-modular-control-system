@@ -16,13 +16,14 @@ module pwm_compare #(
 	input	logic							enable,
 	
 	//From pwm_timebase
-	input	logic	[CNT_WIDTH-1:0]	cnt,
-	input	logic	[CNT_WIDTH-1:0]	period_cycles_eff,
+	input		logic	[CNT_WIDTH-1:0]	cnt,
+	input		logic	[CNT_WIDTH-1:0]	period_cycles_eff,
 	
 	//Requested duty-cycle in clk cycles (0-period). Saturated in hardware.
-	input	logic	[CNT_WIDTH-1:0]	duty_cycles
+	input		logic	[CNT_WIDTH-1:0]	duty_cycles,
 	
 	//Raw PWM output (to be post-processed by higher-level abstraction: sign-mag, complementary, etc)
+	output	logic							pwm_raw
 	);
 	
 	logic	[CNT_WIDTH-1:0] duty_eff;
