@@ -59,21 +59,30 @@
   -`rtl/perifpherals/pwm/pwm_compare.sv`
   -`rtl/peripherals/pwm/pwm_core_ip.sv`
 
-- [ ] Add testbench:
+- [x] Add testbench:
   - `tb/unit/pwm/tb_pwm_core_ip.sv`
+  - `tb/unit/pwm/tb_pwm_compare.sv`
+  - `tb/unit/pwm/tb_pwm_timebase.sv`
 
 - [ ] Write the code:
-  - [x] `pwm_timebase`
+  - [x] `pwm_timebase.sv`
   - [x] `pwm_compare.sv`
   - [ ] `pwm_core_ip.sv`
 
 - [ ] Write the testbench:
-  - [ ] `tb_pwm_core_ip`
+  - [ ] `tb_pwm_core_ip.sv`
+  - [x] `tb_pwm_timebase.sv`
+  - [ ] `tb_pwm_compare.sv`
 
 - [ ] Run simulation (Questa Altera)
-  - [x] Create waveform for tb_pwm_timebase
   - [x] Create work library under `build/sim/work`
-  - [ ] Compile RTL + TB
+  - [x] Compile RTL + TB for tb_pwm_timebase
+  - [x] Create waveform for tb_pwm_timebase
+  
+  - [ ] Create work library under `build/sim/work`
+  - [ ] Create waveform for tb_pwm_compare
+  - [ ] Compile RTL + TB for tb_pwm_core
+
   - [ ] Run TB in command-line mode
   - [ ] Save transcript to `build/sim/logs/tb_pwm_core_ip.txt`
   - [ ] Dump waveform to `build/simwaves/tb_pwm_core_ip.wlf`
@@ -107,11 +116,11 @@
 ---
 
 ### Issues / Debug Notes
-- 2/2/2026: Test #4 was erroring out, issue was with testbench, `fixed`.
+- 2/2/2026: tb_pwm_timebase Test #4 was erroring out, issue was with testbench, `fixed`.
 
 ### Next Steps
-- [ ] Add randomized tst for (perio, duty) pairs
-- [ ] Decid if `period_start` is need by higher layers
+- [ ] Add randomized test for (period, duty) pairs
+- [ ] Decide if `period_start` is need by higher layers
 - [ ] Start `pwm_regs.sv` with shadow+APPLY
 
 ### PWM Timebase - 10-cycle period
@@ -119,3 +128,14 @@
 
 - `period_end` asserts once every 10 clocks
 - `cnt` wraps to 0 on the same edge
+
+### 2/6/2026 - Writing the unit testbench for pwm _compare I will be looking for the following
+- pwm_compare is combinational
+- I will manually drive cnt so I don't have to instantiate the timebase
+- The clock is not required but I will use one to step cleanly
+- For a given period P and duty D:
+  - D=0 &rarr pwm always 0
+  - D = P/2 &rarr pwm high for exactly D counts (50% positive width)
+  - D=P &rarr pwm always 1
+  - D>P &rarr staturates to P (pwm will always be 1)
+  - enable=0 &rarr pwm always 0
