@@ -72,15 +72,15 @@
 - [ ] Write the testbench:
   - [ ] `tb_pwm_core_ip.sv`
   - [x] `tb_pwm_timebase.sv`
-  - [ ] `tb_pwm_compare.sv`
+  - [x] `tb_pwm_compare.sv`
 
 - [ ] Run simulation (Questa Altera)
   - [x] Create work library under `build/sim/work`
   - [x] Compile RTL + TB for tb_pwm_timebase
   - [x] Create waveform for tb_pwm_timebase
   
-  - [ ] Create work library under `build/sim/work`
-  - [ ] Create waveform for tb_pwm_compare
+  - [x] Create work library under `build/sim/work`
+  - [x] Create waveform for tb_pwm_compare
   - [ ] Compile RTL + TB for tb_pwm_core
 
   - [ ] Run TB in command-line mode

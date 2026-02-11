@@ -1,8 +1,8 @@
-`timesace 1ns/1ps
+`timescale 1ns/1ps
 
 module tb_pwm_compare;
 
-	localparam int unsigned CTN_WIDTH = 32;
+	localparam int unsigned CNT_WIDTH = 32;
 	
 	//DUT inputs
 	logic							enable;
@@ -34,10 +34,10 @@ module tb_pwm_compare;
 		begin
 			cnt = CNT_WIDTH'(cnt_i);
 			#1; //small settle time for combinational logic
-			if(pwm_raw !=== expected)
+			if(pwm_raw !== expected)
 			begin
 				$fatal(
-				1, "FAIL: enable%0b period=%0d duty%0d cnt=%0d expected_pwm=%0b got %0b,
+				1, "FAIL: enable%0b period=%0d duty%0d cnt=%0d expected_pwm=%0b got %0b",
 				enable, period_cycles_eff, duty_cycles, cnt, expected, pwm_raw
 				);
 			end
@@ -95,10 +95,10 @@ module tb_pwm_compare;
 		enable = 1'b1;
 		
 		//TEST 1: duty=0 => always low
-		expect_high_count_in_perido(10,0,0);
+		expect_high_count_in_period(10,0,0);
 		
 		//TEST 2: duty=5 => exactly 5 highs (cnt 0-5 low)
-		expect_high_count_in_period(10,5,5)
+		expect_high_count_in_period(10,5,5);
 		
 		//TEST 3: spot-check edges: cnt=4 high, cnt=5 low
 		duty_cycles = CNT_WIDTH'(5);

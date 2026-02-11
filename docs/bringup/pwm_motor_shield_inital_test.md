@@ -59,7 +59,7 @@ Then, I compiled the SystemVerilog files, I used vlog since it can read .v and .
       - The testbench calls `$finish`, or
       - The testbench calls `$fatal` or hits assertion failure, or
       - there are no more events.
-    `quit` exits Questa after the simulation completets. 
+    `quit` exits Questa after the simulation completes. 
 So in summary `-do "run -all; quit"` means: Run the simulation to completion, then exit without requiring me to type anything
 
 ## What should we see at this point?
@@ -109,3 +109,25 @@ vsim -view build/sim/waves/tb_pwm_timebase.wlf
 ```powershell
 vsim -view build/sim/waves/tb_pwm_timebase.wlf -do "add wave -r /tb_pwm_timebase/*; add wave -r /tb_pwm_timebase/dut/*; wave zoom full"
 ```
+
+
+# February 10, 2026
+## tb_pwm_compare.sv - Testbench simulation
+- Now, I ran a test bench simulation for the pwm_compare. I am not including the pwm_timebase, I am creating the cnt signal directly in tb_pwm_compare. 
+- Simulation is compiled and run by the following commands:
+```powershell
+vlog -work build/sim/work -sv ./rtl/peripherals/pwm/pwm_compare.sv ./tb/unit/pwm/tb_pwm_compare.sv
+vsim -c -work build/sim/work tb_pwm_compare -do "run -all; quit"
+```
+## tb_pwm_compare.sv - Testbench log signals to create wave on tb_pwm_compare.wlf
+- After fixing errors and having a simulation successfully run. I ran the following command to create the waveform and producing tb_pwm_compare.wlf. (we are keeing internal signal visibility so logging works)
+```powershell
+vsim -c -work build/sim/work tb_pwm_compare -voptargs=+acc -wlf build/sim/waves/tb_pwm_compare.wlf -do "log -r /tb_pwm_compare/*; log -r /tb_pwm_compare/dut/*; run -all; quit"
+```
+## tb_pwm_compare.sv - Open test bench in GUI and add signals to the wave window
+-After Generating the wlf (batch), we can run the following command to open the wlf in the GUI and show the signals
+```powershell
+vsim -view build/sim/waves/tb_pwm_compare.wlf -do "add wave -r /tb_pwm_compare/*; add wave -r /tb_pwm_compare/dut/*; wave zoom full"
+```
+## Waveform output
+![pwm_compare duty sweep (period=10, duty=0,5,10,999)](img/2026-02-10_tb_pwm_compare_period10_duty_sweep.png)
