@@ -134,12 +134,14 @@
 - I will manually drive cnt so I don't have to instantiate the timebase
 - The clock is not required but I will use one to step cleanly
 - For a given period P and duty D:
-  - D=0 &rarr pwm always 0
-  - D = P/2 &rarr pwm high for exactly D counts (50% positive width)
-  - D=P &rarr pwm always 1
-  - D>P &rarr staturates to P (pwm will always be 1)
-  - enable=0 &rarr pwm always 0
+  - **D = 0** → pwm always 0  
+  - **D = P/2** → pwm high for exactly D counts (50% duty)  
+  - **D = P** → pwm always 1  
+  - **D > P** → saturates to P (pwm always 1)  
+  - **enable = 0** → pwm always 0  
 
 ### 2/10/2026 - These are the results for the unit testbench for pwm_compare
-## Waveform output
+## PWM Compare - Period 10: duty = 0, 5, 10, 999
 ![pwm_compare duty sweep (period=10, duty=0,5,10,999)](img/2026-02-10_tb_pwm_compare_period10_duty_sweep.png)
+
+- PWM output clamps to high at `duty = 999`
