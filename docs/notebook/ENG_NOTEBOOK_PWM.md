@@ -129,7 +129,7 @@
 - `period_end` asserts once every 10 clocks
 - `cnt` wraps to 0 on the same edge
 
-### 2/6/2026 - Writing the unit testbench for pwm _compare I will be looking for the following
+### 2/6/2026 - Writing the unit testbench for pwm_compare I will be looking for the following
 - pwm_compare is combinational
 - I will manually drive cnt so I don't have to instantiate the timebase
 - The clock is not required but I will use one to step cleanly
@@ -139,3 +139,7 @@
   - D=P &rarr pwm always 1
   - D>P &rarr staturates to P (pwm will always be 1)
   - enable=0 &rarr pwm always 0
+
+### 2/10/2026 - These are the results for the unit testbench for pwm_compare
+## Waveform output
+![pwm_compare duty sweep (period=10, duty=0,5,10,999)](img/2026-02-10_tb_pwm_compare_period10_duty_sweep.png)
