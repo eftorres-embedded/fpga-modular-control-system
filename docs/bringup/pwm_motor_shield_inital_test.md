@@ -129,5 +129,4 @@ vsim -c -work build/sim/work tb_pwm_compare -voptargs=+acc -wlf build/sim/waves/
 ```powershell
 vsim -view build/sim/waves/tb_pwm_compare.wlf -do "add wave -r /tb_pwm_compare/*; add wave -r /tb_pwm_compare/dut/*; wave zoom full"
 ```
-## Waveform output
-![pwm_compare duty sweep (period=10, duty=0,5,10,999)](img/2026-02-10_tb_pwm_compare_period10_duty_sweep.png)
+
