@@ -145,3 +145,24 @@
 ![pwm_compare duty sweep (period=10, duty=0,5,10,999)](img/2026-02-10_tb_pwm_compare_period10_duty_sweep.png)
 
 - PWM output clamps to high at `duty = 999`
+
+### Next I will be creating a wapper for pwm_timebase and pwm_compare as bellow 
+```text
+              +------------------+
+period_cycles |                  |
+enable ------>|  pwm_timebase    |--> cnt
+clk ----------|                  |--> period_end
+rst_n --------|                  |
+              +------------------+
+                        |
+                        v
+              +------------------+
+duty_cycles ->|   pwm_compare    |--> pwm_raw
+enable ------>|                  |
+cnt ----------|                  |
+              +------------------+
+
+                       |
+                       v
+                  pwm_out
+```
