@@ -146,7 +146,7 @@
 
 - PWM output clamps to high at `duty = 999`
 
-### Next I will be creating a wapper for pwm_timebase and pwm_compare as bellow 
+### Next I will be creating a wapper for pwm_timebase and pwm_compare as bellow:
 ```text
               +------------------+
 period_cycles |                  |
@@ -166,3 +166,13 @@ cnt ----------|                  |
                        v
                   pwm_out
 ```
+### For this integration test I will check:
+- Does the counter run?
+- Does pwm_out toggle correctly?
+- Does it match 50% duty?
+- Does disable force low?
+- Does reset clear it?
+
+### Note: 
+- For this integration test, `.period_cycles_eff(period_cycles)` will be okay, it might get revised later. 
+- We will not implement shadow registers yet
