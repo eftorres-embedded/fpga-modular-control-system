@@ -129,7 +129,26 @@
 - `period_end` asserts once every 10 clocks
 - `cnt` wraps to 0 on the same edge
 
-### 2/6/2026 - Writing the unit testbench for pwm_compare I will be looking for the following
+### 2/6/2026 - Writing the unit testbench for pwm_compare I will be looking for the following:
+### PWM Compare – Formal Definition
+
+Let:
+
+- `duty_eff = min(duty_cycles, period_cycles_eff)`
+- `pwm_raw = enable ∧ (cnt < duty_eff)`
+
+Then over one PWM period:
+
+| Parameter Relationship | High Counts | Low Counts | Notes |
+|------------------------|------------|-----------|-------|
+| `enable = 0` | 0 | `period_cycles_eff` | Forced low |
+| `duty_cycles = 0` | 0 | `period_cycles_eff` | 0% duty |
+| `0 < duty_cycles < P` | `duty_cycles` | `P - duty_cycles` | Normal PWM |
+| `duty_cycles = P` | `P` | 0 | 100% duty |
+| `duty_cycles > P` | `P` | 0 | Saturates to 100% |
+
+Where `P = period_cycles_eff`.
+
 - pwm_compare is combinational
 - I will manually drive cnt so I don't have to instantiate the timebase
 - The clock is not required but I will use one to step cleanly
