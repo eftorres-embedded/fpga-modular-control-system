@@ -5,7 +5,7 @@
 //
 // Precondition/Contract
 // -cnt counts 0 to period_cycles_eff-1
-// -period_cycles_eff is already clamped >= by pwm_timebase
+// -period_cycles_eff is already clamped >= 2 by pwm_timebase
 // -duty_cycles may be any value; we saturate to [0 to period_cycles_eff]
 //
 
