@@ -1,8 +1,8 @@
 // pwm_timebase.sv
 //
 module pwm_timebase #(
-	parameter	int	unsigned				CNT_WIDTH					=	32,
-	parameter	logic	[CNT_WIDTH-1:0]	DEFAULT_PERIOD_CYCLES	=	5_000,
+	parameter	int	unsigned				CNT_WIDTH				=	32,
+	parameter	logic		[CNT_WIDTH-1:0]	DEFAULT_PERIOD_CYCLES	=	5_000,
 	parameter	int							RST_CNT_WHEN_DISABLED	=	1'b1
 	)
 	(
@@ -11,15 +11,17 @@ module pwm_timebase #(
 	
 	input		logic	enable,
 	
-	//Active period in clk cycles. If cnt < 2, module will clamp it to 2;
+	//Active period in clk cycles. If period_cycles <2, module will clamp it to 2.
 	input		logic	[CNT_WIDTH-1:0]	period_cycles,
 	
-	output	logic	[CNT_WIDTH-1:0]	cnt,
-	output	logic							period_start,
-	output	logic							period_end
+	output		logic	[CNT_WIDTH-1:0]	cnt,
+	output		logic					period_start,
+	output		logic					period_end,
+
+	output		logic	[CNT_WIDTH-1:0]	period_cycles_eff
 	);
 	
-	logic [CNT_WIDTH-1:0] period_cycles_eff;
+	
 	logic [CNT_WIDTH-1:0] period_cycles_candidate;
 	
 	//Due to the logic, period can have an unsafe value, it shoulnd't be 0 or 1, 
@@ -29,7 +31,7 @@ module pwm_timebase #(
 	
 	//Pulses derived from current count
 	assign period_start	=	enable && (cnt == 0);
-	assign period_end		=  enable && (cnt == (period_cycles_eff - CNT_WIDTH'(1)));
+	assign period_end	= 	enable && (cnt == (period_cycles_eff - CNT_WIDTH'(1)));
 	
 	always_ff @(posedge clk or negedge rst_n)
 	begin
