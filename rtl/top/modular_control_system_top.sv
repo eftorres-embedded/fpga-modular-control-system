@@ -326,6 +326,39 @@ assign	GPIO[14]		=	esp_01s_rst;
 
 assign esp_01s_en =	SW[0];
 
+
+////////////////////////////////////////////
+//PWM Module
+////////////////////////////////////////////
+localparam int unsigned CNT_WIDTH = 32;
+logic	pwm_enable;
+logic	[CNT_WIDTH-1:0]	period_cycles_i;
+logic	[CNT_WIDTH-1:0]	duty_cycles_i;
+logic [CNT_WIDTH-1:0]	cnt;
+logic	period_end;
+logic pwm_raw;
+
+assign	pwm_enable = 1'b1;
+assign	period_cycles_i	=	CNT_WIDTH'(5_000);
+assign	duty_cycles_i		=	CNT_WIDTH'({19'b0,SW[3:0],9'b0});
+
+assign	LEDR[0]				=	pwm_raw;
+assign	LEDR[1]				=	1'b1;
+pwm_core_ip #(
+    .CNT_WIDTH(CNT_WIDTH)
+)
+    u_pwm_core_ip(
+    .clk(MAX10_CLK1_50),
+    .rst_n(rst_n),
+    .enable(pwm_enable),
+    .period_cycles_i(period_cycles_i),
+    .duty_cycles_i(duty_cycles_i),
+    .use_default_duty(0),
+    .cnt(cnt),
+    .period_end(period_end),
+    .pwm_raw(pwm_raw)
+    );
+	 
 endmodule
 
 

@@ -1,9 +1,9 @@
 // pwm_timebase.sv
 //
 module pwm_timebase #(
-	parameter	int	unsigned				CNT_WIDTH				=	32,
+	parameter	int	unsigned					CNT_WIDTH					=	32,
 	parameter	logic		[CNT_WIDTH-1:0]	DEFAULT_PERIOD_CYCLES	=	5_000,
-	parameter	int							RST_CNT_WHEN_DISABLED	=	1'b1
+	parameter	int								RST_CNT_WHEN_DISABLED	=	1'b1
 	)
 	(
 	input		logic clk,

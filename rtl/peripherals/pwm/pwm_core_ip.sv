@@ -44,7 +44,6 @@ module pwm_core_ip #(
 
 logic   [CNT_WIDTH-1:0] period_active;
 logic   [CNT_WIDTH-1:0] duty_active;
-
 logic   [CNT_WIDTH-1:0] period_cycles_eff;
 
 

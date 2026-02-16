@@ -192,4 +192,4 @@ cnt ----------|                  |
 * Added explicit casts `CNT_WIDTH'(DEFAULT_*) for width safety
 * Next: write ` tb_pwm_core_ip` integration testbench + wave capture
 
-
+### 02/16/2026 - Implement testbench for pwm_core_ip
