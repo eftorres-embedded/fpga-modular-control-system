@@ -185,3 +185,9 @@ cnt ----------|                  |
 ### Note: 
 - For this integration test, `.period_cycles_eff(period_cycles)` will be okay, it might get revised later. 
 - We will not implement shadow registers yet
+
+### 02/14/2026 - Update to pwm_core_ip
+* added `period_cycles_eff` output to `pwm_timebase` so downstream coompare uses the clamped effective period
+* Updated `pwm_core_ip` to feed compare with `period_cycles_eff` to eliminate illegal-period mismatch
+* Added explicit casts `CNT_WIDTH'(DEFAULT_*) fpr wodtj safetu
+* Next: write ` tb_pwm_core_ip` integration testbench + wave capture
