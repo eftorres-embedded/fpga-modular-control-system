@@ -59,25 +59,97 @@ pwm_core_ip #(
 ////////////////////////////////////////////////
 //helpers
 ////////////////////////////////////////////////
-task automatic wait_clks();
-
+task automatic wait_clks(input int n);
+    repeat () @(posedge clk);
 endtask
 
 //Start meaurement at a clean period_end edge (avoid being inside a pulse
 task automatic sync_to_period_end_edge();
+    begin
+        wait(!period_end);
+        @(posedge period_end);
+    end
 endtask
 
 //Measure clk cycles between consecutyve period_end pulses
-task automatic expect_period_end_spacing();
+task automatic expect_period_end_spacing(input int expected);
+    int between;
+        begin
+            sync_to_period_end_edge();
+            between = 0;
+
+            fork    :   measure
+                begin   : clk_counter
+                    forever
+                    begin
+                        @(posedge clk);
+                        between++;
+                    end
+                end
+
+                begin   :   wait_next_pulse
+                    wait (!period_end);
+                    @(posedge period_end);
+                end
+            join_any
+
+            disable measure;
+
+            if(between != expected)
+            begin
+                $fatal(1, "FAIL: expected %0d cycles between period_end pulses, got %0d",
+                        expected, between);
+            end
+
+            else
+            begin
+                %display("PASS: period_end spacing = %0d cycles", expected);
+            end
+        end
 endtask
 
 //Count number of cyles pwm_raw is high over ONE full effective period
 //uses dut.period_cycles_eff (internal signal)
-task automatic expect_pwm_highs_one_period();
+task automatic expect_pwm_highs_one_period(input int unsigned expected_highs);
+    int unsigned highs;
+    int unsigned i;
+    int unsigned P;
+    begin
+        //Grab effective/clamped period from inside the DUT
+        P   =   dut.period_cycles_eff;
+
+        //Align to a boundary so we count exactly one period
+        sync_to_period_end_edge();
+
+        //Move to th first clk edge of the next period (cnt should be 0 after wrap)
+        @(posedge clk);
+
+        highs = 0;
+        for(i=0; i<P; i++)
+        begin
+            //Sample pwm on each clk edge (stable for the full cycle)
+            if(pwm_raw === 1'b1)
+                highs++;
+            @(posedge clk);
+        end
+
+        if(highs != expected_highs)
+        begin
+            $fatal(1, "FAIL: expected %0d highs in one period, got %0d (P=%0d)",
+                    expected_highs, highs, P);
+        end
+
+        else
+        begin
+            $display("PASS: highs in one period = %0d (P=%0d)", highs, P);
+        end
+    end
 endtask
 
 //Drive enable on negedge to avoid smapling races at posedge
 task automatic set_enable();
+    @(negedge clk);
+    enable = en;
 endtask
 
 ///////////////////////////////////////////////

@@ -337,13 +337,51 @@ logic	[CNT_WIDTH-1:0]	duty_cycles_i;
 logic [CNT_WIDTH-1:0]	cnt;
 logic	period_end;
 logic pwm_raw;
+logic	[12:0]	pwm_duty_counter;
+logic [15:0]	pwm_ticker;
+logic				duty_tick;
 
 assign	pwm_enable = 1'b1;
 assign	period_cycles_i	=	CNT_WIDTH'(5_000);
-assign	duty_cycles_i		=	CNT_WIDTH'({19'b0,SW[3:0],9'b0});
+assign	duty_cycles_i		=	CNT_WIDTH'(pwm_duty_counter);
 
 assign	LEDR[0]				=	pwm_raw;
 assign	LEDR[1]				=	1'b1;
+
+always_ff @(posedge MAX10_CLK1_50)
+begin
+	if(!rst_n)
+	begin
+		pwm_ticker			<= '0;
+		duty_tick			<= 1'b0;
+		pwm_duty_counter	<= '0;
+	end
+	else
+	begin
+		duty_tick	<=	1'b0;
+	
+		//prescalre: generate duty_tick every 50,000 clk cycles
+		if(pwm_ticker == 16'd49_999)
+		begin
+			pwm_ticker	<= '0;
+			duty_tick	<= 1'b1;
+		end
+		else
+		begin
+			pwm_ticker	<= pwm_ticker + 16'd1;
+		end
+		
+		//duty ramp: increment only on duty_tick
+		if(duty_tick)
+		begin
+			if(pwm_duty_counter == 14'd4_999)
+				pwm_duty_counter	<= '0;
+			else
+				pwm_duty_counter	<= pwm_duty_counter + 13'd1;
+		end
+	end
+end
+
 pwm_core_ip #(
     .CNT_WIDTH(CNT_WIDTH)
 )
