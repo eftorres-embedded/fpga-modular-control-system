@@ -193,3 +193,4 @@ cnt ----------|                  |
 * Next: write ` tb_pwm_core_ip` integration testbench + wave capture
 
 ### 02/16/2026 - Implement testbench for pwm_core_ip
+* This testbech will override the DUT defaults with small number so the waveforms are readable and the simulation finishes fast
