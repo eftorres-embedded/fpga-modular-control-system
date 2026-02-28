@@ -132,6 +132,12 @@ vsim -view build/sim/waves/tb_pwm_compare.wlf -do "add wave -r /tb_pwm_compare/*
 
 # February 27, 2026
 ## tb_pwm_core_ip.sv - Testbench simulation
+-The testbench was not completed, it only had helper tasks and 2 simples test. Mainly, to check for syntax errors
 ```powershell
 vlog -work build/sim/work -sv ./rtl/peripherals/pwm/pwm_timebase.sv rtl/peripherals/pwm/pwm_compare.sv rtl/peripherals/pwm/pwm_core_ip.sv tb/unit/pwm/tb_pwm_core_ip.sv
+```
+# February 28, 2026
+## tb_pwm_core_ip.sv - Testbench log signals to create wave on tb_pwm_compare.wlf
+```powershell
+vsim -c -work build/sim/work tb_pwm_core_ip -voptargs=+acc -wlf build/sim/waves/tb_pwm_core_ip.wlf -do "log -r /tb_pwm_core_ip/*; log -r /tb_pwm_core_ip/dut/*; run -all; quit"
 ```

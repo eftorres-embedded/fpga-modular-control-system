@@ -176,13 +176,54 @@ initial begin
     //----------------------------------------
     //TEST 1: runtime period=10, duty=5 => 50%
     //----------------------------------------
-    $display("TEST !: period=10, duty=5 => expect spacing = 10, highs = 5");
+    $display("TEST 1: period=10, duty=5 => expect spacing = 10, highs = 5");
     period_cycles_i     =   CNT_WIDTH'(10);
     use_default_duty    =   1'b0;
     duty_cycles_i       =   CNT_WIDTH'(5);
     
     expect_period_end_spacing(10);
     expect_pwm_highs_one_period(5);
+
+    //----------------------------------------
+    //TEST 2: duty=0 => always low 
+    //-----------------------------------------
+    $idsplay("TEST 2: period=10, duty=0 => highs=0");
+    duty_cycles_i = CNT_WIDTH'(0);
+    expect_pwm_highs_one_period(0);
+
+    //-----------------------------------------
+    //TEST 3: duty=period => always high
+    //-----------------------------------------
+    $display("TEST 3: period=10, duty=10 => highs = 10");
+    duty_cycles_i = CNT_WIDTH'(10);
+    expect_pwm_highs_one_period(10);
+
+    //-----------------------------------------
+    //TEST 4: period=10, duty=999 => always high
+    //-----------------------------------------
+    $display("TEST 4: period=10, duty=999 => saturates => highs=10");
+    duty_cycles_i   =   CNT_WIDTH'(999);
+    expect_pwm_highs_one_period(10);
+
+    //-----------------------------------------
+    //TEST 5: period=0 => default period; default duty enabled
+    //-----------------------------------------
+    $display("TEST 5: period=0 -> default period = %0d; use default_duty => duty=%0d",
+            TB_DEFAULT_PERIOD, TB_DEFAULT_DUTY);
+    period_cycles_i     =   '0;
+    use_default_duty    =   1'b1;
+    duty_cycles_i       =   CNT_WIDTH'(123);
+
+    //-----------------------------------------
+    //TEST 6: period=1 -> timbabes clamps to 2; 
+    //-----------------------------------------
+    $display("TEST 6: period=1 => clamp to 2 -> spacing=2");
+    use_default_duty    = 1'b0;
+    period_cycles_i     =   CNT_WIDTH'(1);
+    duty_cycles_i       =   CNT_WIDTH'(1);
+
+    expect_period_end_spacing(2);
+    expect_pwm_highs_one_period(1);
 
     //-----------------------------------------
     //TEST 7: disable behavior: RST_CNT_WHEN_DISABLED-1 => resets, pwm low
@@ -194,7 +235,8 @@ initial begin
     wait_clks(3);       //let cnt advance
     set_enable(1'b0);   //disable
     @(posedge clk);     //allow DUT to apply disable behavior
-
+    @(negedge clk);
+  
     if(cnt  !== '0)
         $fatal(1, "FAIL: expected pwm_raw==0 after disable, got %0d", cnt);
     if(pwm_raw !== 1'b0)
