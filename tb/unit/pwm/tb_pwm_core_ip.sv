@@ -155,5 +155,53 @@ endtask
 ///////////////////////////////////////////////
 //Test sequence
 ///////////////////////////////////////////////
+initial begin
+    $display("=== tb_pwm_core_ip start ===");
+
+    //Init
+    rst_n               =   1'b0;
+    enable              =   1'b0;
+    period_cycles_i     =   '0;
+    duty_cycles_i       =   '0;
+    use_default_duty    =   1'b0;
+
+    //Reset
+    wait_clks(5);
+    rst_n   =   1'b1;
+    wait_clks(2);
+
+    //Enable PWM core
+    set_enable(1'b1);
+
+    //----------------------------------------
+    //TEST 1: runtime period=10, duty=5 => 50%
+    //----------------------------------------
+    $display("TEST !: period=10, duty=5 => expect spacing = 10, highs = 5");
+    period_cycles_i     =   CNT_WIDTH'(10);
+    use_default_duty    =   1'b0;
+    duty_cycles_i       =   CNT_WIDTH'(5);
+    
+    expect_period_end_spacing(10);
+    expect_pwm_highs_one_period(5);
+
+    //-----------------------------------------
+    //TEST 7: disable behavior: RST_CNT_WHEN_DISABLED-1 => resets, pwm low
+    //------------------------------------------
+    $display("TEST 7: disable => cnt=0 and pwm_raw=0");
+    period_cycles_i =   CNT_WIDTH'(10);
+    duty_cycles_i   =   CNT_WIDTH'(5);
+
+    wait_clks(3);       //let cnt advance
+    set_enable(1'b0)    //disable
+    @(posedge clk);     //allow DUT to apply disable behavior
+
+    if(cnt  !== '0)
+        $fatal(1, "FAIL: expected pwm_raw==0 after disable, got %0d", cnt);
+    if(pwm_raw !== 1'b0)
+        $fatal(1, "FAIL: expected pwm_raw==0 after disable, got %0b", pwm_raw);
+    $display("PASS: disable force cnt=0 and pwm_raw=0");
+
+    $display("=== tb_pwm_core_ip PASS ===");
+end
 
 endmodule
