@@ -60,7 +60,7 @@ pwm_core_ip #(
 //helpers
 ////////////////////////////////////////////////
 task automatic wait_clks(input int n);
-    repeat () @(posedge clk);
+    repeat(n) @(posedge clk);
 endtask
 
 //Start meaurement at a clean period_end edge (avoid being inside a pulse
@@ -103,7 +103,7 @@ task automatic expect_period_end_spacing(input int expected);
 
             else
             begin
-                %display("PASS: period_end spacing = %0d cycles", expected);
+                $display("PASS: period_end spacing = %0d cycles", expected);
             end
         end
 endtask
@@ -147,7 +147,7 @@ task automatic expect_pwm_highs_one_period(input int unsigned expected_highs);
 endtask
 
 //Drive enable on negedge to avoid smapling races at posedge
-task automatic set_enable();
+task automatic set_enable(input logic en);
     @(negedge clk);
     enable = en;
 endtask
@@ -192,7 +192,7 @@ initial begin
     duty_cycles_i   =   CNT_WIDTH'(5);
 
     wait_clks(3);       //let cnt advance
-    set_enable(1'b0)    //disable
+    set_enable(1'b0);   //disable
     @(posedge clk);     //allow DUT to apply disable behavior
 
     if(cnt  !== '0)

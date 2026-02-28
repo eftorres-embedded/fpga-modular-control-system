@@ -130,3 +130,8 @@ vsim -c -work build/sim/work tb_pwm_compare -voptargs=+acc -wlf build/sim/waves/
 vsim -view build/sim/waves/tb_pwm_compare.wlf -do "add wave -r /tb_pwm_compare/*; add wave -r /tb_pwm_compare/dut/*; wave zoom full"
 ```
 
+# February 27, 2026
+## tb_pwm_core_ip.sv - Testbench simulation
+```powershell
+vlog -work build/sim/work -sv ./rtl/peripherals/pwm/pwm_timebase.sv rtl/peripherals/pwm/pwm_compare.sv rtl/peripherals/pwm/pwm_core_ip.sv tb/unit/pwm/tb_pwm_core_ip.sv
+```
