@@ -91,23 +91,24 @@
   - [ ] Inspect `cnt`, `period_end`, `period_cycles`, `duty_cycles`, `pwm_raw`
   - [ ] Screenshot: `docs/notebook/img/date_pwm_core10khz_50pct.png`
 
-### Test Plan (core)
-- [ ] T1 Reset: `cnt=0`, `pwm_raw=0`
-- [ ] T2 Period: `period_end` every 5000 cycles
-- [ ] T3 Duty extremes:
-  - [ ] `duty=0` always low
-  - [ ] `duty=2500` exactly 2500 high per period
-  - [ ] `duty=5000` always high
-- [ ] T4 Saturation: `duty=6000` behaves like 100%
+
+### Test Plan (core) Period = 10 unless stated otherwise (test done on Feb. 28, 2026)
+- [x] T1 `duty=5` exactly 5 high per period
+- [x] T2 `duty=0` always low
+- [x] T3 `duty=10` always high
+- [x] T4 Saturation: `duty=999` behaves like 100%
+- [x] T5 Default Period & Default duty Cycle:
+- [x] T6 Timebase clamps to 2: when `period=1`
+- [x] T7 Disable behavior: `pwm_raw is 0` 
 
 ### Results
 | Test | Expected | Observed | Pass/Fail | Notes|
 |---|---|---|---| ---|
 | T1 | - | - | - | - |
 | T2 | - | - | - | - |
-| T3a | - | - | - | - |
-| T3b | - | - | - | - |
-| T3c | - | - | - | - |
+| T3 | - | - | - | - |
+| T4| - | - | - | - |
+| T5| - | - | - | - |
 
 ### Evidence (waveforms / screenshots)
 - Waveform capture: `docs/notebook/img/file.png`
