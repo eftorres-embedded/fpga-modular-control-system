@@ -206,5 +206,5 @@ cnt ----------|                  |
   * Clamp period to 2 if, set period is set to less than 2
   * If RS_CNT_WHEN_DISABLED == 1, pwm should be low immediately
 
-* All simultion passed
+## All simulation Tests passed
 ![All 7 test (core requirements for pwm module have passed)](img/tb_pwm_core_ip_worked.png)
