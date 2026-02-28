@@ -194,3 +194,17 @@ cnt ----------|                  |
 
 ### 02/16/2026 - Implement testbench for pwm_core_ip
 * This testbech will override the DUT defaults with small number so the waveforms are readable and the simulation finishes fast
+
+
+### February 28, 2026 - Run simulation for the tb_pwm_core_ip
+* Added test to check several expected features of the pwm module
+  * Normal 50% duty cycle
+  * 0% duty cycle
+  * 100% duty cycle
+  * saturation (duty cycle > than period). Duty Cycle get clamped
+  * If period is set to 0, the period will be set to default and if use_default_duty is 1'b1, use the default duty cycle
+  * Clamp period to 2 if, set period is set to less than 2
+  * If RS_CNT_WHEN_DISABLED == 1, pwm should be low immediately
+
+* All simultion passed
+![All 7 test (core requirements for pwm module have passed)](img/tb_pwm_core_ip_worked.png)

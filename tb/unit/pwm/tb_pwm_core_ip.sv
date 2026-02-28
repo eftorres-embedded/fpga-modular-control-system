@@ -187,7 +187,7 @@ initial begin
     //----------------------------------------
     //TEST 2: duty=0 => always low 
     //-----------------------------------------
-    $idsplay("TEST 2: period=10, duty=0 => highs=0");
+    $display("TEST 2: period=10, duty=0 => highs=0");
     duty_cycles_i = CNT_WIDTH'(0);
     expect_pwm_highs_one_period(0);
 
@@ -226,7 +226,7 @@ initial begin
     expect_pwm_highs_one_period(1);
 
     //-----------------------------------------
-    //TEST 7: disable behavior: RST_CNT_WHEN_DISABLED-1 => resets, pwm low
+    //TEST 7: disable behavior: RST_CNT_WHEN_DISABLED=1 => resets, pwm low
     //------------------------------------------
     $display("TEST 7: disable => cnt=0 and pwm_raw=0");
     period_cycles_i =   CNT_WIDTH'(10);
@@ -244,6 +244,7 @@ initial begin
     $display("PASS: disable force cnt=0 and pwm_raw=0");
 
     $display("=== tb_pwm_core_ip PASS ===");
+    $finish;
 end
 
 endmodule
