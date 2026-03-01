@@ -141,3 +141,25 @@ vlog -work build/sim/work -sv ./rtl/peripherals/pwm/pwm_timebase.sv rtl/peripher
 ```powershell
 vsim -c -work build/sim/work tb_pwm_core_ip -voptargs=+acc -wlf build/sim/waves/tb_pwm_core_ip.wlf -do "log -r /tb_pwm_core_ip/*; log -r /tb_pwm_core_ip/dut/*; run -all; quit"
 ```
+## Generate transcript and waveform from a .do file
+- A .do file was created named ```run_tb_pwm_core_ip.do```
+```powershell
+tb/unit/pwm/run_tb_pwm_core_ip.do
+```
+- include this in the .do file
+```tcl
+transcript file build/sim/logs/tb_pwm_core_ip.txt
+transcript on
+
+log -r /tb_pwm_core_ip/*
+log -r /tb_pwm_core_ip/dut/*
+
+run -all
+
+quit -f
+```
+
+- Then run in PowerShell
+```powershell
+vsim -c -work build/sim/work tb_pwm_core_ip -voptargs=+acc -wlf build/sim/wave/tb_pwm_core_ip.wlf -do tb/unit/pwm/run_tb_pwm_core_ip.do
+```
