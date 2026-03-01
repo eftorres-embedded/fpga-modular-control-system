@@ -161,5 +161,31 @@ quit -f
 
 - Then run in PowerShell
 ```powershell
-vsim -c -work build/sim/work tb_pwm_core_ip -voptargs=+acc -wlf build/sim/wave/tb_pwm_core_ip.wlf -do tb/unit/pwm/run_tb_pwm_core_ip.do
+vsim -c -work build/sim/work tb_pwm_core_ip -voptargs=+acc -wlf build/sim/waves/tb_pwm_core_ip.wlf -do tb/unit/pwm/run_tb_pwm_core_ip.do
+```
+
+## tb_pwm_core_ip.sv - Open test bench in GUI and add signals to the wave window
+- A .do file was created named ```view_tb_pwm_core_ip.do```
+```powershell
+tb/unit/pwm/view_tb_pwm_core_ip.do
+```
+- include this in the .do file
+```tcl
+# Add top-level TB signals
+add wave -r /tb_pwm_core_ip/*
+
+# Add DUT internal signals
+add wave -r /tb_pwm_core_ip/dut/*
+
+# Format preferences
+radix decimal /tb_pwm_core_ip/cnt
+radix decimal /tb_pwm_core_ip/dut/cnt
+
+# Zoom to full simulation
+wave zoom full
+```
+
+- Then run in PowerShell
+```powershell
+vsim -view build/sim/waves/tb_pwm_core_ip.wlf -do tb/unit/pwm/view_tb_pwm_core_ip.do
 ```
