@@ -1,12 +1,21 @@
-# Add top-level TB signals
-add wave -r /tb_pwm_core_ip/*
+# Clock / control
+add wave /tb_pwm_core_ip/clk
+add wave /tb_pwm_core_ip/rst_n
+add wave /tb_pwm_core_ip/enable
 
-# Add DUT internal signals
-add wave -r /tb_pwm_core_ip/dut/*
+# Runtime inputs
+add wave -radix decimal /tb_pwm_core_ip/period_cycles_i
+add wave -radix decimal /tb_pwm_core_ip/duty_cycles_i
+add wave /tb_pwm_core_ip/use_default_duty
 
-# Format preferences
-radix decimal /tb_pwm_core_ip/cnt
-radix decimal /tb_pwm_core_ip/dut/cnt
+# Core outputs
+add wave -radix decimal /tb_pwm_core_ip/cnt
+add wave /tb_pwm_core_ip/period_end
+add wave /tb_pwm_core_ip/pwm_raw
 
-# Zoom to full simulation
+# Internal effective period
+add wave -radix decimal /tb_pwm_core_ip/dut/period_cycles_eff
+
+
+
 wave zoom full
