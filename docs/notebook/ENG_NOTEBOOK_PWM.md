@@ -212,3 +212,30 @@ cnt ----------|                  |
 ![All 7 test (core requirements for pwm module have passed)](img/tb_pwm_core_ip_worked.png)
 
 ![Waveform screen shot of all 7 test](img/2026-03-01-tb_pwm_core_ip-waveform.png)
+
+
+
+## March 1, 2026: Core PWM Hardware block is completed. In the next section I will a register block wrapper (MMIO to later adapt to differnt buses such as AXI or Avalon)
+### The modules to be added are:
+  * `pwm_regs.sv` - Register file + shadow/apply
+  * `pwm_mmio.sv` - Generic Memory Mapped IO "request/response" port
+### I will start with the following register for now:
+| Offset | Name | Bits | Description | Notes|
+|---|---|---|---| ---|
+| 0x00 | CTRL | [0] = enable, [1] = use_defualt_duty, [2] = apply | `apply` copies shawdow => active | `apply` bit auto-cleared by hardware |
+| 0x04 | PERIOD | 32 | shadow period_cycles | - |
+| 0x08 | DUTY | 32 | shadow duty_cycles | - |
+| 0x0C | STATUS | [0] = period_end (sticky optional) | readback/debug | - |
+| 0x10 | CNT | 32 | live counter readback | - |
+
+### `pwm_regs.sv` should have the following generic MMIO interface:
+  * wr_en, wr_addr, wr_data, wr_strb
+  * rd_en, rd_addr, rd_data
+  * ready and valid
+  
+### Testbench should:
+  * Write period/duty
+  * assert apply
+  * check that the core sees changes only after `apply`
+
+
