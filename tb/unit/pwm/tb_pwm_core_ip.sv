@@ -215,7 +215,7 @@ initial begin
     duty_cycles_i       =   CNT_WIDTH'(123);
 
     //-----------------------------------------
-    //TEST 6: period=1 -> timbase clamps to 2; 
+    //TEST 6: period=1 -> timebase clamps to 2; 
     //-----------------------------------------
     $display("TEST 6: period=1 => clamp to 2 -> spacing=2");
     use_default_duty    = 1'b0;
