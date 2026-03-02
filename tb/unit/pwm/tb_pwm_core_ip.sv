@@ -196,6 +196,7 @@ initial begin
     //-----------------------------------------
     $display("TEST 3: period=10, duty=10 => highs = 10");
     duty_cycles_i = CNT_WIDTH'(10);
+
     expect_pwm_highs_one_period(10);
 
     //-----------------------------------------
@@ -203,6 +204,7 @@ initial begin
     //-----------------------------------------
     $display("TEST 4: period=10, duty=999 => saturates => highs=10");
     duty_cycles_i   =   CNT_WIDTH'(999);
+
     expect_pwm_highs_one_period(10);
 
     //-----------------------------------------
@@ -213,6 +215,9 @@ initial begin
     period_cycles_i     =   '0;
     use_default_duty    =   1'b1;
     duty_cycles_i       =   CNT_WIDTH'(123);
+
+    expect_period_end_spacing(TB_DEFAULT_PERIOD);
+    expect_pwm_highs_one_period(TB_DEFAULT_DUTY);
 
     //-----------------------------------------
     //TEST 6: period=1 -> timebase clamps to 2; 

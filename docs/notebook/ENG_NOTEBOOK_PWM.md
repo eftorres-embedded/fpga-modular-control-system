@@ -64,32 +64,32 @@
   - `tb/unit/pwm/tb_pwm_compare.sv`
   - `tb/unit/pwm/tb_pwm_timebase.sv`
 
-- [ ] Write the code:
+- [x] Write the code:
   - [x] `pwm_timebase.sv`
   - [x] `pwm_compare.sv`
-  - [ ] `pwm_core_ip.sv`
+  - [x] `pwm_core_ip.sv`
 
-- [ ] Write the testbench:
-  - [ ] `tb_pwm_core_ip.sv`
+- [x] Write the testbench:
+  - [x] `tb_pwm_core_ip.sv`
   - [x] `tb_pwm_timebase.sv`
   - [x] `tb_pwm_compare.sv`
 
-- [ ] Run simulation (Questa Altera)
+- [x] Run simulation (Questa Altera)
   - [x] Create work library under `build/sim/work`
   - [x] Compile RTL + TB for tb_pwm_timebase
   - [x] Create waveform for tb_pwm_timebase
   
   - [x] Create work library under `build/sim/work`
   - [x] Create waveform for tb_pwm_compare
-  - [ ] Compile RTL + TB for tb_pwm_core
+  - [x] Compile RTL + TB for tb_pwm_core
 
-  - [ ] Run TB in command-line mode
-  - [ ] Save transcript to `build/sim/logs/tb_pwm_core_ip.txt`
-  - [ ] Dump waveform to `build/simwaves/tb_pwm_core_ip.wlf`
+  - [x] Run TB in command-line mode
+  - [x] Save transcript to `build/sim/logs/tb_pwm_core_ip.txt`
+  - [x]Dump waveform to `build/simwaves/tb_pwm_core_ip.wlf`
 
-- [ ] Open waveform:
-  - [ ] Inspect `cnt`, `period_end`, `period_cycles`, `duty_cycles`, `pwm_raw`
-  - [ ] Screenshot: `docs/notebook/img/date_pwm_core10khz_50pct.png`
+- [x] Open waveform:
+  - [x] Inspect `cnt`, `period_end`, `period_cycles`, `duty_cycles`, `pwm_raw`
+  - [x] Screenshot: `docs/notebook/img/2026-03-01 - tb_pwm_core_ip - waveform`
 
 
 ### Test Plan (core) Period = 10 unless stated otherwise (test done on Feb. 28, 2026)
@@ -104,15 +104,16 @@
 ### Results
 | Test | Expected | Observed | Pass/Fail | Notes|
 |---|---|---|---| ---|
-| T1 | - | - | - | - |
-| T2 | - | - | - | - |
-| T3 | - | - | - | - |
-| T4| - | - | - | - |
-| T5| - | - | - | - |
+| T1 | duty = 5 | duty% = 50% | Pass | used period cycles = 10 |
+| T2 | duty = 0 | duty% = 0% | Pass | pure "off" test |
+| T3 | duty = 10 | duty% = 100% | Pass | used period cycles = 10 |
+| T4 | duty = 999| duty% = 100% | Pass | Saturation test |
+| T5 | duty = 7, period = 20 | duty = 7, period = 20| Pass | period = 0 (enable default period), use_default_duty = 1, requested this: duty = 123, period = 0 |
+| T6 | period = 2 | period = 2 | Pass | period was set to 1, as safenet, it should be always greater than 1, so 2 by default |
+| T7 | duty = 0 | duty% = 0 | Pass | pwm shuts down when disabled |
 
-### Evidence (waveforms / screenshots)
-- Waveform capture: `docs/notebook/img/file.png`
-- VCD file: `sim/out/tb_pwm_cre.vcd`
+### Evidence (waveforms / screenshots) (March 1, 2026)
+- Waveform capture: `docs/notebook/img/22026-03-01-tb_pwm_core_ip-waveform.png`
 
 ---
 
@@ -209,3 +210,5 @@ cnt ----------|                  |
 
 ## All simulation Tests passed
 ![All 7 test (core requirements for pwm module have passed)](img/tb_pwm_core_ip_worked.png)
+
+![Waveform screen shot of all 7 test](img/2026-03-01-tb_pwm_core_ip-waveform.png)
