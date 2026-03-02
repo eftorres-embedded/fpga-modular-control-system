@@ -55,14 +55,14 @@
 
 ## Procedure
 - [x] add RTL files:
-  -`rtl/peripherals/pwm/pwm_timebase.sv`
-  -`rtl/perifpherals/pwm/pwm_compare.sv`
-  -`rtl/peripherals/pwm/pwm_core_ip.sv`
+  - [x] `rtl/peripherals/pwm/pwm_timebase.sv`
+  - [x] `rtl/perifpherals/pwm/pwm_compare.sv`
+  - [x] `rtl/peripherals/pwm/pwm_core_ip.sv`
 
 - [x] Add testbench:
-  - `tb/unit/pwm/tb_pwm_core_ip.sv`
-  - `tb/unit/pwm/tb_pwm_compare.sv`
-  - `tb/unit/pwm/tb_pwm_timebase.sv`
+  - [x] `tb/unit/pwm/tb_pwm_core_ip.sv`
+  - [x] `tb/unit/pwm/tb_pwm_compare.sv`
+  - [x] `tb/unit/pwm/tb_pwm_timebase.sv`
 
 - [x] Write the code:
   - [x] `pwm_timebase.sv`
@@ -85,7 +85,7 @@
 
   - [x] Run TB in command-line mode
   - [x] Save transcript to `build/sim/logs/tb_pwm_core_ip.txt`
-  - [x]Dump waveform to `build/simwaves/tb_pwm_core_ip.wlf`
+  - [x] Dump waveform to `build/simwaves/tb_pwm_core_ip.wlf`
 
 - [x] Open waveform:
   - [x] Inspect `cnt`, `period_end`, `period_cycles`, `duty_cycles`, `pwm_raw`
@@ -232,7 +232,7 @@ cnt ----------|                  |
   * wr_en, wr_addr, wr_data, wr_strb
   * rd_en, rd_addr, rd_data
   * ready and valid
-  
+
 ### Testbench should:
   * Write period/duty
   * assert apply
