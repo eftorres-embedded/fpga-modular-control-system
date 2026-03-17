@@ -149,7 +149,7 @@ module pwm_regs #(
     end
 
     //-------------------------------------------------
-    //APPLY pulse dtection (from CTRL writes)
+    //APPLY pulse detection (from CTRL writes)
     //APPLY is write-one. It clears automatically
     //-------------------------------------------------
     always_comb
@@ -167,18 +167,19 @@ module pwm_regs #(
     //----------------------------------------------------
     //Register Writes, APPLY behavior, response buffering
     //----------------------------------------------------
+    logic   [DATA_W-1:0]    ctrl_merged;
     always_ff @(posedge clk or negedge rst_n)
     begin
         if(!rst_n)
         begin
             //shadows defautl to 0 and actives default to safe known values
             enable_shadow       <=  1'b0;
-            use_default_shadow      <=  1'b0;
+            use_default_shadow  <=  1'b0;
             period_shadow       <=  '0;
             duty_shadow         <=  '0;
 
             enable_active       <=  1'b0;
-            use_default_active      <=  1'b0;
+            use_default_active  <=  1'b0;
             period_active       <=  '0;
             duty_active         <=  '0;
 
@@ -202,11 +203,11 @@ module pwm_regs #(
                 //the active registers will be updated
                 if((apply_pending || apply_pulse )  &&  period_end_i)
                 begin
-                    enable_active   <=  enable_shadow;
+                    enable_active       <=  enable_shadow;
                     use_default_active  <=  use_default_shadow;
-                    period_active   <=  period_shadow;
-                    duty_active     <=  duty_shadow;
-                    apply_pending   <=  1'b0;           //auto-clear
+                    period_active       <=  period_shadow;
+                    duty_active         <=  duty_shadow;
+                    apply_pending       <=  1'b0;           //auto-clear
                 end
 
                 else if(apply_pulse)
@@ -221,10 +222,10 @@ module pwm_regs #(
                 //immediate apply
                 if(apply_pulse)
                 begin
-                    enable_active   <=  enable_shadow;
+                    enable_active       <=  enable_shadow;
                     use_default_active  <=  use_default_shadow;
-                    period_active   <=  period_shadow;
-                    duty_active     <=  duty_shadow;
+                    period_active       <=  period_shadow;
+                    duty_active         <=  duty_shadow;
                     //apply auto-clears by virtue of not storing it
                 end
                 apply_pending   <=  1'b0;
@@ -254,12 +255,11 @@ module pwm_regs #(
                             //Merge using wstrb (CTRL is in bits [1:0], apply is W1 (write-1) in bit[2])
                             //Writes update SHADOW ctrl bits    (not active).
                             //APPLY bit is not handled here, it was done via apply_pulse
-                            logic   [DATA_W-1:0]    merged;
-                            merged  =   merge_wstrb( 
+                            ctrl_merged  =   merge_wstrb( 
                                         {{(DATA_W-2){1'b0}}, use_default_shadow, enable_shadow},
                                         req_wdata,
                                         req_wstrb);
-                            enable_shadow   <=  merged[0];
+                            enable_shadow       <=  merged[0];
                             use_default_shadow  <=  merged[1];
 
                         end
@@ -285,9 +285,9 @@ module pwm_regs #(
     //---------------------------------
     //Outputs to core: Active regs
     //---------------------------------
-    assign  enable_o        =   enable_active;
-    assign  default_duty_o  =   use_default_active;
-    assign  period_cycles_o =   period_active;
-    assign  duty_cycles_o   =   duty_active;
+    assign  enable_o            =   enable_active;
+    assign  use_default_duty_o  =   use_default_active;
+    assign  period_cycles_o     =   period_active;
+    assign  duty_cycles_o       =   duty_active;
 
 endmodule
