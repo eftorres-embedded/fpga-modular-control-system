@@ -64,7 +64,7 @@ module pwm_regs #(
     //Internal state: Shadow + active
     //------------------------------------------------
     logic               enable_shadow;
-    logic               use_def_shadow;
+    logic               use_default_shadow;
     logic   [CNT_W-1:0] period_shadow;
     logic   [CNT_W-1:0] duty_shadow;
 
@@ -95,7 +95,7 @@ module pwm_regs #(
         input   logic   [DATA_W-1:0]    new_val,
         input   logic   [(DATA_W/8)-1:0] strb);                 //byte aligned
 
-        logic [DATA_W-1]    write_mask;
+        logic [DATA_W-1:0]    write_mask;
         begin
             write_mask  =   {
                 {8{strb[3]}},
@@ -120,8 +120,8 @@ module pwm_regs #(
 
             REG_CTRL: begin
                 rdata_next[0]   =   enable_active;
-                rdata_next[1]   =   use_def_active;
-                rdata_next[3]   =   1'b0;               //APPLY always reads as 0
+                rdata_next[1]   =   use_default_active;
+                rdata_next[2]   =   1'b0;               //APPLY always reads as 0
             end
 
             REG_PERIOD: begin
@@ -173,12 +173,12 @@ module pwm_regs #(
         begin
             //shadows defautl to 0 and actives default to safe known values
             enable_shadow       <=  1'b0;
-            use_def_shadow      <=  1'b0;
+            use_default_shadow      <=  1'b0;
             period_shadow       <=  '0;
             duty_shadow         <=  '0;
 
             enable_active       <=  1'b0;
-            use_def_active      <=  1'b0;
+            use_default_active      <=  1'b0;
             period_active       <=  '0;
             duty_active         <=  '0;
 
@@ -203,7 +203,7 @@ module pwm_regs #(
                 if((apply_pending || apply_pulse )  &&  period_end_i)
                 begin
                     enable_active   <=  enable_shadow;
-                    use_def_active  <=  use_def_shadow;
+                    use_default_active  <=  use_default_shadow;
                     period_active   <=  period_shadow;
                     duty_active     <=  duty_shadow;
                     apply_pending   <=  1'b0;           //auto-clear
@@ -222,7 +222,7 @@ module pwm_regs #(
                 if(apply_pulse)
                 begin
                     enable_active   <=  enable_shadow;
-                    use_def_active  <=  use_def_shadow;
+                    use_default_active  <=  use_default_shadow;
                     period_active   <=  period_shadow;
                     duty_active     <=  duty_shadow;
                     //apply auto-clears by virtue of not storing it
@@ -249,18 +249,18 @@ module pwm_regs #(
                 //WRITE
                 else
                 begin
-                    unique case(reqaddr)
+                    unique case(req_addr)
                         REG_CTRL:   begin
                             //Merge using wstrb (CTRL is in bits [1:0], apply is W1 (write-1) in bit[2])
                             //Writes update SHADOW ctrl bits    (not active).
                             //APPLY bit is not handled here, it was done via apply_pulse
                             logic   [DATA_W-1:0]    merged;
                             merged  =   merge_wstrb( 
-                                        {{(DATA_W-2){1'b0}}, use_def_shadow, enable_shadow},
+                                        {{(DATA_W-2){1'b0}}, use_default_shadow, enable_shadow},
                                         req_wdata,
                                         req_wstrb);
                             enable_shadow   <=  merged[0];
-                            use_def_shadown <=  merged[1];
+                            use_default_shadow  <=  merged[1];
 
                         end
 
@@ -286,7 +286,7 @@ module pwm_regs #(
     //Outputs to core: Active regs
     //---------------------------------
     assign  enable_o        =   enable_active;
-    assign  default_duty_o  =   use_def_active;
+    assign  default_duty_o  =   use_default_active;
     assign  period_cycles_o =   period_active;
     assign  duty_cycles_o   =   duty_active;
 

@@ -222,7 +222,7 @@ cnt ----------|                  |
 ### I will start with the following register for now:
 | Offset | Name | Bits | Description | Notes|
 |---|---|---|---| ---|
-| 0x00 | CTRL | [0] = enable, [1] = use_defualt_duty, [2] = apply | `apply` copies shawdow => active | `apply` bit auto-cleared by hardware |
+| 0x00 | CTRL | [0] = enable, [1] = use_default_duty, [2] = apply | `apply` copies shawdow => active | `apply` bit auto-cleared by hardware |
 | 0x04 | PERIOD | 32 | shadow period_cycles | - |
 | 0x08 | DUTY | 32 | shadow duty_cycles | - |
 | 0x0C | STATUS | [0] = period_end (sticky optional) | readback/debug | - |
