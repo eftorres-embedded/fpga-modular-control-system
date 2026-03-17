@@ -50,4 +50,64 @@ module pwm_regs #(
     output  logic   [CNT_W-1:0]         period_cycles_o,
     output  logic   [CNT_W-1:0]         duty_cycles_o);
 
+
+    //------------------------------------------------
+    //Register offsets (byte)
+    //------------------------------------------------
+    localparam  logic   [ADDR_W-1:0]    REG_CTRL    =   'h00;
+    localparam  logic   [ADDR_W-1:0]    REG_PERIOD  =   'h04;
+    localparam  logic   [ADDR_W-1:0]    REG_DUTY    =   'h08;
+    localparam  logic   [ADDR_W-1:0]    REG_STATUS  =   'h0C;
+    localparam  logic   [ADDR_W-1:0]    REG_CNT     =   'h10;
+
+    //------------------------------------------------
+    //Internal state: Shadow + active
+    //------------------------------------------------
+    logic               enable_shadow;
+    logic               use_default_shadow;
+    logic   [CNT_W-1:0] period_shadow;
+    logic   [CNT_W-1:0] duty_shadow;
+
+    logic               enable_active;
+    logic               use_default_active;
+    logic   [CNT_W-1:0] period_active;
+    logic   [CNT_W-1:0] duty_active;
+
+    //APPLY handling
+    logic               apply_pulse;    //one-cycle internal stobe when SW writes apply=1
+    logic               apply_pending   //if boundary sync enabled
+
+    //Response buffering (1 level deep)
+    logic                   accept_req;
+    logic   [DATA_W-1:0]    rdata_next;
+    logic                   err_next;
+
+    //-------------------------------------------------
+    //Ready/valid: single outstanding response
+    //req_ready is deasserted if we still owe a response and rsp_ready is low
+    //-------------------------------------------------
+    assign  req_ready   =   (!rsp_valid)    ||  (rsp_valid && rsp_ready);
+    assign  accept_req  =   req_valid   &&  req_ready;
+
+    //Helper function: byte-write merge for 32-bit regs
+    function    automatic   logic   [DATA_W-1:0]    merge_wstrb( //merge write-strobe-bit
+        input   logic   [DATA_W-1:0]    old_val,
+        input   logic   [DATA_W-1:0]    new_val,
+        input   logic   [(DATA_W/8)-1:0] strb);                 //byte aligned
+
+        logic [DATA_W-1]    write_mask;
+        begin
+            write_mask  =   {
+                {8{strb[3]}},
+                {8{strb[2]}},
+                {8{strb[1]}},
+                {8{strb[0]}}
+            };
+
+            return (old_val & ~write_mask) | (new_val & write_mask);
+        end
+    endfunction
+
+
+
 endmodule
