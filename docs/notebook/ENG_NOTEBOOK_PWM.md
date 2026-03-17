@@ -244,6 +244,35 @@ cnt ----------|                  |
   * 2. Write `REG_DUTY`
   * 3. Write `REG_CTRL` bits `[1:0]` if needed
   * 4. Write `REG_CTRL` with only `APPLY` bit set (bit 2)
-  
+
+### For code simplicity, `PERIOD` and `DUTY` should be 32-bits for the transfer to work correctly
+due to how the `WORD` modification was implemented; it is byte addreseably and at the moment
+the logic is expecting 4-bytes. If the parameter sizes change from the default 32, 
+bits might get truncated .
+From my research, the recommended code should be this one:
+```systemverilog
+  // ----------------------------
+  // Helpers: byte-write merge for 32-bit regs
+  // ----------------------------
+  function automatic logic [DATA_W-1:0] merge_wstrb(
+    input logic [DATA_W-1:0] old_val,
+    input logic [DATA_W-1:0] new_val,
+    input logic [(DATA_W/8)-1:0] strb
+  );
+    logic [DATA_W-1:0] out;
+    int b;
+    begin
+      out = old_val;
+      for (b = 0; b < (DATA_W/8); b++) begin
+        if (strb[b]) out[b*8 +: 8] = new_val[b*8 +: 8];
+      end
+      return out;
+    end
+  endfunction
+  ```
+
+A simple copy-paste should work, but I will do once I make sure the 32-bit version is fully working
+Also, other modification might be needed when assigning values to the shadow registers (ctrl_merge, etc)
+by specifiying the bit length vector (e.g. `period_shadow   <=  merge_wstrb(period_shadow, req_wdata, req_wstrb)` to `period_shadow   <=  merge_wstrb(period_shadow, req_wdata[CNT_W-1:0], req_wstrb)`)
 
 
