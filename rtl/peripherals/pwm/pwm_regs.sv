@@ -108,6 +108,50 @@ module pwm_regs #(
         end
     endfunction
 
+    //--------------------------------------------------
+    // Read Mux 
+    //--------------------------------------------------
+    always_comb
+    begin
+        rdata_next  =   '0;
+        err_next    =   1'b0;
+
+        unique  case(req_addr)
+
+            REG_CTRL: begin
+                rdata_next[0]   =   enable_active;
+                rdata_next[1]   =   use_def_active;
+                rdata_next[3]   =   1'b0;
+            end
+
+            REG_PERIOD: begin
+                rdata_next  =   period_shadow;
+            end
+
+            REG_DUTY:   begin
+                rdata_next  =   duty_shadow;
+            end
+
+            REG_STATUS: begin
+                rdata_next[0]   =   period_end_i;
+                rdata_next[1]   =   apply_pending;
+            end
+
+            REG_CNT:    begin
+                rdata_next  =   cnt_i;
+            end
+
+            default:    begin
+                rdata_next  =   '0;
+                err_next    =   1'b1;   //decode error
+            end
+        endcase
+    end
+
+    
+
+
+
 
 
 endmodule
