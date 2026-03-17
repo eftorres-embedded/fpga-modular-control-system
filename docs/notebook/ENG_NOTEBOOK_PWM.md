@@ -238,4 +238,12 @@ cnt ----------|                  |
   * assert apply
   * check that the core sees changes only after `apply`
 
+## March 17, 2026: Started the MMIO wrapper file. 
+### For hardware simplification there will be a Software contract:
+  * 1. Write `REG_PERIOD`
+  * 2. Write `REG_DUTY`
+  * 3. Write `REG_CTRL` bits `[1:0]` if needed
+  * 4. Write `REG_CTRL` with only `APPLY` bit set (bit 2)
+  
+
 
