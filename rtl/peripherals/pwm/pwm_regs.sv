@@ -6,14 +6,22 @@
 //-Bus-agnostic MMIO (req_valid/req_ready, rsp_valid/rsp_ready)
 //-Shadow register for period/duty
 //-APPLY bit (write 1) copies shadow register to active registers and auto-clears in hardware
-// Optional boundary-sync of APPLY to period_end as a parameter
+//boundary-sync of APPLY to period_end as a parameter
+//For now, only 32-bit MMIO, CNT_W and DATA_W should be 32-bit
+//////////////////////////////////////////////////////////////////////////////
+//For hardware simplification there will be a Software contract:
+//1. Write `REG_PERIOD`
+//2. Write `REG_DUTY`
+//3. Write `REG_CTRL` bits `[1:0]` if needed
+//4. Write `REG_CTRL` with only `APPLY` bit set (bit 2)
+//////////////////////////////////////////////////////////////////////////////
 
 module pwm_regs #(
     parameter int unsigned ADDR_W   =   12, //enough for offsets
     parameter int unsigned DATA_W   =   32,
     parameter int unsigned CNT_W    =   32,
 
-    //If 1: APPLY waits until period_end_i boefore updating active regs.
+    //If 1: APPLY waits until period_end_i before updating active regs.
     //If 0: APPLY updates active regs immediately.
     parameter bit APPLY_ON_PERIOD_END   =   1'b0
 )
@@ -74,7 +82,7 @@ module pwm_regs #(
     logic   [CNT_W-1:0] duty_active;
 
     //APPLY handling
-    logic               apply_pulse;    //one-cycle internal stobe when SW writes apply=1
+    logic               apply_pulse;    //one-cycle internal strobe when SW writes apply=1
     logic               apply_pending;   //if boundary sync enabled
 
     //Response buffering (1 level deep)
@@ -157,7 +165,7 @@ module pwm_regs #(
         apply_pulse =   1'b0;
         if(accept_req && req_write && (req_addr ==  REG_CTRL))  //only accepted writes to CTRL reg
         begin
-            //If byte late countaining bit[2] (byte 0 - req_wstrb[0])
+            //If byte lane containing bit[2] (byte 0 - req_wstrb[0])
             if(req_wstrb[0] && req_wdata[2])    //making sure that software wants to write to bit-2 of byte 0
                 apply_pulse =   1'b1;
         end
@@ -168,11 +176,19 @@ module pwm_regs #(
     //Register Writes, APPLY behavior, response buffering
     //----------------------------------------------------
     logic   [DATA_W-1:0]    ctrl_merged;
+    always_comb
+    begin
+        ctrl_merged  =   merge_wstrb( 
+                {{(DATA_W-2){1'b0}}, use_default_shadow, enable_shadow},
+                req_wdata,
+                req_wstrb);
+    end
+
     always_ff @(posedge clk or negedge rst_n)
     begin
         if(!rst_n)
         begin
-            //shadows defautl to 0 and actives default to safe known values
+            //shadows default to 0 and actives default to safe known values
             enable_shadow       <=  1'b0;
             use_default_shadow  <=  1'b0;
             period_shadow       <=  '0;
@@ -197,6 +213,11 @@ module pwm_regs #(
                 rsp_valid   <=  1'b0;
             
             //Default: if boundary-sync is enabled, APPLY is pending until period_end_i
+            //For hardware simplification there will be a Software contract:
+            //1. Write `REG_PERIOD`
+            //2. Write `REG_DUTY`
+            //3. Write `REG_CTRL` bits `[1:0]` if needed
+            //4. Write `REG_CTRL` with only `APPLY` bit set (bit 2)
             if(APPLY_ON_PERIOD_END)
             begin
                 //if APPLY pulse is set and the same time as period_end_i,
@@ -255,12 +276,8 @@ module pwm_regs #(
                             //Merge using wstrb (CTRL is in bits [1:0], apply is W1 (write-1) in bit[2])
                             //Writes update SHADOW ctrl bits    (not active).
                             //APPLY bit is not handled here, it was done via apply_pulse
-                            ctrl_merged  =   merge_wstrb( 
-                                        {{(DATA_W-2){1'b0}}, use_default_shadow, enable_shadow},
-                                        req_wdata,
-                                        req_wstrb);
-                            enable_shadow       <=  merged[0];
-                            use_default_shadow  <=  merged[1];
+                            enable_shadow       <=  ctrl_merged[0];
+                            use_default_shadow  <=  ctrl_merged[1];
 
                         end
 
