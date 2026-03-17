@@ -42,8 +42,8 @@ module pwm_regs #(
     //---------------------------------------
     //Interface signals to/from PWM  core
     //---------------------------------------
-    input   logic                       period_end_i    //from core (one-cycle pulse)
-    input   logic   [CNT_W-1:0]         cnt_i           //from core
+    input   logic                       period_end_i,   //from core (one-cycle pulse)
+    input   logic   [CNT_W-1:0]         cnt_i,           //from core
 
     output  logic                       enable_o,
     output  logic                       use_default_duty_o,
@@ -64,7 +64,7 @@ module pwm_regs #(
     //Internal state: Shadow + active
     //------------------------------------------------
     logic               enable_shadow;
-    logic               use_default_shadow;
+    logic               use_def_shadow;
     logic   [CNT_W-1:0] period_shadow;
     logic   [CNT_W-1:0] duty_shadow;
 
@@ -75,7 +75,7 @@ module pwm_regs #(
 
     //APPLY handling
     logic               apply_pulse;    //one-cycle internal stobe when SW writes apply=1
-    logic               apply_pending   //if boundary sync enabled
+    logic               apply_pending;   //if boundary sync enabled
 
     //Response buffering (1 level deep)
     logic                   accept_req;
@@ -121,11 +121,11 @@ module pwm_regs #(
             REG_CTRL: begin
                 rdata_next[0]   =   enable_active;
                 rdata_next[1]   =   use_def_active;
-                rdata_next[3]   =   1'b0;
+                rdata_next[3]   =   1'b0;               //APPLY always reads as 0
             end
 
             REG_PERIOD: begin
-                rdata_next  =   period_shadow;
+                rdata_next  =   period_shadow;          //Software writes back what it wrote, even if APPLY has not happened yet
             end
 
             REG_DUTY:   begin
@@ -143,15 +143,151 @@ module pwm_regs #(
 
             default:    begin
                 rdata_next  =   '0;
-                err_next    =   1'b1;   //decode error
+                err_next    =   1'b1;   //decode error, wrong address
             end
         endcase
     end
 
-    
+    //-------------------------------------------------
+    //APPLY pulse dtection (from CTRL writes)
+    //APPLY is write-one. It clears automatically
+    //-------------------------------------------------
+    always_comb
+    begin
+        apply_pulse =   1'b0;
+        if(accept_req && req_write && (req_addr ==  REG_CTRL))  //only accepted writes to CTRL reg
+        begin
+            //If byte late countaining bit[2] (byte 0 - req_wstrb[0])
+            if(req_wstrb[0] && req_wdata[2])    //making sure that software wants to write to bit-2 of byte 0
+                apply_pulse =   1'b1;
+        end
+    end
 
 
+    //----------------------------------------------------
+    //Register Writes, APPLY behavior, response buffering
+    //----------------------------------------------------
+    always_ff @(posedge clk or negedge rst_n)
+    begin
+        if(!rst_n)
+        begin
+            //shadows defautl to 0 and actives default to safe known values
+            enable_shadow       <=  1'b0;
+            use_def_shadow      <=  1'b0;
+            period_shadow       <=  '0;
+            duty_shadow         <=  '0;
+
+            enable_active       <=  1'b0;
+            use_def_active      <=  1'b0;
+            period_active       <=  '0;
+            duty_active         <=  '0;
+
+            apply_pending       <=  1'b0;
+
+            rsp_valid           <=  1'b0;
+            rsp_rdata           <=  '0;
+            rsp_err             <=  1'b0;
+        end
+
+        else
+        begin
+            //Clear response once accepted by master
+            if(rsp_valid && rsp_ready)
+                rsp_valid   <=  1'b0;
+            
+            //Default: if boundary-sync is enabled, APPLY is pending until period_end_i
+            if(APPLY_ON_PERIOD_END)
+            begin
+                //if APPLY pulse is set and the same time as period_end_i,
+                //the active registers will be updated
+                if((apply_pending || apply_pulse )  &&  period_end_i)
+                begin
+                    enable_active   <=  enable_shadow;
+                    use_def_active  <=  use_def_shadow;
+                    period_active   <=  period_shadow;
+                    duty_active     <=  duty_shadow;
+                    apply_pending   <=  1'b0;           //auto-clear
+                end
+
+                else if(apply_pulse)
+                begin
+                    apply_pending   <=  1'b1;
+                end
+                
+            end
+
+            else
+            begin
+                //immediate apply
+                if(apply_pulse)
+                begin
+                    enable_active   <=  enable_shadow;
+                    use_def_active  <=  use_def_shadow;
+                    period_active   <=  period_shadow;
+                    duty_active     <=  duty_shadow;
+                    //apply auto-clears by virtue of not storing it
+                end
+                apply_pending   <=  1'b0;
+            end
 
 
+            //Handle accepted transaction
+            if(accept_req)
+            begin
+                //Produce a response for every request (read returns data, write returns 0)
+                rsp_valid   <=  1'b1;
+                rsp_err     <=  1'b0;
+                rsp_rdata   <=  '0;
+
+                //READ
+                if(!req_write)
+                begin
+                    rsp_rdata   <=  rdata_next;
+                    rsp_err     <=  err_next;
+                end
+
+                //WRITE
+                else
+                begin
+                    unique case(reqaddr)
+                        REG_CTRL:   begin
+                            //Merge using wstrb (CTRL is in bits [1:0], apply is W1 (write-1) in bit[2])
+                            //Writes update SHADOW ctrl bits    (not active).
+                            //APPLY bit is not handled here, it was done via apply_pulse
+                            logic   [DATA_W-1:0]    merged;
+                            merged  =   merge_wstrb( 
+                                        {{(DATA_W-2){1'b0}}, use_def_shadow, enable_shadow},
+                                        req_wdata,
+                                        req_wstrb);
+                            enable_shadow   <=  merged[0];
+                            use_def_shadown <=  merged[1];
+
+                        end
+
+                        REG_PERIOD: begin
+                            period_shadow   <=  merge_wstrb(period_shadow, req_wdata, req_wstrb); 
+                        end
+
+                        REG_DUTY:   begin
+                            duty_shadow     <=  merge_wstrb(duty_shadow, req_wdata, req_wstrb);
+                        end
+
+                        default:    begin
+                            //writing to invalid offset
+                            rsp_err <=  1'b1;
+                        end
+                    endcase
+                end
+            end
+        end
+    end
+
+    //---------------------------------
+    //Outputs to core: Active regs
+    //---------------------------------
+    assign  enable_o        =   enable_active;
+    assign  default_duty_o  =   use_def_active;
+    assign  period_cycles_o =   period_active;
+    assign  duty_cycles_o   =   duty_active;
 
 endmodule
