@@ -24,7 +24,7 @@ module pwm_subsystem #(
     output  logic                       rsp_err,
 
     //PWM outputs/debug
-    output  logic   [CNT_WIDTH-1:0]     cnt,
+    output  logic   [CNT_W-1:0]     cnt,
     output  logic                       period_end,
     output  logic                       pwm_raw
     );
@@ -35,33 +35,33 @@ module pwm_subsystem #(
     logic   [CNT_WIDTH-1:0] duty_cycles;
 
     pwm_regs    #(
-        .ADDR_W(),
-        .DATA_W(),
-        .CNT_W(),
+        .ADDR_W(ADDR_W),
+        .DATA_W(DATA_W),
+        .CNT_W(CNT_W),
         .APPLY_ON_PERIOD_END(APPLY_ON_PERIOD_END))
     u_pwm_regs(
-        .clk(),
-        .rst_n(),
+        .clk(clk),
+        .rst_n(rst_n),
 
-        .req_valid(),
-        .req_ready(),
-        .req_write(),
-        .req_addr(),
-        .req_wdata(),
-        .req_wstrb(),
+        .req_valid(req_valid),
+        .req_ready(req_ready),
+        .req_write(req_write),
+        .req_addr(req_addr),
+        .req_wdata(req_wdata),
+        .req_wstrb(req_wstrb),
 
-        .rsp_valid(),
-        .rsp_ready(),
-        .rsp_rdata(),
-        .rsp_err(),
+        .rsp_valid(rsp_valid),
+        .rsp_ready(rsp_ready),
+        .rsp_rdata(rsp_rdata),
+        .rsp_err(rsp_err),
 
-        .period_end_i(),
-        .cnt_i(),
+        .period_end_i(period_end),
+        .cnt_i(cnt),
 
-        .enable_o(),
-        .use_default_duty_o(),
-        .period_cycles_o(),
-        .duty_cycles_o());
+        .enable_o(enable),
+        .use_default_duty_o(use_default_duty),
+        .period_cycles_o(period_cycles),
+        .duty_cycles_o(duty_cycles));
 
     pwm_core_ip #(
         .CNT_WIDTH())
