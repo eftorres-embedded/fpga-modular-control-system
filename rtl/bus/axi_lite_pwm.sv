@@ -81,5 +81,84 @@ module  axi_lite_pwm    #(
     output  logic                               period_end,
     output  logic                               pwm_raw);
 
+    //---------------------------------------------------------
+    //AXI response encodings
+    //---------------------------------------------------------
+    localparam  logic   [1:0]   AXI_RESP_OKAY       =   2'b00;
+    localparam  logic   [1:0]   AXI_RESP_SLVERR     =   2'b10;
+
+    //---------------------------------------------------------
+    //Internal generic MMIO interface to pwm_subsystem
+    //---------------------------------------------------------
+    logic                           req_valid;
+    logic                           req_ready;
+    logic                           req_write;
+    logic   [AXI_ADDR_W-1:0]        req_addr;
+    logic   [AXI_DATA_W-1:0]        req_wdata;
+    logic   [(AXI_DATA_W/8)-1:0]    req_wstrb;
+
+    logic                           rsp_valid;
+    logic                           rsp_ready;
+    logic   [AXI_DATA_W-1:0]        rsp_rdata;
+    logic                           rsp_err;   
+
+    //----------------------------------------------------------
+    //AXI channel holding registers
+    //----------------------------------------------------------
+    logic                           aw_hold_valid;
+    logic   [AXI_ADDR_W-1:0]        aw_hold_addr;
+
+    logic                           w_hold_valid;
+    logic   [AXI_DATA_W-1:0]        w_hold_data;
+    logic   [AXI_DATA_W/8)-1:0]     w_hold_strb;
+    
+    logic                           ar_hold_valid;
+    logic   [AXI_ADDR_W-1:0]        ar_hold_addr;
+
+    //----------------------------------------------------------
+    //Internal transaction tracking
+    //----------------------------------------------------------
+    logic                           wr_req_inflight;
+    logic                           rd_req_inflight;
+
+    logic                           issue_write_req;
+    logic                           issue_read_req;
+
+    //----------------------------------------------------------
+    //Instatiate PWM subsystem
+    //----------------------------------------------------------
+    pwm_subsystem #(
+        .ADDR_W(AXI_ADDR_W),
+        .DATA_W(AXI_DATA_W),
+        .CNT_W(CNT_W),
+        .APPLY_ON_PERIOD_END(APPLY_ON_PERIOD_END))
+        
+        u_pwm_subsystem (
+        .clk(clk),
+        .rst_n(rst_n),
+
+        .req_valid(req_valid),
+        .req_ready(req_ready),
+        .req_write(req_write),
+        .req_addr(req_addr),
+        .req_wdata(req_wdata),
+        .req_wstrb(req_wstrb),
+
+        .rsp_valid(rsp_valid),
+        .rsp_ready(rsp_ready),
+        .rsp_rdata(rsp_rdata),
+        .rsp_err(rsp_err),
+
+        .cnt(cnt),
+        .period_end(period_end),
+        .pwm_raw(pwm_raw));  
+
+        //-----------------------------------------------------------
+        //AXI ready generation
+        //
+        //Only accept:
+        // - AW when no stored AW and no write request/response in progress 
+
+
 
 endmodule
