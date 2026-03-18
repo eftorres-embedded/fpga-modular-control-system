@@ -275,4 +275,6 @@ A simple copy-paste should work, but I will do once I make sure the 32-bit versi
 Also, other modification might be needed when assigning values to the shadow registers (ctrl_merge, etc)
 by specifiying the bit length vector (e.g. `period_shadow   <=  merge_wstrb(period_shadow, req_wdata, req_wstrb)` to `period_shadow   <=  merge_wstrb(period_shadow, req_wdata[CNT_W-1:0], req_wstrb)`)
 
-
+## March 18,2026: before fine tunning and create a test bench for MMIO wrapper file (pwm_subsystem.sv), I decided to do a "smoke test" and do a quick integration with NIOS V
+### For that I could use either AVALON or AXI Buses, I'm deciding to use AXI4 Lite for portability
+Before I instantiate the system into a NIOS V processor, I will create an adapter for my MMIO wrapper into AXI4 Lite
