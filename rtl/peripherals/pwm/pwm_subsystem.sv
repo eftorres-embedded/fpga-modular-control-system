@@ -31,8 +31,8 @@ module pwm_subsystem #(
 
     logic                   enable;
     logic                   use_default_duty;
-    logic   [CNT_WIDTH-1:0] period_cycles;
-    logic   [CNT_WIDTH-1:0] duty_cycles;
+    logic   [CNT_W-1:0] period_cycles;
+    logic   [CNT_W-1:0] duty_cycles;
 
     pwm_regs    #(
         .ADDR_W(ADDR_W),
@@ -64,17 +64,15 @@ module pwm_subsystem #(
         .duty_cycles_o(duty_cycles));
 
     pwm_core_ip #(
-        .CNT_WIDTH())
+        .CNT_WIDTH(CNT_W))
     u_pwm_core_ip(
-        .clk(),
-        .rst_n(),
-        .enable(),
-        .period_cycles_i(),
-        .duty_cycles_i(),
-        .cnt(),
-        .period_end(),
-        .pwm_raw());
-           
-
+        .clk(clk),
+        .rst_n(rst_n),
+        .enable(enable),
+        .period_cycles_i(period_cycles),
+        .duty_cycles_i(duty_cycles),
+        .cnt(cnt),
+        .period_end(period_end),
+        .pwm_raw(pwm_raw));    
 
 endmodule
