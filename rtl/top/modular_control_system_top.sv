@@ -316,7 +316,7 @@ logic		esp_01s_tx;		//GPIO[11]
 logic		esp_01s_rx;		//GPIO[12]
 
 //alias for uart_rx and uart_tx;
-assign	esp_01s_rx	=	uart_rx;
+assign	uart_rx		=	esp_01s_rx;
 assign	uart_tx		=	esp_01s_tx;
 
 assign	GPIO[11]		=	esp_01s_tx;
@@ -330,73 +330,126 @@ assign esp_01s_en =	SW[0];
 ////////////////////////////////////////////
 //PWM Module
 ////////////////////////////////////////////
-localparam int unsigned CNT_WIDTH = 32;
-logic	pwm_enable;
-logic	[CNT_WIDTH-1:0]	period_cycles_i;
-logic	[CNT_WIDTH-1:0]	duty_cycles_i;
-logic [CNT_WIDTH-1:0]	cnt;
-logic	period_end;
-logic pwm_raw;
-logic	[12:0]	pwm_duty_counter;
-logic [15:0]	pwm_ticker;
-logic				duty_tick;
+//localparam int unsigned CNT_WIDTH = 32;
+//logic	pwm_enable;
+//logic	[CNT_WIDTH-1:0]	period_cycles_i;
+//logic	[CNT_WIDTH-1:0]	duty_cycles_i;
+//logic [CNT_WIDTH-1:0]	cnt;
+//logic	period_end;
+//logic pwm_raw;
+//logic	[12:0]	pwm_duty_counter;
+//logic [15:0]	pwm_ticker;
+//logic				duty_tick;
+//
+//assign	pwm_enable = 1'b1;
+//assign	period_cycles_i	=	CNT_WIDTH'(5_000);
+//assign	duty_cycles_i		=	CNT_WIDTH'(pwm_duty_counter);
+//
+//assign	LEDR[0]				=	pwm_raw;
+//assign	LEDR[1]				=	1'b1;
+//
+//always_ff @(posedge MAX10_CLK1_50)
+//begin
+//	if(!rst_n)
+//	begin
+//		pwm_ticker			<= '0;
+//		duty_tick			<= 1'b0;
+//		pwm_duty_counter	<= '0;
+//	end
+//	else
+//	begin
+//		duty_tick	<=	1'b0;
+//	
+//		//prescalre: generate duty_tick every 50,000 clk cycles
+//		if(pwm_ticker == 16'd49_999)
+//		begin
+//			pwm_ticker	<= '0;
+//			duty_tick	<= 1'b1;
+//		end
+//		else
+//		begin
+//			pwm_ticker	<= pwm_ticker + 16'd1;
+//		end
+//		
+//		//duty ramp: increment only on duty_tick
+//		if(duty_tick)
+//		begin
+//			if(pwm_duty_counter == 14'd4_999)
+//				pwm_duty_counter	<= '0;
+//			else
+//				pwm_duty_counter	<= pwm_duty_counter + 13'd1;
+//		end
+//	end
+//end
+//
+//pwm_core_ip #(
+//    .CNT_WIDTH(CNT_WIDTH)
+//)
+//    u_pwm_core_ip(
+//    .clk(MAX10_CLK1_50),
+//    .rst_n(rst_n),
+//    .enable(pwm_enable),
+//    .period_cycles_i(period_cycles_i),
+//    .duty_cycles_i(duty_cycles_i),
+//    .use_default_duty(0),
+//    .cnt(cnt),
+//    .period_end(period_end),
+//    .pwm_raw(pwm_raw)
+//    );
+logic				pwm_req_valid;
+logic				pwm_req_ready;
+logic				pwm_req_write;
+logic	[11:0]	pwm_req_addr;
+logic	[31:0]	pwm_req_wdata;
+logic	[3:0]		pwm_req_wstrb;
 
-assign	pwm_enable = 1'b1;
-assign	period_cycles_i	=	CNT_WIDTH'(5_000);
-assign	duty_cycles_i		=	CNT_WIDTH'(pwm_duty_counter);
+logic				pwm_rsp_valid;
+logic				pwm_rsp_ready;
+logic	[31:0]	pwm_rsp_rdata;
+logic				pwm_rsp_err;
 
-assign	LEDR[0]				=	pwm_raw;
-assign	LEDR[1]				=	1'b1;
+logic	[31:0]	cnt;
+logic				period_end;
+logic				pwm_raw;
 
-always_ff @(posedge MAX10_CLK1_50)
-begin
-	if(!rst_n)
-	begin
-		pwm_ticker			<= '0;
-		duty_tick			<= 1'b0;
-		pwm_duty_counter	<= '0;
-	end
-	else
-	begin
-		duty_tick	<=	1'b0;
-	
-		//prescalre: generate duty_tick every 50,000 clk cycles
-		if(pwm_ticker == 16'd49_999)
-		begin
-			pwm_ticker	<= '0;
-			duty_tick	<= 1'b1;
-		end
-		else
-		begin
-			pwm_ticker	<= pwm_ticker + 16'd1;
-		end
-		
-		//duty ramp: increment only on duty_tick
-		if(duty_tick)
-		begin
-			if(pwm_duty_counter == 14'd4_999)
-				pwm_duty_counter	<= '0;
-			else
-				pwm_duty_counter	<= pwm_duty_counter + 13'd1;
-		end
-	end
-end
+//tying off MMIO for synthesis-only smoke test
+assign	pwm_req_valid	=	1'b0;
+assign	pwm_req_write	=	1'b0;
+assign	pwm_req_addr	=	'0;
+assign	pwm_req_wdata	=	'0;
+assign	pwm_req_wstrb	=	'0;
+assign	pwm_rsp_ready	=	1'b1;
 
-pwm_core_ip #(
-    .CNT_WIDTH(CNT_WIDTH)
-)
-    u_pwm_core_ip(
+pwm_subsystem #(
+    .ADDR_W(12),
+    .DATA_W(32),
+    .CNT_W(32),
+    .APPLY_ON_PERIOD_END(1'b0))
+u_pwm_subsystem (
     .clk(MAX10_CLK1_50),
     .rst_n(rst_n),
-    .enable(pwm_enable),
-    .period_cycles_i(period_cycles_i),
-    .duty_cycles_i(duty_cycles_i),
-    .use_default_duty(0),
+
+    .req_valid(pwm_req_valid),
+    .req_ready(pwm_req_ready),
+    .req_write(pwm_req_write),
+    .req_addr(pwm_req_addr),
+    .req_wdata(pwm_req_wdata),
+    .req_wstrb(pwm_req_wstrb),
+
+    .rsp_valid(pwm_rsp_valid),
+    .rsp_ready(pwm_rsp_ready),
+    .rsp_rdata(pwm_rsp_rdata),
+    .rsp_err(pwm_rsp_err),
+
     .cnt(cnt),
     .period_end(period_end),
-    .pwm_raw(pwm_raw)
-    );
-	 
+    .pwm_raw(pwm_raw));
+
+assign	LEDR[0]		=	pwm_raw;
+assign	LEDR[1]		=	period_end;
+assign	LEDR[9:2]	=	cnt[7:0];
+
+
 endmodule
 
 

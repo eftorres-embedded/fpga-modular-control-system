@@ -434,6 +434,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[34]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[35]
 set_global_assignment -name FLOW_ENABLE_RTL_VIEWER ON
 set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
+set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/pwm_subsystem.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/pwm_regs.sv
 set_global_assignment -name SDC_FILE ../../constraints/quartus/modular_control_system.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/uart/uart_tx_engine.sv
