@@ -354,7 +354,7 @@ module  axi_lite_pwm    #(
             //---------------------------------------------------------------------
             WR_WAIT_ADDR:
             begin
-                if(aw_hs)
+                if(aw_fire)
                     next_state  =   WR_ISSUE;
             end
 
@@ -376,7 +376,23 @@ module  axi_lite_pwm    #(
                     next_state  =   WR_SEND_B;
             end
 
-            
+            //---------------------------------------------------------------------
+            //Hold AXI read data/response until master accepts it
+            //---------------------------------------------------------------------
+            RD_SEND_R:
+            begin
+                if(r_fire)
+                    next_state  =   IDLE;
+            end
+
+            default:
+            begin
+                next_state  =   IDLE;
+            end
+        endcase
+    end
+
+
 
 
 
