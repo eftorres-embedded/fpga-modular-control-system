@@ -393,11 +393,100 @@ module  axi_lite_pwm    #(
     end
 
 
+    //------------------------------------------------------------------------------
+    //All bus output and internal req/rsp control signals are driven from state 
+    //and holding registers.
+    //
+    //This block contains no storage.
+    //------------------------------------------------------------------------------
+    always_comb
+    begin
+        
+        //Default AXI outputs
+        s_axil_awready  =   1'b0;
+        s_axil_wready   =   1'b0;
+        s_axil_arready  =   1'b0;
 
+        s_axil_bvalid   =   1'b0;
+        s_axil_bresp    =   bresp_reg;
 
+        s_axil_rvalid   =   1'b0;
+        s_axil_rdata    =   rdata_reg;
+        s_axil_rresp    =   rresp_reg;
 
+        //Default internal MMIO request/response
+        req_valid       =   1'b0;
+        req_write       =   1'b0;
+        req_addr        =   '0;
+        req_wdata       =   '0;
+        req_wstrb       =   '0;
 
+        rsp_ready       =   1'b0;
 
+        unique case (state)
 
+            //----------------------------------------------------------------------
+            //IDLE:
+            //Accept new traffic on all request-entry channels. Atransaction is chosen 
+            //by the next-state logic according to priority
+            //----------------------------------------------------------------------
+            IDLE: 
+            begin
+                s_axil_awready  =   1'b1;
+                s_axil_wready   =   1'b1;
+                s_axil_arready  =   1'b1;
+            end
 
+            //-----------------------------------------------------------------------
+            //Only waiting for write data now
+            //-----------------------------------------------------------------------
+            WR_WAIT_DATA:
+            begin
+                s_axil_wready   =   1'b1;
+            end
+
+            //-----------------------------------------------------------------------
+            //Only waiting for write address now
+            //-----------------------------------------------------------------------
+            WR_WAIT_ADDR:
+            begin
+                s_axil_awready  =   1'b1;
+            end
+
+            //-----------------------------------------------------------------------
+            //Drive internal write request using the previously captured AW/W payloads
+            //-----------------------------------------------------------------------
+            WR_ISSUE:
+            begin
+                req_valid   =   1'b1;
+                req_write   =   1'b1;
+                req_addr    =   awaddr_reg;
+                req_wdata   =   wdata_reg;
+                req_wstrb   =   wstrb_reg;
+            end
+
+            //-----------------------------------------------------------------------
+            //Tell pwm subsystem we are ready to receive its response
+            //-----------------------------------------------------------------------
+            WR_WAIT_RSP:
+            begin
+                rsp_ready   =   1'b1;
+            end
+
+            //-----------------------------------------------------------------------
+            //Hold read data/response on AXI until master accpets it
+            //-----------------------------------------------------------------------
+            RD_SEND_R:
+            begin
+                s_axil_rvalid   =   1'b1;
+                s_axil_rdata    =   rdata_reg;
+                s_axil_rresp    =   rresp_reg;
+            end
+
+            default:
+            begin
+                //keep defaults
+            end
+        endcase
+    end
 endmodule
