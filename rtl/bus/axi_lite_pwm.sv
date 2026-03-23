@@ -22,8 +22,8 @@ module  axi_lite_pwm    #(
     parameter   int unsigned    AXI_DATA_W              =   32,
     parameter   int unsigned    CNT_W                   =   32,
     parameter   bit             APPLY_ON_PERIOD_END     =   1'b1)
-    (
 
+    (
     input   logic                   clk,
     input   logic                   rst_n,
     
@@ -189,6 +189,9 @@ module  axi_lite_pwm    #(
 
     //----------------------------------------------------------
     //Instatiate PWM subsystem
+    //
+    //The AXI wrapper's job is to translate the bus protocol
+    //into the req/rsp MMIO interface
     //----------------------------------------------------------
     pwm_subsystem #(
         .ADDR_W(AXI_ADDR_W),
@@ -217,6 +220,167 @@ module  axi_lite_pwm    #(
         .pwm_raw(pwm_raw));  
 
         
+    //--------------------------------------------------------------
+    //State register
+    //--------------------------------------------------------------
+    always_ff   @(posedge clk or negedge rst_nt)
+    begin
+        if(!rst_n)
+            state   <=  IDLE;
+        else
+            state   <=  next_state;
+    end
+
+
+    //----------------------------------------------------------------
+    //Sequential storage for captured AXI payloads and captured
+    //subsystem responses
+    //
+    //This block is responsible only for storage,
+    //it does not decide state transitions
+    //----------------------------------------------------------------
+    always_ff   @(posedge   clk or  negedge rst_n)
+    begin
+        if(!rst_n)
+        begin
+            awaddr_reg  <=  '0;
+            wdata_reg   <=  '0;
+            wstrb_reg   <=  '0;
+            araddr_reg  <=  '0;
+
+            bresp_reg   <=  AXI_RESP_OKAY;
+            rdata_reg   <=  '0;
+            rresp_reg   <=  AXI_RESP_OKAY;
+        end
+
+        else
+        begin
+            //--------------------------------------------------------
+            //Capture write address when AW handshakes
+            //--------------------------------------------------------
+            if(aw_fire)
+            begin
+                awaddr_reg  <=  s_axil_awaddr;
+            end
+
+            //--------------------------------------------------------
+            //Capture write data and byte strobes when W handshakes
+            //--------------------------------------------------------
+            if(w_fire)
+            begin
+                wdata_reg   <=  s_axil_wdata;
+                wstrb_reg   <=  s_axil_wstrb;
+            end
+
+            //---------------------------------------------------------
+            //Capture read address when AR hanshakes
+            //---------------------------------------------------------
+            if(ar_fire)
+            begin
+                araddr_reg  <=  s_axil_araddr;
+            end
+
+            //----------------------------------------------------------
+            //Capture write response returned by the subsystem while 
+            //waiting for it
+            //---------------------------------------------------------
+            if((state   ==  WR_WAIT_RSP) && rsp_valid)
+            begin
+                bresp_reg   <=  rsp_err ?   AXI_RESP_SLVERR :   AXI_RESP_OKAY;
+            end
+
+            //-----------------------------------------------------------
+            //Capture read data/response returned by the subsystem while
+            //waiting for it
+            //-----------------------------------------------------------
+            if((state   ==  RD_WAIT_RSP)    &&  rsp_valid)
+            begin
+                rdata_reg   <=  rsp_rdata;
+                rresp_reg   <=  rsp_err ?   AXI_RESP_SLVERR :   AXI_RESP_OKAY;
+            end
+        end
+    end
+
+    //-----------------------------------------------------------------------
+    //Next-state logic
+    //
+    //This block decides where teh FSM goes next based on the current state and
+    //current handsakes.
+    //
+    //Priority policy in IDLE:
+    //  1st - Complete write (AW and W same cycle)
+    //  2nd - partial write address
+    //  3rd - partial write data
+    //  4th - read address
+    //-------------------------------------------------------------------------
+    always_comb
+    begin
+        next_state  =   state;
+
+        unique  case    (state)
+            //---------------------------------------------------------------------
+            //IDLE:
+            //Ready to accept a new request
+            //
+            //Four possibilities:
+            //  - AW and W arrive together  ->  Full write (both address and data)
+            //  - only AW arrives           ->  wait for W
+            //  - only W  arrives           ->  wait for AW
+            //  - AR arrives                ->  issue read
+            //---------------------------------------------------------------------
+            IDLE:
+            begin
+                if(aw_fire  && w_fire)
+                    next_state  =   WR_ISSUE;
+                else if(aw_fire)
+                    next_state  =   WR_WAIT_DATA;
+                else if(w_fire)
+                    next_state  =   WR_WAIT_ADDR;
+                else if(ar_fire)
+                    next_state  =   RD_ISSUE;
+            end
+
+            //---------------------------------------------------------------------
+            //Have write address, waiting for write ata
+            //---------------------------------------------------------------------
+            WR_WAIT_DATA:
+            begin
+                if(w_fire)
+                    next_state  =   WR_ISSUE;
+            end
+
+            //---------------------------------------------------------------------
+            //Have write data,  waiting for write address
+            //---------------------------------------------------------------------
+            WR_WAIT_ADDR:
+            begin
+                if(aw_hs)
+                    next_state  =   WR_ISSUE;
+            end
+
+            //---------------------------------------------------------------------
+            //Present internal write request, continue once the subsystem accepts it
+            //---------------------------------------------------------------------
+            WR_ISSUE:
+            begin
+                if(req_ready)
+                    next_state  =   WR_WAIT_RSP;
+            end
+
+            //---------------------------------------------------------------------
+            //Wait for subsystem write response
+            //---------------------------------------------------------------------
+            WR_WAIT_RSP:
+            begin
+                if(rsp_valid)
+                    next_state  =   WR_SEND_B;
+            end
+
+            
+
+
+
+
 
 
 
