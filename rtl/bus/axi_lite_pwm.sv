@@ -1,4 +1,4 @@
-//axi_lit_pwm.sv
+//axi_lite_pwm.sv
 //
 // AXI-Lite wrappper for PWM subsystem.
 //
@@ -47,32 +47,11 @@ module  axi_lite_pwm    #(
     output  logic                               s_axil_bvalid,
     input   logic                               s_axil_bready,
 
-    //Read address channel
-    input   logic   [AXI_ADDR_W-1:0]            s_axil_araddr,
-    input   logic                               s_axil_awvalid,
-    output  logic                               s_axil_awready,
-
-    //Write data channel
-    input   logic   [AXI_DATA_W-1:0]            s_axil_wdata,
-    input   logic   [(AXI_DATA_W/8)-1:0]        s_axil_wstrb,
-    input   logic                               s_axil_wvalid,
-    output  logic                               s_axil_wready,
-
-    //Write response channel
-    output  logic   [1:0]                       s_axil_bresp,
-    output  logic                               s_axil_bvalid,
-    input   logic                               s_axil_bready,
-
     //Read Address channel
     input   logic   [AXI_ADDR_W-1:0]            s_axil_rdata,
     input   logic                               s_axil_arvaild,
     output  logic                               s_axil_arready,
 
-    //Read data channel
-    output  logic   [AXI_DATA_W-1:0]            s_axil_rdata,
-    output  logic   [1:0]                       a_axil_rresp,
-    output  logic                               s_axil_rvalid,
-    input   logic                               s_axil_rready,
 
     //--------------------------------------------------------
     //PWM outputs / debug
@@ -183,7 +162,7 @@ module  axi_lite_pwm    #(
     assign  w_fire  =   s_axil_wvalid   &&  s_axil_wready;
     assign  ar_fire =   s_axil_arvalid  &&  s_axil_arready;
     assign  b_fire  =   s_axil_bvalid   &&  s_axil_bready;
-    assign  r_fire  =   s_axili_rvalid  &&  s_axil_rreday;
+    assign  r_fire  =   s_axil_rvalid   &&  s_axil_rready;
 
     
 
@@ -223,12 +202,12 @@ module  axi_lite_pwm    #(
     //--------------------------------------------------------------
     //State register
     //--------------------------------------------------------------
-    always_ff   @(posedge clk or negedge rst_nt)
+    always_ff   @(posedge clk or negedge rst_n)
     begin
         if(!rst_n)
-            state   <=  IDLE;
+            current_state   <=  IDLE;
         else
-            state   <=  next_state;
+            current_state   <=  next_state;
     end
 
 
@@ -284,7 +263,7 @@ module  axi_lite_pwm    #(
             //Capture write response returned by the subsystem while 
             //waiting for it
             //---------------------------------------------------------
-            if((state   ==  WR_WAIT_RSP) && rsp_valid)
+            if((current_state   ==  WR_WAIT_RSP) && rsp_valid)
             begin
                 bresp_reg   <=  rsp_err ?   AXI_RESP_SLVERR :   AXI_RESP_OKAY;
             end
@@ -293,7 +272,7 @@ module  axi_lite_pwm    #(
             //Capture read data/response returned by the subsystem while
             //waiting for it
             //-----------------------------------------------------------
-            if((state   ==  RD_WAIT_RSP)    &&  rsp_valid)
+            if((current_state   ==  RD_WAIT_RSP)    &&  rsp_valid)
             begin
                 rdata_reg   <=  rsp_rdata;
                 rresp_reg   <=  rsp_err ?   AXI_RESP_SLVERR :   AXI_RESP_OKAY;
@@ -315,9 +294,9 @@ module  axi_lite_pwm    #(
     //-------------------------------------------------------------------------
     always_comb
     begin
-        next_state  =   state;
+        next_state  =   current_state;
 
-        unique  case    (state)
+        unique  case    (current_state)
             //---------------------------------------------------------------------
             //IDLE:
             //Ready to accept a new request
@@ -377,6 +356,34 @@ module  axi_lite_pwm    #(
             end
 
             //---------------------------------------------------------------------
+            //Hold AXI write response until master accepts it
+            //---------------------------------------------------------------------
+            WR_SEND_B:
+            begin
+                if(b_fire)
+                    next_state  =   IDLE;
+            end
+
+            //---------------------------------------------------------------------
+            //Present internal read request and continue once the pwm subsystem
+            //accepts it
+            //---------------------------------------------------------------------
+            RD_ISSUE:
+            begin
+                if(req_ready)
+                    next_state  =   RD_WAIT_RSP;
+            end
+
+            //---------------------------------------------------------------------
+            //Wait for PWM subsystem read data/response
+            //---------------------------------------------------------------------
+            RD_WAIT_RSP:
+            begin
+                if(rsp_valid)
+                    next_state  =   RD_SEND_R;
+            end
+
+            //---------------------------------------------------------------------
             //Hold AXI read data/response until master accepts it
             //---------------------------------------------------------------------
             RD_SEND_R:
@@ -423,7 +430,7 @@ module  axi_lite_pwm    #(
 
         rsp_ready       =   1'b0;
 
-        unique case (state)
+        unique case (current_state)
 
             //----------------------------------------------------------------------
             //IDLE:
