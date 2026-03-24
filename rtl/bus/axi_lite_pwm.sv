@@ -48,9 +48,15 @@ module  axi_lite_pwm    #(
     input   logic                               s_axil_bready,
 
     //Read Address channel
-    input   logic   [AXI_ADDR_W-1:0]            s_axil_rdata,
-    input   logic                               s_axil_arvaild,
+    input   logic   [AXI_ADDR_W-1:0]            s_axil_araddr,
+    input   logic                               s_axil_arvalid,
     output  logic                               s_axil_arready,
+
+    //Read data channel
+    output  logic   [AXI_DATA_W-1:0]            s_axil_rdata,
+    output  logic   [1:0]                       s_axil_rresp,
+    output  logic                               s_axil_rvalid,
+    input   logic                               s_axil_rready,
 
 
     //--------------------------------------------------------
