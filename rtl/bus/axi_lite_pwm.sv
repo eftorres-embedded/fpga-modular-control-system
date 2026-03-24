@@ -1,6 +1,6 @@
 //axi_lite_pwm.sv
 //
-// AXI-Lite wrappper for PWM subsystem.
+// AXI-Lite wrapper for PWM subsystem.
 //
 //Notes: 
 // - 32-bit data only
@@ -104,12 +104,15 @@ module  axi_lite_pwm    #(
     // 
     //IDLE: No transaction in progress.
     //
-    //WR_WAIT_DATA: Write data has been accepted, but write address
+    //WR_WAIT_DATA: Write address has been accepted, but write data
+    //has not yet been accepted
+    //
+    //WR_WAIT_ADDR: Write data has been accepted, but write address
     //has not yet been accepted.
     //
     //WR_ISSUE: Drive a write request into pwm_subsystem
     //
-    //WR_WAIT_RSP: Wait for pwm_subsystem to produce a wirte response
+    //WR_WAIT_RSP: Wait for pwm_subsystem to produce a write response
     //
     //WR_SEND_B: Present AXI write response to the master
     //
@@ -169,6 +172,10 @@ module  axi_lite_pwm    #(
     assign  ar_fire =   s_axil_arvalid  &&  s_axil_arready;
     assign  b_fire  =   s_axil_bvalid   &&  s_axil_bready;
     assign  r_fire  =   s_axil_rvalid   &&  s_axil_rready;
+
+    logic   req_fire,   rsp_fire;
+    assign  req_fire    =   req_valid   &&  req_ready;
+    assign  rsp_fire    =   rsp_valid   &&  rsp_ready;
 
     
 
@@ -326,7 +333,7 @@ module  axi_lite_pwm    #(
             end
 
             //---------------------------------------------------------------------
-            //Have write address, waiting for write ata
+            //Have write address, waiting for write data
             //---------------------------------------------------------------------
             WR_WAIT_DATA:
             begin
@@ -348,7 +355,7 @@ module  axi_lite_pwm    #(
             //---------------------------------------------------------------------
             WR_ISSUE:
             begin
-                if(req_ready)
+                if(req_fire)
                     next_state  =   WR_WAIT_RSP;
             end
 
@@ -357,7 +364,7 @@ module  axi_lite_pwm    #(
             //---------------------------------------------------------------------
             WR_WAIT_RSP:
             begin
-                if(rsp_valid)
+                if(rsp_fire)
                     next_state  =   WR_SEND_B;
             end
 
@@ -376,7 +383,7 @@ module  axi_lite_pwm    #(
             //---------------------------------------------------------------------
             RD_ISSUE:
             begin
-                if(req_ready)
+                if(req_fire)
                     next_state  =   RD_WAIT_RSP;
             end
 
@@ -385,7 +392,7 @@ module  axi_lite_pwm    #(
             //---------------------------------------------------------------------
             RD_WAIT_RSP:
             begin
-                if(rsp_valid)
+                if(rsp_fire)
                     next_state  =   RD_SEND_R;
             end
 
@@ -482,6 +489,33 @@ module  axi_lite_pwm    #(
             //Tell pwm subsystem we are ready to receive its response
             //-----------------------------------------------------------------------
             WR_WAIT_RSP:
+            begin
+                rsp_ready   =   1'b1;
+            end
+
+            //-----------------------------------------------------------------------
+            //Hold write response on AXI until master accepts it
+            //-----------------------------------------------------------------------
+            WR_SEND_B:
+            begin
+                s_axil_bvalid   =   1'b1;
+                s_axil_bresp    =   bresp_reg;
+            end
+
+            //-----------------------------------------------------------------------
+            //Drive internal read request using the previously capture AR payload
+            //-----------------------------------------------------------------------
+            RD_ISSUE:
+            begin
+                req_valid   =   1'b1;
+                req_write   =   1'b0;
+                req_addr    =   araddr_reg;
+            end
+
+            //-----------------------------------------------------------------------
+            //Tell pwm subsystem we are ready to receive the read data/response
+            //-----------------------------------------------------------------------
+            RD_WAIT_RSP:
             begin
                 rsp_ready   =   1'b1;
             end
