@@ -276,7 +276,7 @@ module  axi_lite_pwm    #(
             //Capture write response returned by the subsystem while 
             //waiting for it
             //---------------------------------------------------------
-            if((current_state   ==  WR_WAIT_RSP) && rsp_valid)
+            if((current_state   ==  WR_WAIT_RSP) && rsp_fire)
             begin
                 bresp_reg   <=  rsp_err ?   AXI_RESP_SLVERR :   AXI_RESP_OKAY;
             end
@@ -285,7 +285,7 @@ module  axi_lite_pwm    #(
             //Capture read data/response returned by the subsystem while
             //waiting for it
             //-----------------------------------------------------------
-            if((current_state   ==  RD_WAIT_RSP)    &&  rsp_valid)
+            if((current_state   ==  RD_WAIT_RSP)    &&  rsp_fire)
             begin
                 rdata_reg   <=  rsp_rdata;
                 rresp_reg   <=  rsp_err ?   AXI_RESP_SLVERR :   AXI_RESP_OKAY;
