@@ -23,7 +23,7 @@ module pwm_regs #(
 
     //If 1: APPLY waits until period_end_i before updating active regs.
     //If 0: APPLY updates active regs immediately.
-    parameter bit APPLY_ON_PERIOD_END   =   1'b0
+    parameter bit APPLY_ON_PERIOD_END   =   1'b1
 )
 (
     input   logic                       clk,
