@@ -281,7 +281,7 @@ Before I instantiate the system into a NIOS V processor, I will create an adapte
 
 ## March 23, 2026: I have finished an AXI 4 lite slave wrapper for the PWM MMO
 Before creating a test bench I decided to do smoke test to see any obvious issues
-## March 25, 2026: I have created a new project where I was able to instantiate a NIOS V/m core, using internal memory. 
+## March 24, 2026: I have created a new project where I was able to instantiate a NIOS V/m core, using internal memory. 
 I created system using Platform designer it includes:
 * clk: contains a clock in and clk_reset output (required for all subsystems)
 * niosv_m: RISC V core, speciallized for microcontrollers
@@ -298,5 +298,9 @@ It didn't work at the beginning, after a little research I came to the conclusio
 To test this theory, the parameter was disable, and now writing to the APPLY bit do go through and the LED started behaving as expected. 
 
 I will be adding a little bit of logic to allow for APPLY if PWM is not enabled yet.
+
+## March 25, 2026: the logic has been added and will be tested with the following settings
+## All simulation Tests passed
+![Platform designer: modifying my PWM ip to enable APPLY_ON_PERIOD_END)](img/smoke-test%20platform%20designer.png)
 
 
