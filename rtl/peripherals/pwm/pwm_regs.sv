@@ -85,11 +85,16 @@ module pwm_regs #(
     logic               apply_pulse;    //one-cycle internal strobe when SW writes apply=1
     logic               apply_pending;   //if boundary sync enabled
 
+    logic               apply_commit_now;
+    logic               safe_to_delay_apply;
+
     //Response buffering (1 level deep)
     logic                   accept_req;
     logic   [DATA_W-1:0]    rdata_next;
     logic                   err_next;
 
+
+    
     //-------------------------------------------------
     //Ready/valid: single outstanding response
     //req_ready is deasserted if we still owe a response and rsp_ready is low
@@ -171,6 +176,33 @@ module pwm_regs #(
         end
     end
 
+    //---------------------------------------------------
+    //logic to delay apply and if apply can be committed
+    //---------------------------------------------------
+    always_comb
+    begin
+        //Only delay to period_end when the active PWM is already enabled
+        //During startup/first enable from reset, commit APPLY immediately
+        safe_to_delay_apply =   enable_active && (period_active != '0);
+        apply_commit_now    =   1'b0;
+
+        if(APPLY_ON_PERIOD_END)
+        begin
+            if(apply_pulse  || apply_pending)
+            begin
+                if(!safe_to_delay_apply)
+                    apply_commit_now    =   1'b1;   //startube/inactive pwm bypass
+                else if(period_end_i)
+                    apply_commit_now    =   1'b1;   //if pwm is already enabled (normal boundary)
+            end
+        end
+
+        else
+        begin
+            apply_commit_now    =   apply_pulse;    //existing immediate mode (APPLY_ON_PERIOD_END = false)
+        end
+    end
+
 
     //----------------------------------------------------
     //Register Writes, APPLY behavior, response buffering
@@ -218,6 +250,29 @@ module pwm_regs #(
             //2. Write `REG_DUTY`
             //3. Write `REG_CTRL` bits `[1:0]` if needed
             //4. Write `REG_CTRL` with only `APPLY` bit set (bit 2)
+
+
+            if(apply_commit_now)
+            begin
+                enable_active       <=  enable_shadow;
+                use_default_active  <=  use_default_shadow;
+                period_active       <=  period_shadow;
+                duty_active         <=  duty_shadow;
+                apply_pending       <=  1'b0;           //auto-clear
+            end
+
+            else if(APPLY_ON_PERIOD_END && apply_pulse)
+            begin
+                //Only set pending if we are in delay mode and commit did not happen now
+                apply_pending       <=  1'b1;
+            end
+
+            else if(!APPLY_ON_PERIOD_END)
+            begin
+                apply_pending       <=  1'b0;
+            end
+
+           /* /////////////////////////////////////////////////////////////////
             if(APPLY_ON_PERIOD_END)
             begin
                 //if APPLY pulse is set and the same time as period_end_i,
@@ -251,7 +306,7 @@ module pwm_regs #(
                 end
                 apply_pending   <=  1'b0;
             end
-
+            ////////////////////////////////////////////////////////////////////*/
 
             //Handle accepted transaction
             if(accept_req)
