@@ -272,9 +272,31 @@ From my research, the recommended code should be this one:
   ```
 
 A simple copy-paste should work, but I will do once I make sure the 32-bit version is fully working
-Also, other modification might be needed when assigning values to the shadow registers (ctrl_merge, etc)
+Also, other modification might be needed when assigning values to th e shadow registers (ctrl_merge, etc)
 by specifiying the bit length vector (e.g. `period_shadow   <=  merge_wstrb(period_shadow, req_wdata, req_wstrb)` to `period_shadow   <=  merge_wstrb(period_shadow, req_wdata[CNT_W-1:0], req_wstrb)`)
 
 ## March 18,2026: before fine tunning and create a test bench for MMIO wrapper file (pwm_subsystem.sv), I decided to do a "smoke test" and do a quick integration with NIOS V
 ### For that I could use either AVALON or AXI Buses, I'm deciding to use AXI4 Lite for portability
 Before I instantiate the system into a NIOS V processor, I will create an adapter for my MMIO wrapper into AXI4 Lite
+
+## March 23, 2026: I have finished an AXI 4 lite slave wrapper for the PWM MMO
+Before creating a test bench I decided to do smoke test to see any obvious issues
+## March 25, 2026: I have created a new project where I was able to instantiate a NIOS V/m core, using internal memory. 
+I created system using Platform designer it includes:
+* clk: contains a clock in and clk_reset output (required for all subsystems)
+* niosv_m: RISC V core, speciallized for microcontrollers
+* onchip_memory: I'm using the MAX10 memory blocks to store code
+* jtag_uart: I'm using a jtag through usb to program and talk to console through fprints
+* axi_lite_pwm: This block was created by be, is a component that uses AXI 4 lite Slave, this block wraps the registers MMIO wrapper(pwm_subsystem), which itself wraps which wraps pwm_core_ip, which instantiates pwm_compare and pwm_timebase. 
+
+I also setup the Altera toolchain, Ashling, for C code compilation, and used the Nios V Command shell to build the BSP, compile the C code and program the soft-core.
+
+To check quickly if it worked, I connected the PWM_out conduit to an LED to see if I could see it blinking (by setting up the period to be .5 sec and a duty cycle of 50%).
+
+It didn't work at the beginning, after a little research I came to the conclusion is that there was deadlock situation: One of the parameters, APPLY_ON_PERIOD_END, was enabled, meaning that no changes in period and duty cycle would be updated (APPLY) to the main registers until the end of the current period, but, the current period cannot start if it's not already setup creating a "catch 22" situation. 
+
+To test this theory, the parameter was disable, and now writing to the APPLY bit do go through and the LED started behaving as expected. 
+
+I will be adding a little bit of logic to allow for APPLY if PWM is not enabled yet.
+
+
