@@ -23,14 +23,14 @@
 //
 
 module pwm_regs #(
-    parameter int unsigned ADDR_W = 12,
-    parameter int unsigned DATA_W = 32,
-    parameter int unsigned CNT_W  = 32,
+    parameter   int unsigned    ADDR_W  =   12,
+    parameter   int unsigned    DATA_W  =   32,
+    parameter   int unsigned    CNT_W   =   32,
 
     // If 1: APPLY waits until period_end_i before updating active regs,
     // unless startup/inactive bypass is needed.
     // If 0: APPLY updates active regs immediately.
-    parameter bit APPLY_ON_PERIOD_END = 1'b1)
+    parameter   bit APPLY_ON_PERIOD_END =   1'b1)
 (
     input   logic                       clk,
     input   logic                       rst_n,
@@ -78,42 +78,42 @@ module pwm_regs #(
     // Internal state: shadow + active
     //------------------------------------------------
 
-	logic [DATA_W-1:0]	ctrl_shadow;
-    logic [CNT_W-1:0]   period_shadow;
-    logic [CNT_W-1:0]   duty_shadow;
+	logic   DATA_W-1:0]     ctrl_shadow;
+    logic   [CNT_W-1:0]     period_shadow;
+    logic   [CNT_W-1:0]     duty_shadow;
 
-	logic [DATA_W-1:0]	ctrl_active;
-    logic [CNT_W-1:0]   period_active;
-    logic [CNT_W-1:0]   duty_active;
+	logic   [DATA_W-1:0]    ctrl_active;
+    logic   [CNT_W-1:0]     period_active;
+    logic   [CNT_W-1:0]     duty_active;
 
     //------------------------------------------------
     // APPLY handling
     //------------------------------------------------
-    logic               apply_pulse;         // one-cycle pulse when SW writes REG_APPLY[0]=1
-    logic               apply_pending;       // pending deferred commit
-    logic               safe_to_delay_apply; // active PWM already running
-    logic               apply_commit_now;    // commit shadow -> active this cycle
+    logic                   apply_pulse;         // one-cycle pulse when SW writes REG_APPLY[0]=1
+    logic                   apply_pending;       // pending deferred commit
+    logic                   safe_to_delay_apply; // active PWM already running
+    logic                   apply_commit_now;    // commit shadow -> active this cycle
 
     //------------------------------------------------
     // Response buffering
     //------------------------------------------------
-    logic               accept_req;
-    logic [DATA_W-1:0]  rdata_next;
-    logic               err_next;
+    logic                   accept_req;
+    logic   [DATA_W-1:0]    rdata_next;
+    logic                   err_next;
 
     //-------------------------------------------------
     // Ready/valid: single outstanding response
     //-------------------------------------------------
-    assign req_ready  = (!rsp_valid) || (rsp_valid && rsp_ready);
-    assign accept_req = req_valid && req_ready;
+    assign  req_ready   =   (!rsp_valid) || (rsp_valid && rsp_ready);
+    assign  accept_req  =   req_valid && req_ready;
 
     //-------------------------------------------------
     // Helper function: byte-write merge for 32-bit regs
     //-------------------------------------------------
     function automatic logic [DATA_W-1:0] merge_wstrb(
-        input logic [DATA_W-1:0]         old_val,
-        input logic [DATA_W-1:0]         new_val,
-        input logic [(DATA_W/8)-1:0]     strb);
+        input   logic   [DATA_W-1:0]        old_val,
+        input   logic   [DATA_W-1:0]        new_val,
+        input   logic   [(DATA_W/8)-1:0]    strb);
 		  
         logic [DATA_W-1:0] write_mask;
         begin
