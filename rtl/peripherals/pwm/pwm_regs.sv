@@ -67,12 +67,12 @@ module pwm_regs #(
     //------------------------------------------------
     // Register offsets (byte)
     //------------------------------------------------
-    localparam logic [ADDR_W-1:0] REG_CTRL   = 'h00;
-    localparam logic [ADDR_W-1:0] REG_PERIOD = 'h04;
-    localparam logic [ADDR_W-1:0] REG_DUTY   = 'h08;
-    localparam logic [ADDR_W-1:0] REG_APPLY  = 'h0C;
-    localparam logic [ADDR_W-1:0] REG_STATUS = 'h10;
-    localparam logic [ADDR_W-1:0] REG_CNT    = 'h14;
+    localparam  logic   [ADDR_W-1:0]    REG_CTRL    = 'h00;
+    localparam  logic   [ADDR_W-1:0]    REG_PERIOD  = 'h04;
+    localparam  logic   [ADDR_W-1:0]    REG_DUTY    = 'h08;
+    localparam  logic   [ADDR_W-1:0]    REG_APPLY   = 'h0C;
+    localparam  logic   [ADDR_W-1:0]    REG_STATUS  = 'h10;
+    localparam  logic   [ADDR_W-1:0]    REG_CNT     = 'h14;
 
     //------------------------------------------------
     // Internal state: shadow + active
@@ -233,7 +233,7 @@ module pwm_regs #(
             period_shadow	<= '0;
             duty_shadow		<= '0;
 
-        // Active regs
+            // Active regs
             ctrl_active		<= '0;
             period_active	<= '0;
             duty_active		<= '0;
@@ -258,8 +258,6 @@ module pwm_regs #(
             //--------------------------------------------
             if(apply_commit_now)
 			begin
-                //enable_active       <= enable_shadow;
-                //use_default_active  <= use_default_shadow;
                 ctrl_active		<= ctrl_shadow;
                 period_active	<= period_shadow;
                 duty_active		<= duty_shadow;
@@ -300,8 +298,6 @@ module pwm_regs #(
 
                         REG_CTRL:
 						begin
-                            //enable_shadow      <= ctrl_merged[0];
-                            //use_default_shadow <= ctrl_merged[1];
 							ctrl_shadow <= merge_wstrb(ctrl_shadow, req_wdata, req_wstrb);
                         end
 
