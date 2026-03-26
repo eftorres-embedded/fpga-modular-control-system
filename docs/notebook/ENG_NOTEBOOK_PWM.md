@@ -243,7 +243,7 @@ cnt ----------|                  |
   * 1. Write `REG_PERIOD`
   * 2. Write `REG_DUTY`
   * 3. Write `REG_CTRL` bits `[1:0]` if needed
-  * 4. Write `REG_CTRL` with only `APPLY` bit set (bit 2)
+  * 4. Write `REG_CTRL` with only `APPLY` bit set (bit 2) : UPDATED!! on MARCH 25th
 
 ### For code simplicity, `PERIOD` and `DUTY` should be 32-bits for the transfer to work correctly
 due to how the `WORD` modification was implemented; it is byte addreseably and at the moment
@@ -304,3 +304,12 @@ I will be adding a little bit of logic to allow for APPLY if PWM is not enabled 
 ![Platform designer: modifying my PWM ip to enable APPLY_ON_PERIOD_END)](img/smoke-test%20platform%20designer.png)
 
 
+Major revision for pwm_reg.sv were done; there were too many corner cases by having the `APPLY` bit on the same register as `enable` and `default_duty` in the `CTRL_REG`.
+I decided to separate `APPLY` to its own register.
+`CTRL_REG` now writes directly to a shawdow register and it works exactly as the other registers such as `DUTY_REG`. The software contract is now much more cleaner. 
+
+### For hardware simplification there will be a Software contract:
+  * 1. Write `REG_PERIOD`
+  * 2. Write `REG_DUTY`
+  * 3. Write `REG_CTRL` bits `[1:0]` if needed
+  * 4. Write `REG_APPLY` with 1 in bit 0 
