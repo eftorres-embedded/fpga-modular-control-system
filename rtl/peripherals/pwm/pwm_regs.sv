@@ -78,7 +78,7 @@ module pwm_regs #(
     // Internal state: shadow + active
     //------------------------------------------------
 
-	logic   DATA_W-1:0]     ctrl_shadow;
+	logic   [DATA_W-1:0]     ctrl_shadow;
     logic   [CNT_W-1:0]     period_shadow;
     logic   [CNT_W-1:0]     duty_shadow;
 

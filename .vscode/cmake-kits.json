@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Ashling RISC-V GNU GCC toolchain",
+    "compilers": {
+      "C": "/opt/altera_pro/25.3.1/riscfree/toolchain/riscv32-unknown-elf/bin/riscv32-unknown-elf-gcc",
+      "CXX": "/opt/altera_pro/25.3.1/riscfree/toolchain/riscv32-unknown-elf/bin/riscv32-unknown-elf-g++",
+      "ASM": "/opt/altera_pro/25.3.1/riscfree/toolchain/riscv32-unknown-elf/bin/riscv32-unknown-elf-gcc"
+    },
+    "environmentVariables": {
+      "PATH": "/opt/altera_pro/25.3.1/niosv/bin:/opt/altera_pro/25.3.1/riscfree/toolchain/riscv32-unknown-elf/bin:/opt/altera_pro/25.3.1/riscfree/build_tools/bin:/opt/altera_pro/25.3.1/riscfree/build_tools/cmake/bin:${env:PATH}"
+    },
+    "preferredGenerator": {
+      "name": "Unix Makefiles"
+    }
+  }
+]
