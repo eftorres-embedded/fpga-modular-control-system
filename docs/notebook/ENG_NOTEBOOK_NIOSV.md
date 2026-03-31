@@ -37,25 +37,36 @@ This establishes a working hardware/software baseline.
 
 ## Build Flow
 
-### BSP Creation
+### BSP Creation (inside sw/ folder)
 
-```bash
+```powershell
 niosv-bsp --create --sopcinfo=../pd/niosv_modular_control_system.sopcinfo --type=hal bsp/settings.bsp
 ```
 
 ### Application Creation
 
-```bash
+```powershell
 niosv-app --app-dir=app --bsp-dir=bsp --srcs=app
 ```
 
-### Build
+### Build (inside app/ folder)
 
-```bash
-cmake -B build -S .
+```powershell
+cmake -B build -S . -G "Unix Makefiles"
 cmake --build build
 ```
 
+### Download the app to the NIOS V microcontroller
+
+```powershell
+niosv-download -g build/app.elf
+```
+
+### Open the JTAG UART Console
+
+```powershell
+juart-terminal
+```
 ---
 
 ## Software Validation
