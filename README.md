@@ -4,6 +4,20 @@ Modular FPGA-based control system designed for incremental integration of commun
 
 This project focuses on building an extensible HDL architecture, this will allow to recycle this project to derive single-purpose designs. 
 
+## Third-Party IP
+
+This project uses the following open-source IP:
+
+### SPI Verilog Interface
+- Source: https://opencores.org/projects/spi_verilog_interface
+- License: LGPL
+- Files used:
+  - spi_master.v
+  - spi_slave.v
+- Modifications:
+  - Integrated with custom AXI4-Lite MMIO wrapper
+  - Added register interface ('spi_regs.sv')
+  - No modifications to original core logic
 
 ---
 
