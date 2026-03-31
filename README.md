@@ -1,117 +1,124 @@
-# FPGA Modular Control System
+# FPGA Modular Control System (DE10-Lite)
 
-Modular FPGA-based control system designed for incremental integration of communication interfaces, control logic and peripheral devices.
+Modular FPGA-based control system built on the Intel MAX 10 (DE10-Lite), focused on reusable peripheral design, AXI4-Lite integration, and system-level architecture.
 
-This project focuses on building an extensible HDL architecture, this will allow to recycle this project to derive single-purpose designs. 
+This project demonstrates FPGA system design principles including:
 
-## Third-Party IP
+* memory-mapped peripheral interfaces
+* protocol engine integration (SPI, UART, PWM)
+* separation between datapath, control, and bus layers
+* scalable RTL organization for SoC-style systems
 
-This project uses the following open-source IP:
+## Overview
 
-### SPI Verilog Interface
-- Source: https://opencores.org/projects/spi_verilog_interface
-- License: LGPL
-- Files used:
-  - spi_master.v
-  - spi_slave.v
-- Modifications:
-  - Integrated with custom AXI4-Lite MMIO wrapper
-  - Added register interface ('spi_regs.sv')
-  - No modifications to original core logic
+The system is organized as a collection of modular peripherals integrated through a consistent architecture. Each peripheral is designed to be reusable and independently testable.
 
----
+## Architecture
 
-## Status
+Each peripheral follows a layered model:
 
-**Active development**
+AXI4-Lite
+↓
+Register Layer (MMIO contract)
+↓
+Core Engine (protocol/datapath)
+↓
+External Interface (pins / signals)
 
-Currently implemented and tested:
-- UART-based communication
-- FIFO buffering
-- Parallel HD44780 (1602) LCD interface
-- Basic control and utility modules (counter, register, reset synchronization)
-- Top-level system integration targeting the DE10-Lite board
+This structure enables reuse, easier verification, and clear software-hardware boundaries.
 
+## Peripherals
 
-Planned (not fully implemented yet):
-- SPI peripheral interface
-- PWM generation
-- Quadrature encoder interface
-- Memory-mapped I/O (MMIO)
-- Nios V softcore integration
+### PWM
 
+* Modular PWM subsystem with timebase, compare logic, register interface, and AXI4-Lite wrapper
+* Deterministic timing and configurable behavior
 
----
+### SPI (In Progress)
 
-- **FPGA Board:** DE10-Lite (MAX 10)
-- **Toolchain:** Quartus Prime
-- **Language:** SystemVerilog
+* Uses a third-party open-source SPI core as the protocol engine
+* Vendor core isolated under `rtl/peripherals/spi/vendor/`
+* Project logic implemented in:
+
+  * `axi_lite_spi.sv`
+  * `regs/spi_regs.sv`
+
+### UART
+
+* RX/TX engines with configurable baud generation
+* Designed for integration with FIFO and system interfaces
+
+### LCD (HD44780)
+
+* Parallel LCD controller with FIFO adapter
+* Demonstrates bridging between fast logic and slow peripherals
+
+## Verification
+
+* Unit testbenches for individual modules (PWM, UART)
+* Integration testbench (`tb_top_system.sv`)
+* Waveform-based validation using Questa/ModelSim
+
+## Tools
+
+* Intel Quartus Prime (Lite)
+* Platform Designer (Qsys)
+* Questa / ModelSim
+* SystemVerilog
+* Nios V (planned integration)
 
 ## Repository Structure
 
-Current Structure (work in progress):
+rtl/
+common/
+peripherals/
+pwm/
+spi/
+uart/
+lcd/
+top/
 
-- `modular_control_system_top.sv` - Top-Level system integration
-- `fifo_to_lcd_adapter.sv` - FIFO to LCD interface logic
-- `hd44780_parallel_lcd.sv` - 1602 LCD controller
-- `sync_fifo.sv` - FIFO implementation
-- `register.sv`, `counter.sv` - Utility/control modules
-- `reset_sync.sv`,  `signla_to_pulse.sv` - Reset and signal conditioning
+tb/
+unit/
+integration/
 
+docs/
+architecture/
+notebook/
+bringup/
 
-As the project grows, modules me be reorganized into `rtl/`, `contraints/`, and  `docs/` directories
+sw/
+mcu/
+host_tools/
 
----
+## Third-Party IP
 
-## Build and Usage
+SPI Verilog Interface
 
-1. Open `modular_control_system.qpf` in Quartus Prime
-2. Compile the project
-3. Program the FPGA on the DE10-Lite board
-4. Interact with the system via UART and observe output on the LCD
+* Source: https://opencores.org/projects/spi_verilog_interface
+* License: LGPL
+* Used as protocol engine only
+* Integrated via custom register and AXI4-Lite wrapper
 
-Exact UART parameters and command formats will be documented as the interface stabilizes.
+## Status
 
----
+Implemented:
 
-## DIAGRAM
+* UART subsystem
+* PWM subsystem (core, registers, AXI wrapper)
+* LCD controller and adapter
+* FIFO utilities
 
-## Architecture Overview
+In Progress:
 
-```text
-                         Current (implemented)                    Planned (future)
-+------------------+      +-------------------+      +---------------------+
-| PC / UART Host   |----->| UART Interface    |----->| FIFO Buffer         |
-| (terminal)       |      | (RX/TX)           |      | (sync_fifo.sv)      |
-+------------------+      +-------------------+      +----------+----------+
-                                                                |
-                                                                v
-                                                     +---------------------+
-                                                     | Peripheral Router / |
-                                                     | Control Logic       |
-                                                     | (top + utilities)   |
-                                                     +----+----------+-----+
-                                                          |          |
-                                      +-------------------+          +-------------------+
-                                      |                                      |
-                                      v                                      v
-                          +---------------------+                 +---------------------+
-                          | FIFO -> LCD Adapter |                 | Planned Interfaces  |
-                          | (fifo_to_lcd_...)   |                 | - SPI               |
-                          +----------+----------+                 | - PWM               |
-                                     |                            | - Quadrature Enc.   |
-                                     v                            | - MMIO regs         |
-                          +---------------------+                 | - Nios V softcore   |
-                          | HD44780 LCD Driver  |                 +---------------------+
-                          | (hd44780_...lcd)    |
-                          +---------------------+
-```
+* SPI integration and validation
+* System-level integration
 
----
+Planned:
 
-![UART Port Block Diagram](docs/uart_port_block_diagram_light.svg)
+* Nios V integration
+* Additional peripherals (I2C, ADC)
 
-## Notes
+## Purpose
 
-This repository reflects an improving system. Interfaces and modules may change
-as new features are added.
+This project serves as a reusable FPGA system framework and a demonstration of modular RTL design and system integration.
