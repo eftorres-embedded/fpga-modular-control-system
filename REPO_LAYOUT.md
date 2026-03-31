@@ -191,10 +191,3 @@ Software Control (sw/)
         ↓
 Hardware Validation
 ```
-
-Key principles:
-
-* isolate vendor-specific tooling
-* keep RTL reusable and portable
-* define clear software-hardware contracts
-* separate source from generated artifacts
