@@ -1,85 +1,200 @@
-# Repo Layout Rules (Source of Truth)
+# Repository Layout
 
-This repo follows a simple ownership model: **each concept has exactly one home**.
-If a file “could fit in two places,” pick the owner folder below and do not duplicate.
+This repository is organized to separate reusable RTL, platform-specific integration, software, and documentation.
 
----
-
-## Top-level ownership
-
-### 1) `rtl/` — Synthesizable HDL only
-**What goes here**
-- SystemVerilog/VHDL that is intended to synthesize to FPGA
-- Reusable IP blocks and top-level RTL
-
-**What does NOT go here**
-- Testbenches, models, stimulus files, simulation-only helpers
-
-Suggested structure:
-- `rtl/common/` shared primitives (sync, reset, FIFOs)
-- `rtl/bus/` bus fabric and MMIO adapters
-- `rtl/peripherals/<ip>/` (uart, pwm, gpio, etc.)
-- `rtl/top/` top-level wrappers
+The goal is to keep **source-of-truth files clean, modular, and portable**, while isolating tool-generated outputs.
 
 ---
 
-### 2) `tb/` — Simulation sources only (the only home for testbenches)
-**What goes here**
-- Unit testbenches: `tb/unit/<ip>/tb_*.sv`
-- Integration testbenches: `tb/integration/`
-- Behavioral models/BFMs: `tb/models/`
-- Test vectors: `tb/vectors/`
+## Top-Level Structure
 
-**What does NOT go here**
-- Generated waveforms/logs
-- Quartus/EDA tool outputs
-
----
-
-### 3) `build/` — Generated outputs only (safe to delete)
-**What goes here**
-- Simulation outputs: VCD/WLF/FST, logs, compiled sim artifacts
-- Reports (timing, utilization) if you choose to store them outside Quartus db
-
-Suggested:
-- `build/sim/waves/`
-- `build/sim/logs/`
-- `build/reports/`
-- `build/artifacts/`
-
-Rule: If it can be regenerated, it belongs in `build/` and should be gitignored where appropriate.
+```text
+fpga-modular-control-system/
+├── rtl/           # reusable RTL (vendor-agnostic)
+├── pd/            # Platform Designer systems (source-of-truth)
+├── quartus/       # Quartus project files (Intel-specific)
+├── constraints/   # timing and pin constraints
+├── tb/            # simulation testbenches
+├── sw/            # Nios V software (app + BSP)
+├── docs/          # architecture, bring-up, notebooks
+├── ip/            # packaged / reusable IP (optional)
+└── licenses/      # third-party licenses
+```
 
 ---
 
-### 4) `docs/` — Human documentation
-**`docs/architecture/`**
-- block diagrams, interface specs, timing notes
+## RTL Organization
 
-**`docs/notebook/`**
-- engineering lab notebook(s): narrative, decisions, experiments
-- images for notebook entries: `docs/notebook/img/`
+```text
+rtl/
+├── common/        # reusable utility modules
+├── peripherals/   # modular peripherals
+│   ├── pwm/
+│   ├── spi/
+│   ├── uart/
+│   └── lcd/
+└── top/           # top-level integration modules
+```
 
-**`docs/bringup/`**
-- repeatable runbooks: wiring, power-up, scope procedures, “known-good” steps
-- meant to be followed like a checklist
+### Design Rules
 
-Rule: notebook = “what happened & why”; bringup = “how to reproduce safely”.
+* `common/` contains reusable, vendor-agnostic building blocks
+* `peripherals/` are self-contained subsystems
+* each peripheral owns:
+
+  * its core logic
+  * its register interface
+  * its AXI4-Lite wrapper (if applicable)
+* **no global `bus/` folder**
+
+  * bus wrappers live inside each peripheral
+
+---
+
+## Peripheral Structure
+
+Each peripheral follows a consistent internal layout:
+
+```text
+peripheral/
+├── core/          # datapath / protocol logic
+├── regs/          # MMIO register layer
+├── axi_lite_*.sv  # bus interface
+├── *_subsystem.sv # integration glue
+└── README.md
+```
+
+Vendor IP (if used) is isolated:
+
+```text
+spi/
+└── vendor/
+    └── opencores_verilog_spi/
+```
 
 ---
 
-### 5) Tooling and other
-- `quartus/` Quartus project files and tool DB outputs
-- `constraints/` SDC and timing constraints
-- `ip/` generated and third-party IP
-- `sw/` firmware/host utilities/protocol code
+## Platform Designer (pd/)
+
+```text
+pd/
+├── *.qsys         # system definition (source-of-truth)
+├── *.sopcinfo     # hardware description for software tools
+└── <system_name>/
+    ├── synthesis/     # generated HDL (ignored)
+    ├── submodules/    # generated IP (ignored)
+    └── simulation/    # generated simulation files (ignored)
+```
+
+### Notes
+
+* `.qsys` and `.sopcinfo` are **tracked**
+* generated folders (`synthesis/`, `submodules/`) are **not source-of-truth**
+* this directory represents the **CPU + interconnect + peripheral system**
 
 ---
 
-## Anti-maze rules
-1) Testbenches go in `tb/` only.
-2) Generated outputs go in `build/` only.
-3) Documentation lives in `docs/` only.
-4) If two folders mean the same thing, pick one owner and stop using the other.
-5) Do not mix generated outputs with sources.
+## Software (sw/)
+
+```text
+sw/
+├── app/           # Nios V application
+│   ├── src/
+│   └── build/     # generated (ignored)
+└── bsp/           # Board Support Package
+```
+
+### Notes
+
+* `app/` contains test programs and peripheral control logic
+* `bsp/` is tied to the Platform Designer system
+* build outputs are generated via CMake and not tracked
+* software validates hardware through MMIO
 
 ---
+
+## Quartus (quartus/)
+
+```text
+quartus/
+└── project/
+    ├── *.qpf
+    ├── *.qsf
+    ├── db/              # generated (ignored)
+    ├── incremental_db/  # generated (ignored)
+    └── output_files/    # generated (ignored)
+```
+
+### Notes
+
+* `.qpf` and `.qsf` are source-of-truth
+* all compilation outputs are tool-generated and should not be tracked
+
+---
+
+## Constraints
+
+```text
+constraints/
+└── quartus/
+    └── *.sdc
+```
+
+Defines:
+
+* clock timing
+* I/O timing
+* board-level constraints
+
+---
+
+## Testbenches (tb/)
+
+```text
+tb/
+├── unit/          # module-level tests
+└── integration/   # system-level tests
+```
+
+Focus:
+
+* functional validation of RTL modules
+* waveform-based debugging
+
+---
+
+## Documentation (docs/)
+
+```text
+docs/
+├── architecture/
+├── bringup/
+└── notebook/
+```
+
+* `architecture/` → design descriptions and diagrams
+* `bringup/` → hardware validation procedures
+* `notebook/` → engineering logs and experiments
+
+---
+
+## Design Philosophy
+
+This repository follows a layered system approach:
+
+```text
+RTL (vendor-agnostic)
+        ↓
+Platform Integration (pd/)
+        ↓
+Software Control (sw/)
+        ↓
+Hardware Validation
+```
+
+Key principles:
+
+* isolate vendor-specific tooling
+* keep RTL reusable and portable
+* define clear software-hardware contracts
+* separate source from generated artifacts
