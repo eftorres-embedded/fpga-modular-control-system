@@ -1,0 +1,21 @@
+bsp/CMakeFiles/hal2_bsp.dir/HAL/src/intel_fpga_platform_api_niosv.c.obj: \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/src/intel_fpga_platform_api_niosv.c \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/intel_fpga_platform_api.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/intel_fpga_platform_api_niosv.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/system.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/linker.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/stdarg.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/stdbool.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/intel_fpga_api_cmn_msg.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/stdint.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/stdint.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/machine/_default_types.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/features.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/_newlib_version.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/_intsup.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/_stdint.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/intel_fpga_platform.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/intel_fpga_platform_niosv.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/stddef.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/intel_fpga_api_cmn_dfl.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/intel_fpga_api_cmn_inf.h

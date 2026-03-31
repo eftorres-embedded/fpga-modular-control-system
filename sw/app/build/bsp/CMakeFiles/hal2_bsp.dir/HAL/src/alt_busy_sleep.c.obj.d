@@ -1,0 +1,20 @@
+bsp/CMakeFiles/hal2_bsp.dir/HAL/src/alt_busy_sleep.c.obj: \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/src/alt_busy_sleep.c \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/limits.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/syslimits.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/limits.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/newlib.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/_newlib_version.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/cdefs.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/machine/_default_types.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/features.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/stddef.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/syslimits.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/system.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/linker.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/alt_types.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/alt_timestamp.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/intel_niosv.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/alt_types.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/io.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/priv/alt_busy_sleep.h

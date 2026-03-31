@@ -425,6 +425,7 @@ pwm_subsystem #(
     .DATA_W(32),
     .CNT_W(32),
     .APPLY_ON_PERIOD_END(1'b0))
+	 
 u_pwm_subsystem (
     .clk(MAX10_CLK1_50),
     .rst_n(rst_n),
@@ -448,6 +449,12 @@ u_pwm_subsystem (
 assign	LEDR[0]		=	pwm_raw;
 assign	LEDR[1]		=	period_end;
 assign	LEDR[9:2]	=	cnt[7:0];
+
+niosv_modular_control_system u_niosv (
+		.clock_in_clk_clk     (MAX10_CLK1_50),     // clock_in_clk.clk
+		.reset_in_rst_reset_n (rst_n)  // reset_in_rst.reset_n
+	);
+
 
 
 endmodule

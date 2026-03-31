@@ -1,0 +1,27 @@
+bsp/CMakeFiles/hal2_bsp.dir/HAL/src/alt_alarm_start.c.obj: \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/src/alt_alarm_start.c \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/errno.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/errno.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/reent.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/_ansi.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/newlib.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/_newlib_version.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/config.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/machine/ieeefp.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/features.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/stddef.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/cdefs.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/machine/_default_types.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/_types.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/machine/_types.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/lock.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/alt_alarm.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/alt_llist.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/alt_types.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/priv/alt_alarm.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/alt_irq.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/intel_niosv.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/alt_types.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/io.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/system.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/linker.h

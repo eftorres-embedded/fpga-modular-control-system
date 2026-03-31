@@ -1,0 +1,25 @@
+bsp/CMakeFiles/hal2_bsp.dir/HAL/src/alt_tls.c.obj: \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/src/alt_tls.c \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/stdint.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/stdint.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/machine/_default_types.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/features.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/_newlib_version.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/_intsup.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/_stdint.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/string.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/_ansi.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/newlib.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/config.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/machine/ieeefp.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/reent.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/_ansi.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/lib/gcc/riscv32-unknown-elf/13.2.0/include/stddef.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/cdefs.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/_types.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/machine/_types.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/lock.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/_locale.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/strings.h \
+ D:/altera_pro/25.1.1/riscfree/toolchain/riscv32-unknown-elf/riscv32-unknown-elf/include/sys/string.h \
+ D:/fpga_projects/fpga-modular-control-system/sw/bsp/HAL/inc/sys/alt_tls.h
