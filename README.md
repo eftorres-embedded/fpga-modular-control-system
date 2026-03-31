@@ -17,6 +17,7 @@ The system is organized as a collection of modular peripherals integrated throug
 
 Each peripheral follows a layered model:
 
+```text
 AXI4-Lite
 ↓
 Register Layer (MMIO contract)
@@ -24,8 +25,83 @@ Register Layer (MMIO contract)
 Core Engine (protocol/datapath)
 ↓
 External Interface (pins / signals)
+```
 
 This structure enables reuse, easier verification, and clear software-hardware boundaries.
+
+## System Architecture
+
+The current project has moved beyond standalone RTL modules into a working FPGA-based embedded system.
+
+Current baseline:
+
+* Nios V soft processor integrated in Platform Designer
+* on-chip memory and JTAG UART operational
+* C application (`main.c`) runs correctly on hardware
+
+Immediate next steps:
+
+* instantiate PWM in Platform Designer and control it from software
+* complete SPI register + AXI4-Lite integration and expose it to the CPU
+
+```text
+                          FPGA Modular Control System
+                     Current baseline + near-term expansion
+
+    +---------------------------------------------------------------+
+    |                       DE10-Lite / MAX 10                      |
+    |                                                               |
+    |   +--------------------+                                      |
+    |   |      Nios V        |                                      |
+    |   |   Soft Processor   |                                      |
+    |   +---------+----------+                                      |
+    |             |                                                 |
+    |             v                                                 |
+    |   +--------------------+                                      |
+    |   | AXI/Avalon Fabric  |                                      |
+    |   | (Platform Designer)|                                      |
+    |   +---+----------+-----+                                      |
+    |       |          |                                            |
+    |       |          |                                            |
+    |       v          v                                            |
+    |  +---------+  +-------------+                                 |
+    |  | On-Chip |  |  JTAG UART  |<------ Host PC / Terminal       |
+    |  | Memory  |  |   Console   |                                 |
+    |  +---------+  +-------------+                                 |
+    |                                                               |
+    |       Planned / In Progress CPU-Controlled Peripherals        |
+    |                                                               |
+    |       +-------------------+    +-------------------+          |
+    |       |   PWM Peripheral  |    |   SPI Peripheral  |          |
+    |       | AXI-Lite Wrapper  |    | AXI-Lite Wrapper  |          |
+    |       | + Regs + Core     |    | + Regs + Vendor   |          |
+    |       +---------+---------+    |   Core            |          |
+    |                 |              +---------+---------+          |
+    |                 |                        |                    |
+    |                 v                        v                    |
+    |            PWM Output Pins          SPI External Pins         |
+    |                                                               |
+    +---------------------------------------------------------------+
+```
+
+### Current Validation Path
+
+```text
+main.c
+  -> printf / loops / usleep
+  -> Nios V execution confirmed
+  -> JTAG UART console output confirmed
+```
+
+### Near-Term Expansion Path
+
+```text
+main.c
+  -> MMIO writes to PWM registers
+  -> MMIO writes/reads to SPI registers
+  -> software-driven peripheral validation
+```
+
 
 ## Peripherals
 
