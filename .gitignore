@@ -1,49 +1,79 @@
-# Quartus generated
-db/
-incremental_db/
-output_files/
-*.rpt
-*.chg
-*.smsg
-*.done
-*.bak
-*.qws
-*.jdi
-*.pof
-*.sof
-*.cdf
+# FPGA Modular Control System - .gitignore
+
+# Quartus + Platform Designer + Nios V + Questa + CMake
+
+# ---- Build directories ----
+
+build/
+**/build/
+
+# ---- CMake / Nios V app ----
+
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.obj
+*.obj.d
+*.o
+
+# App outputs
+
+*.elf
+*.hex
+*.objdump
+*.map
+*.lst
+
+# BSP / app build artifacts
+
+sw/**/build/
+sw/**/CMakeFiles/
+sw/**/Makefile
+
+# ---- Quartus ----
+
 quartus/project/db/
 quartus/project/incremental_db/
 quartus/project/output_files/
-
-# Questa/ModelSim generated
-simulation/questa/
-simulation/modelsim/
-vsim.wlf
-wlf*
-transcript
-*.wlf
-*.qdb
-*.qpg
-*.qtl
-*.vo
-*.sft
-msim_transcript
-modelsim.ini
-*.do.bak*
-rtl_work/
-work/
 quartus/project/simulation/
-quartus/project/simulation/**
 
-#OS
+*.rpt
+*.qmsg
+*.summary
+*.smsg
+*.done
+
+*.sof
+*.pof
+*.jdi
+*.cdf
+
+*.qar
+*.qdf
+*.qpf.bak
+*.qsf.bak
+
+# ---- Platform Designer ----
+
+pd/**/synthesis/
+pd/**/submodules/
+pd/**/simulation/
+
+pd/.qsys_edit/
+quartus/.qsys_edit/
+
+# ---- Simulation (Questa / ModelSim) ----
+
+work/
+vsim.wlf
+*.wlf
+*.vcd
+transcript
+build/sim/
+
+# ---- Editor / OS ----
+
+.vscode/
 .DS_Store
 Thumbs.db
-
-
-#diagrams.net/ draw.io temp + backup files
-**/*.drawio.bkp
-**/*.drawio~
-**/*.drawio.dtmp
-**/*.drawio.autosave
-**/*.~lock.*

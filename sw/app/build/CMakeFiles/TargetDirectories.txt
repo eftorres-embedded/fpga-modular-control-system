@@ -1,9 +1,0 @@
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/CMakeFiles/app.elf.dir
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/CMakeFiles/create-objdump.dir
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/CMakeFiles/niosv-stack-report.dir
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/CMakeFiles/create-hex.dir
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/CMakeFiles/edit_cache.dir
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/CMakeFiles/rebuild_cache.dir
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/bsp/CMakeFiles/hal2_bsp.dir
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/bsp/CMakeFiles/edit_cache.dir
-D:/fpga_projects/fpga-modular-control-system/sw/app/build/bsp/CMakeFiles/rebuild_cache.dir
