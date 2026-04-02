@@ -1,5 +1,6 @@
 	niosv_modular_control_system u0 (
-		.clock_in_clk_clk     (<connected-to-clock_in_clk_clk>),     // clock_in_clk.clk
-		.reset_in_rst_reset_n (<connected-to-reset_in_rst_reset_n>)  // reset_in_rst.reset_n
+		.clk_clk         (<connected-to-clk_clk>),         //     clk.clk
+		.rst_n_reset_n   (<connected-to-rst_n_reset_n>),   //   rst_n.reset_n
+		.pwm_out_conduit (<connected-to-pwm_out_conduit>)  // pwm_out.conduit
 	);
 

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
-/*
+
 #define	PWM_BASE	0x00030000
 
 #define	REG_CTRL	(*(volatile uint32_t*)(PWM_BASE + 0x00))
@@ -58,9 +58,7 @@ int main(void)
     printf("cnt    = %lu\n", REG_CNT);
 	printf("DUTY REG = %lu\n", REG_DUTY);
 	printf("PERIOD REG = %lu\n\n\n", REG_PERIOD);
-*/	
-int main(void)
-{
+
 	
     // -------------------------------------------------
     // 1. Variable test
@@ -114,7 +112,7 @@ int main(void)
     uint32_t heartbeat = 0;
 	while(1)
 	{
-		/*
+		
 		//ramp up
 		for(int32_t d = 0; d <= 50000; d += 100)
 		{
@@ -130,18 +128,8 @@ int main(void)
 			REG_APPLY = 1;
 			usleep(2001);
 		}
-		*/
 		
-		printf("=== Nios V Basic Test Start ===\n");
-		printf("Heartbeat: %lu\n", heartbeat++);
-        usleep(500000); // 500 ms
-
-        // simple rollover test
-        if (heartbeat == 10)
-		{
-            printf("Resetting heartbeat...\n");
-            heartbeat = 0;
-        }
+	
 
 	}
 	return 0;

@@ -1,13 +1,15 @@
 	component niosv_modular_control_system is
 		port (
-			clock_in_clk_clk     : in std_logic := 'X'; -- clk
-			reset_in_rst_reset_n : in std_logic := 'X'  -- reset_n
+			clk_clk         : in  std_logic := 'X'; -- clk
+			rst_n_reset_n   : in  std_logic := 'X'; -- reset_n
+			pwm_out_conduit : out std_logic         -- conduit
 		);
 	end component niosv_modular_control_system;
 
 	u0 : component niosv_modular_control_system
 		port map (
-			clock_in_clk_clk     => CONNECTED_TO_clock_in_clk_clk,     -- clock_in_clk.clk
-			reset_in_rst_reset_n => CONNECTED_TO_reset_in_rst_reset_n  -- reset_in_rst.reset_n
+			clk_clk         => CONNECTED_TO_clk_clk,         --     clk.clk
+			rst_n_reset_n   => CONNECTED_TO_rst_n_reset_n,   --   rst_n.reset_n
+			pwm_out_conduit => CONNECTED_TO_pwm_out_conduit  -- pwm_out.conduit
 		);
 
