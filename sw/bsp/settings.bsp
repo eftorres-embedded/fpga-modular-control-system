@@ -2,12 +2,12 @@
 <sch:Settings xmlns:sch="http://www.altera.com/embeddedsw/bsp/schema">
         <BspType>hal2</BspType>
         <BspVersion>default</BspVersion>
-        <BspGeneratedTimeStamp>Mar 31, 2026 11:17:51 AM</BspGeneratedTimeStamp>
-        <BspGeneratedUnixTimeStamp>1774973871231</BspGeneratedUnixTimeStamp>
+        <BspGeneratedTimeStamp>Apr 1, 2026 10:54:45 PM</BspGeneratedTimeStamp>
+        <BspGeneratedUnixTimeStamp>1775102085192</BspGeneratedUnixTimeStamp>
         <BspGeneratedLocation>D:\fpga_projects\fpga-modular-control-system\sw\bsp</BspGeneratedLocation>
         <BspSettingsFile>D:\fpga_projects\fpga-modular-control-system\sw\bsp\settings.bsp</BspSettingsFile>
         <SopcDesignFile>..\..\pd\niosv_modular_control_system.sopcinfo</SopcDesignFile>
-        <SystemFileHash>aebbeb5e3feb955192cb57646b3b8fa88a903ef850fb96a943eed0733f9ff</SystemFileHash>
+        <SystemFileHash>2073d4240ca3e6e4b7e2276a25bce1b44b9239a969a44b8a4e0d5a46144d3c8</SystemFileHash>
         <JdiFile>default</JdiFile>
         <Cpu>intel_niosv</Cpu>
         <SchemaVersion>1.9</SchemaVersion>
@@ -612,14 +612,20 @@
                 <attributes/>
         </MemoryMap>
         <MemoryMap>
+                <slaveDescriptor>pwm_module</slaveDescriptor>
+                <addressRange>0x00030000 - 0x00030FFF</addressRange>
+                <addressSpan>4096</addressSpan>
+                <attributes/>
+        </MemoryMap>
+        <MemoryMap>
                 <slaveDescriptor>intel_niosv_timer_sw_agent</slaveDescriptor>
-                <addressRange>0x00030000 - 0x0003003F</addressRange>
+                <addressRange>0x00031000 - 0x0003103F</addressRange>
                 <addressSpan>64</addressSpan>
                 <attributes/>
         </MemoryMap>
         <MemoryMap>
                 <slaveDescriptor>jtag_uart</slaveDescriptor>
-                <addressRange>0x00030040 - 0x00030047</addressRange>
+                <addressRange>0x00031040 - 0x00031047</addressRange>
                 <addressSpan>8</addressSpan>
                 <attributes>printable</attributes>
         </MemoryMap>

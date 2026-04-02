@@ -4,7 +4,7 @@
  * Machine generated for CPU 'intel_niosv' in SOPC Builder design 'niosv_modular_control_system'
  * SOPC Builder design path: ../../pd/niosv_modular_control_system.sopcinfo
  *
- * Generated: Tue Mar 31 11:17:52 CDT 2026
+ * Generated: Wed Apr 01 22:54:45 CDT 2026
  */
 
 /*
@@ -74,7 +74,7 @@
 #define ALT_CPU_ICACHE_SIZE 0
 #define ALT_CPU_INST_ADDR_WIDTH 0x20
 #define ALT_CPU_INT_MODE 0
-#define ALT_CPU_MTIME_OFFSET 0x00030000
+#define ALT_CPU_MTIME_OFFSET 0x00031000
 #define ALT_CPU_NAME "intel_niosv"
 #define ALT_CPU_NIOSV_CORE_VARIANT 1
 #define ALT_CPU_NUM_GPR 32
@@ -100,7 +100,7 @@
 #define ABBOTTSLAKE_ICACHE_SIZE 0
 #define ABBOTTSLAKE_INST_ADDR_WIDTH 0x20
 #define ABBOTTSLAKE_INT_MODE 0
-#define ABBOTTSLAKE_MTIME_OFFSET 0x00030000
+#define ABBOTTSLAKE_MTIME_OFFSET 0x00031000
 #define ABBOTTSLAKE_NIOSV_CORE_VARIANT 1
 #define ABBOTTSLAKE_NUM_GPR 32
 #define ABBOTTSLAKE_RESET_ADDR 0x00000000
@@ -115,6 +115,7 @@
 
 #define __ALTERA_AVALON_JTAG_UART
 #define __ALTERA_AVALON_ONCHIP_MEMORY2
+#define __AXI_LITE_PWM_FULL
 #define __INTEL_NIOSV_M
 
 
@@ -134,19 +135,19 @@
 #define ALT_NUM_INTERNAL_INTERRUPT_CONTROLLERS 1
 #define ALT_NUM_INTERRUPT_CONTROLLERS 1
 #define ALT_STDERR "/dev/jtag_uart"
-#define ALT_STDERR_BASE 0x30040
+#define ALT_STDERR_BASE 0x31040
 #define ALT_STDERR_DEV jtag_uart
 #define ALT_STDERR_IS_JTAG_UART
 #define ALT_STDERR_PRESENT
 #define ALT_STDERR_TYPE "altera_avalon_jtag_uart"
 #define ALT_STDIN "/dev/jtag_uart"
-#define ALT_STDIN_BASE 0x30040
+#define ALT_STDIN_BASE 0x31040
 #define ALT_STDIN_DEV jtag_uart
 #define ALT_STDIN_IS_JTAG_UART
 #define ALT_STDIN_PRESENT
 #define ALT_STDIN_TYPE "altera_avalon_jtag_uart"
 #define ALT_STDOUT "/dev/jtag_uart"
-#define ALT_STDOUT_BASE 0x30040
+#define ALT_STDOUT_BASE 0x31040
 #define ALT_STDOUT_DEV jtag_uart
 #define ALT_STDOUT_IS_JTAG_UART
 #define ALT_STDOUT_PRESENT
@@ -190,7 +191,7 @@
 #define INTEL_NIOSV_DM_AGENT_INT_MODE 0
 #define INTEL_NIOSV_DM_AGENT_IRQ -1
 #define INTEL_NIOSV_DM_AGENT_IRQ_INTERRUPT_CONTROLLER_ID -1
-#define INTEL_NIOSV_DM_AGENT_MTIME_OFFSET 0x00030000
+#define INTEL_NIOSV_DM_AGENT_MTIME_OFFSET 0x00031000
 #define INTEL_NIOSV_DM_AGENT_NAME "/dev/intel_niosv_dm_agent"
 #define INTEL_NIOSV_DM_AGENT_NIOSV_CORE_VARIANT 1
 #define INTEL_NIOSV_DM_AGENT_NUM_GPR 32
@@ -215,7 +216,7 @@
  */
 
 #define ALT_MODULE_CLASS_intel_niosv_timer_sw_agent intel_niosv_m
-#define INTEL_NIOSV_TIMER_SW_AGENT_BASE 0x30000
+#define INTEL_NIOSV_TIMER_SW_AGENT_BASE 0x31000
 #define INTEL_NIOSV_TIMER_SW_AGENT_CPU_FREQ 50000000u
 #define INTEL_NIOSV_TIMER_SW_AGENT_DATA_ADDR_WIDTH 0x20
 #define INTEL_NIOSV_TIMER_SW_AGENT_DCACHE_LINE_SIZE 0
@@ -231,7 +232,7 @@
 #define INTEL_NIOSV_TIMER_SW_AGENT_INT_MODE 0
 #define INTEL_NIOSV_TIMER_SW_AGENT_IRQ -1
 #define INTEL_NIOSV_TIMER_SW_AGENT_IRQ_INTERRUPT_CONTROLLER_ID -1
-#define INTEL_NIOSV_TIMER_SW_AGENT_MTIME_OFFSET 0x00030000
+#define INTEL_NIOSV_TIMER_SW_AGENT_MTIME_OFFSET 0x00031000
 #define INTEL_NIOSV_TIMER_SW_AGENT_NAME "/dev/intel_niosv_timer_sw_agent"
 #define INTEL_NIOSV_TIMER_SW_AGENT_NIOSV_CORE_VARIANT 1
 #define INTEL_NIOSV_TIMER_SW_AGENT_NUM_GPR 32
@@ -248,7 +249,7 @@
  */
 
 #define ALT_MODULE_CLASS_jtag_uart altera_avalon_jtag_uart
-#define JTAG_UART_BASE 0x30040
+#define JTAG_UART_BASE 0x31040
 #define JTAG_UART_IRQ 0
 #define JTAG_UART_IRQ_INTERRUPT_CONTROLLER_ID 0
 #define JTAG_UART_NAME "/dev/jtag_uart"
@@ -287,5 +288,19 @@
 #define ONCHIP_MEMORY_SPAN 131072
 #define ONCHIP_MEMORY_TYPE "altera_avalon_onchip_memory2"
 #define ONCHIP_MEMORY_WRITABLE 1
+
+
+/*
+ * pwm_module configuration
+ *
+ */
+
+#define ALT_MODULE_CLASS_pwm_module AXI_Lite_PWM_Full
+#define PWM_MODULE_BASE 0x30000
+#define PWM_MODULE_IRQ -1
+#define PWM_MODULE_IRQ_INTERRUPT_CONTROLLER_ID -1
+#define PWM_MODULE_NAME "/dev/pwm_module"
+#define PWM_MODULE_SPAN 4096
+#define PWM_MODULE_TYPE "AXI_Lite_PWM_Full"
 
 #endif /* __SYSTEM_H_ */

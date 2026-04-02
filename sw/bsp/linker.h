@@ -4,7 +4,7 @@
  * Machine generated for CPU 'intel_niosv' in SOPC Builder design 'niosv_modular_control_system'
  * SOPC Builder design path: ../../pd/niosv_modular_control_system.sopcinfo
  *
- * Generated: Tue Mar 31 11:17:52 CDT 2026
+ * Generated: Wed Apr 01 22:54:45 CDT 2026
  */
 
 /*
