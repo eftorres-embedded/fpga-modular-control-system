@@ -11,15 +11,152 @@
 // -Vendor SPI master treated as a black box
 // -Sticky DONE and RX_VALID status bit
 // -START / Clear bits are write-one pulse actions
-// - AXI-Lite Wrapper talks to this block through a generic MMIO interface
+// -AXI-Lite Wrapper talks to this block through a generic MMIO interface
+// -DONE_IE and RX_VALID_IE are spearate interrupt-enable bits
+// -DONE_IP and RX_VALID_IP are separate interrupt-pending bits
+// -irq output is level-sensitive and stays asserted until software clears pending bits
+//
+// -
 //
 //Register map (32-bit words):
 //  0x00    CTRL
-//          bit 0   ENABLE          WR
-//          bit 1   START           W1P
-//          bit 2   XFER_END        WR
-//          bit 3   CLR_DONE        W1P
-//          bit 4   CLR_RX_VALID    W1P
+//          bit 0   ENABLE          WR      Turn SPI module on
+//          bit 1   START           W1P     Start transaction
+//          bit 2   XFER_END        WR      Default:1 > Realease CS after transfer; 0 > CS stays low
+//          bit 3   CLR_DONE        W1P     Clears the DONE flag from STATUS register
+//          bit 4   CLR_RX_VALID    W1P     Clears the RX_VALID flag from  STATUS register
 //
 //  0X04    STATUS
-//  
+//          bit 0   BUSY            RO      Transactions is in progress
+//          bit 1   DONE            RO      Transaction has finished    (sticky)
+//          bit 2   RX_VALID        RO      Data received is valide     (sticky)
+//          bit 3   TX_READY        RO      SPI module can send another word
+//          bit 4   ENABLED         RO      SPI module is on (enabled)
+//          bit 5   CS_ACTIVE       RO      CS is asserted
+//
+//  0x08    TXDATA
+//          bits[7:0] TX byte       WO
+//
+//  0x0C    RXDATA
+//          bits[7:0] RX byte       RO
+//
+//  0x10    IRQ_EN
+//          bit 0   DONE_IE         RW      interrupt enable for transfer done
+//          bit 1   RX_VALID_IE     RW      interrupt enable for RX valid
+//
+//  0x14    IRQ_STATUS
+//          bit 0   DONE_IP         RO/W1C  interrupt   pending for done
+//          bit 1   RX_VALID_IP     RO/W1C  interrupt pending for rx valid
+//
+// -----------------------Policy--------------------------
+//One START sends exactly one SPIO word
+//START is ignored while buys
+//ENABLE and XFER_END may only be updated while idle
+//TXDATA may be updated while busy; it applies to the next transfer
+//CLR_DONE / CLR_RX_VALID are allowed anytime
+//
+//Notation:
+// -RW      =   normal read/write storage bit
+// -RO      =   read-only from software perspective
+// -W1P     =   write-one pulse; action bit, not stored
+// -RO/W1C  =   read-only sticky bit; write 1 clears it    
+//
+//Notes:
+// -XFER_END should stay 1 in software for sing-word transaction
+// -XFER_END=0 is a future feautrue behavior for multi-word CS hold
+//----------------------------------------------------------------------
+
+module  spi_regs    #(
+    parameter   int unsigned    ADDR_W      =   12,
+    parameter   int unsigned    DATA_W      =   32,
+
+    //Fixed hardware configuratin for vendor core
+    parameter   bit             CPOL        =   1'b0,
+    parameter   bit             CPHA        =   1'b1,
+    parameter   string          BITORDER    =   "MSB_FIRST",
+    parameter   int unsigned    SPI_DW      =   9,
+    parameter   int unsigned    CLKDIV      =   9)
+
+    (
+    input   logic               clk,
+    input   logic               rst_n,
+    
+    //--------------------------------------------------------
+    //Generic MMIO request / response interface
+    //--------------------------------------------------------
+    input   logic                       req_valid,
+    output  logic                       req_ready,
+    input   logic                       req_write,
+    input   logic   [ADDR_W-1:0]        req_addr,
+    input   logic   [DATA_W-1:0]        req_wdata,
+    input   logic   [(DATA_W/8)-1:0]    req_wstrb,
+
+    output  logic                       rsp_valid,
+    input   logic                       rsp_ready,
+    output  logic   [DATA_W-1:0]        rsp_rdata,
+    output  logic                       rsp_err,
+
+    output  logic                       irq,
+
+    //--------------------------------------------------------
+    //External SPI pins
+    //--------------------------------------------------------
+    output  logic                       spi_sclk,
+    output  logic                       spi_mosi,
+    input   loigc                       spi_miso,
+    output  logic                       spi_cs_n);
+
+    //--------------------------------------------------------------
+    //Register offsets
+    //--------------------------------------------------------------
+    localparam  logic   [ADDR_W-1:0]    REG_CTRL            =   'h0;
+    localparam  logic   [ADDR_W-1:0]    REG_STATUS          =   'h4;
+    localparam  logic   [ADDR_W-1:0]    REG_TXDATA          =   'h8;
+    localparam  logic   [ADDR_W-1:0]    REG_RXDATA          =   'hC;
+    localparam  logic   [ADDR_W-1:0]    REG_IRQ_EN          =   'h10;
+    localparam  logic   [ADDR_W-1:0]    REG_IRQ_STATUS      =   'h14;
+
+    //--------------------------------------------------------------
+    //CTRL bits
+    //--------------------------------------------------------------
+    localparam  int CTRL_ENABLE_BIT         =   0;
+    localparam  int CTRL_START_BIT          =   1;
+    localparam  int CTRL_XFER_END_BIT       =   2;
+    localparam  int CTRL_CLR_DONE_BIT       =   3;
+    localparam  int CTRL_CLR_RX_VALID_BIT   =   4;
+
+    //--------------------------------------------------------------
+    //STATUS bits
+    //--------------------------------------------------------------
+    localparam  int STATUS_BUSY_BIT     =   0;
+    localparam  int STATUS_DONE_BIT     =   1;
+    localparam  int STATUS_RX_VALID_BIT =   2;
+    localparam  int STATUS_TX_READY_BIT =   3;
+    localparam  int STATUS_ENABLED_BIT  =   4;
+    localparam  int STATUS_CS_ACTIVE_BIT=   5;
+
+    //--------------------------------------------------------------
+    //IRQ_EN / IRQ_STATUS bits
+    //--------------------------------------------------------------
+    localparam  int IRQ_DONE_BIT        =   0;
+    localparam  int IRQ_RX_VALID_BIT    =   1;
+
+    //--------------------------------------------------------------
+    //Procted from using ilegal data bus width and spi data with
+    //--------------------------------------------------------------
+    initial
+    begin
+        if(DATA_W!=32)
+        begin
+            $error("spi_regs: implementation expects DATA_W == 32");
+        end
+
+        if(SPI_DW>8)
+        begin
+            $error("spi_regs: regsiter packing expects SPI_DW <= 8");
+        end
+    end
+
+    //---------------------------------------------------------------
+    //Generic MMIO accpetance
+    //---------------------------------------------------------------
