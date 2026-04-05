@@ -199,7 +199,7 @@ module  spi_regs    #(
         wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_CLR_DONE_BIT];
 
     assign  clr_rx_valid_cmd_fire   =
-        wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_CRL_RX_VALID_BIT];
+        wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_CLR_RX_VALID_BIT];
 
     //--------------------------------------------------------------------
     //Stored control / data registers
@@ -282,7 +282,7 @@ module  spi_regs    #(
         begin
             ctrl_enable     <=  1'b0;
             ctrl_xfer_end   <=  1'b1;   //safe default for one-word transactions
-            txdata_reg      <=  8'h00;
+            txdata_reg      <=  '0;
         end
         else
         begin
@@ -315,7 +315,7 @@ module  spi_regs    #(
             busy            <=  1'b0;
             done            <=  1'b0;
             rx_valid        <=  1'b0;
-            rxdata_reg      <=  8'h00;
+            rxdata_reg      <=  '0;
         end
         else
         begin
