@@ -480,3 +480,71 @@ begin
         end
     endcase
 end
+
+//-----------------------------------------------------------------
+//Response channel
+//-----------------------------------------------------------------
+//One response per accepted request
+//Response is held until rsp_ready
+logic   [DATA_W-1]  rsp_rdata_r;
+logic               sp_err_r;
+
+always_ff   @(posedge   clk or  negedge rst_n)
+begin
+    if(!rst_n)
+    begin
+        rsp_valid   <=  1'b0;
+        rsp_rdata   <=  '0;
+        rsp_err_r   <=  1'b0;
+    end
+    else
+    begin
+        //Existing response accepted by upstream
+        if(rsp_valid    &&  rsp_ready)
+        begin
+            rsp_valid   <=  1'b0;
+        end
+
+        //New request accepted only if no response is currently outstanding
+        if(!rsp_valid   && req_fire)
+        begin
+            rsp_valid       <=  1'b1;
+            rsp_rdata_r     <=  rdata_next;
+            rsp_err_r       <=  err_next;
+        end
+    end
+end
+
+assign  rsp_rdata   =   rsp_rdata_r;
+assign  rsp_err     =   rsp_err_r;
+
+//------------------------------------------------------------------
+//Vendor SPI master instantiation
+//------------------------------------------------------------------
+//Treat this as a black box:
+//  - I_wvalid  launches a word transfer
+//  - O_wready says the core can accpet a word
+//  - O_rvalid/O_rdata indicate received data data completion
+//  - O_csn / O_sclk / O_mosi are the SPI outputs
+spi_master  #(
+    .CPOL(CPOL),
+    .CPHA(CPHA),
+    .BITORDER(BITORDER),
+    .DATAWIDTH(SPI_DW),
+    .CLKDIV(CLKDIV))
+u_spi_master(
+    .I_clk(clk),
+    .I_rstn(rst_n),
+
+    .I_wvalid(core_wvalid),
+    .I_transfer_end(core_transfer_end),
+    .I_wdata(core_wdata),
+
+    .O_wready(core_wready),
+    .O_rdata(core_rdata),
+    .O_rvalid(core_rvalid),
+
+    .O_scn(spi_cs_n),
+    .O_sclk(spi_sclk),
+    .O_mosi(spi_mosi),
+    .I_miso(spi_miso));    
