@@ -103,7 +103,7 @@ module  spi_regs    #(
     //--------------------------------------------------------
     output  logic                       spi_sclk,
     output  logic                       spi_mosi,
-    input   loigc                       spi_miso,
+    input   logic                       spi_miso,
     output  logic                       spi_cs_n);
 
     //--------------------------------------------------------------
@@ -188,18 +188,18 @@ module  spi_regs    #(
     //------------------------------------------------------------------
     //Pluse command from CTRL writes
     //------------------------------------------------------------------
-    logic   start_comd_fire;
+    logic   start_cmd_fire;
     logic   clr_done_cmd_fire;
     logic   clr_rx_valid_cmd_fire;
 
     assign  start_cmd_fire  =   
         wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_START_BIT];
 
-    assign  clr_done_fire   = 
+    assign  clr_done_cmd_fire   = 
         wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_CLR_DONE_BIT];
 
     assign  clr_rx_valid_cmd_fire   =
-        wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_CRL_RX_VALAID_BIT];
+        wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_CRL_RX_VALID_BIT];
 
     //--------------------------------------------------------------------
     //Stored control / data registers
@@ -237,7 +237,7 @@ module  spi_regs    #(
     logic                   core_transfer_end;
 
     logic   [SPI_DW-1:0]    core_rdata;
-    logic   [SPI_DW-1:0]    core_rvalid;
+    logic                   core_rvalid;
 
     //-----------------------------------------------------------------
     //Internal event naming
@@ -270,7 +270,7 @@ module  spi_regs    #(
     //------------------------------------------------------------------
     //core_wvalid is a one-cycle pulse when a transfer is launched
     assign  core_wvalid         =   tx_fire;
-    assign  core_wdata          =   tx_data_reg[SPI_DW-1:0];
+    assign  core_wdata          =   txdata_reg[SPI_DW-1:0];
     assign  core_transfer_end   =   ctrl_xfer_end;
 
     //------------------------------------------------------------------
@@ -291,7 +291,7 @@ module  spi_regs    #(
             // -This prevents active transfer behavior from changing mid-transaction
             if(wr_ctrl_fire &&  !busy   &&  req_wstrb[0])
             begin
-                ctrl_enable     <=  req_wdata[CTRL_ENABLE_BIT]
+                ctrl_enable     <=  req_wdata[CTRL_ENABLE_BIT];
                 ctrl_xfer_end   <=  req_wdata[CTRL_XFER_END_BIT];
             end
 
@@ -380,7 +380,7 @@ module  spi_regs    #(
     // and vice versa
     always_ff   @(posedge clk or negedge rst_n)
     begin
-        (!rst_n)
+        if(!rst_n)
         begin
             irq_done_pending        <=  1'b0;
             irq_rx_valid_pending    <=  1'b0;
@@ -395,7 +395,7 @@ module  spi_regs    #(
             end
 
             //Sofware clears pending bits by writing 1 to IRQ_STATUS (W1C)
-            if(wr_irq_status && req_wstrb[0])
+            if(wr_irq_status_fire && req_wstrb[0])
             begin
                 if(req_wdata[IRQ_DONE_BIT])
                 begin
@@ -486,15 +486,15 @@ end
 //-----------------------------------------------------------------
 //One response per accepted request
 //Response is held until rsp_ready
-logic   [DATA_W-1]  rsp_rdata_r;
-logic               sp_err_r;
+logic   [DATA_W-1:0]    rsp_rdata_r;
+logic                   rsp_err_r;
 
 always_ff   @(posedge   clk or  negedge rst_n)
 begin
     if(!rst_n)
     begin
         rsp_valid   <=  1'b0;
-        rsp_rdata   <=  '0;
+        rsp_rdata_r <=  '0;
         rsp_err_r   <=  1'b0;
     end
     else
@@ -544,7 +544,7 @@ u_spi_master(
     .O_rdata(core_rdata),
     .O_rvalid(core_rvalid),
 
-    .O_scn(spi_cs_n),
+    .O_csn(spi_cs_n),
     .O_sclk(spi_sclk),
     .O_mosi(spi_mosi),
     .I_miso(spi_miso));    
