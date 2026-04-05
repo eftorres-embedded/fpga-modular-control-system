@@ -276,3 +276,207 @@ module  spi_regs    #(
     //------------------------------------------------------------------
     //CTRL and TXDATA storage
     //------------------------------------------------------------------
+    always_ff @(posedge clk or negedge rst_n)
+    begin
+        if(!rst_n)
+        begin
+            ctrl_enable     <=  1'b0;
+            ctrl_xfer_end   <=  1'b1;   //safe default for one-word transactions
+            txdata_reg      <=  8'h00;
+        end
+        else
+        begin
+            //CTRL RW policy:
+            // -ENABLE and XFER_END are only writable while idle
+            // -This prevents active transfer behavior from changing mid-transaction
+            if(wr_ctrl_fire &&  !busy   &&  req_wstrb[0])
+            begin
+                ctrl_enable     <=  req_wdata[CTRL_ENABLE_BIT]
+                ctrl_xfer_end   <=  req_wdata[CTRL_XFER_END_BIT];
+            end
+
+            //TXDATA is just a holding register for the next transfer
+            //allowing writes while busy is safe; it does not affect an already
+            //launched transfer because core_wdata is only sampled on tx_fire.
+            if(wr_txdata_fire   &&  req_wstrb[0])
+            begin
+                txdata_reg  <=  req_wdata[7:0];
+            end
+        end
+    end
+
+    //--------------------------------------------------------------------------
+    //STATUS bit storage
+    //-------------------------------------------------------------------------
+    always_ff @(posedge clk or negedge rst_n)
+    begin
+        if(!rst_n)
+        begin
+            busy            <=  1'b0;
+            done            <=  1'b0;
+            rx_valid        <=  1'b0;
+            rxdata_reg      <=  8'h00;
+        end
+        else
+        begin
+            //Enter busy stat when the wrapper successfully launches a transfer
+            if(tx_fire)
+            begin
+                busy    <=  1'b1;
+            end
+
+            //In this one-word wrapper, receiving one word marks completition
+            if(rx_fire)
+            begin
+                busy        <=  1'b0;
+                done        <=  1'b1;
+                rx_valid    <=  1'b1;
+                rxdata_reg  <=  core_rdata[7:0];
+            end
+
+            //Sticky STATUS flags are cleared explicityly by sofware through CTRL
+            if(clr_done_cmd_fire)
+            begin
+                done    <=  1'b0;
+            end
+
+            if(clr_rx_valid_cmd_fire)
+            begin
+                rx_valid    <=  1'b0;
+            end
+        end
+    end
+
+
+    //---------------------------------------------------------------------------
+    //IRQ enable storage
+    //--------------------------------------------------------------------------
+    always_ff @(posedge clk or negedge rst_n)
+    begin
+        if(!rst_n)
+        begin
+            irq_en_done     <=  1'b0;
+            irq_en_rx_valid <=  1'b0;
+        end
+        else
+        begin
+            if(wr_irq_en_fire   &&  req_wstrb[0])
+            begin
+                irq_en_done     <=  req_wdata[IRQ_DONE_BIT];
+                irq_en_rx_valid <=  req_wdata[IRQ_RX_VALID_BIT];
+            end
+        end
+    end
+
+    //--------------------------------------------------------------------------
+    //IRQ enable storage
+    //--------------------------------------------------------------------------
+    //These are separate from STATUS.DONE and STATUS.RX_VALID on purpose.
+    //
+    //Why are they separated
+    // - STATUS bits tell software what happened in the peripheral
+    // - IRQ pending bits tell the interrupt controller / ISR what must be acknowledge
+    // - Software cna clear interrupt pending without necessarily clearing STATUS
+    // and vice versa
+    always_ff   @(posedge clk or negedge rst_n)
+    begin
+        (!rst_n)
+        begin
+            irq_done_pending        <=  1'b0;
+            irq_rx_valid_pending    <=  1'b0;
+        end
+        else
+        begin
+            //Hardware sets pending bits when the event occurs.
+            if(rx_fire)
+            begin
+                irq_done_pending        <=  1'b1;
+                irq_rx_valid_pending    <=  1'b1;
+            end
+
+            //Sofware clears pending bits by writing 1 to IRQ_STATUS (W1C)
+            if(wr_irq_status && req_wstrb[0])
+            begin
+                if(req_wdata[IRQ_DONE_BIT])
+                begin
+                    irq_done_pending    <=  1'b0;
+                end
+
+                if(req_wdata[IRQ_RX_VALID_BIT])
+                begin
+                    irq_rx_valid_pending    <=  1'b0;
+                end
+            end
+        end
+    end
+
+
+//------------------------------------------------------------------------
+//Combine interrupt output
+//------------------------------------------------------------------
+//Level-sensitive interrupt:
+//irq remain asserted while t least one enabled pending source is active.
+//
+//This is usually preferable for CPU integration because it avoids missed
+//one-cycle pulses and cleanly supports software acknowledgement
+assign  irq =   (irq_en_done        &&  irq_done_pending)   ||
+                (irq_en_rx_valid    &&  irq_rx_valid_pending);
+
+//----------------------------------------------------------------------
+//Read mux
+//----------------------------------------------------------------------
+logic   [DATA_W-1:0]    rdata_next;
+logic                   err_next;
+
+always_comb
+begin
+    rdata_next  =   '0;
+    err_next    =   1'b0;
+
+    unique  case    (req_addr)
+        REG_CTRL:
+        begin
+            //W1P bits read back as 0 because they are actions, not storage.
+            rdata_next[CTRL_ENABLE_BIT]     =   ctrl_enable;
+            rdata_next[CTRL_XFER_END_BIT]   =   ctrl_xfer_end;
+        end
+
+        REG_STATUS:
+        begin
+            rdata_next[STATUS_BUSY_BIT]      = busy;
+            rdata_next[STATUS_DONE_BIT]      = done;
+            rdata_next[STATUS_RX_VALID_BIT]  = rx_valid;
+            rdata_next[STATUS_TX_READY_BIT]  = core_wready;
+            rdata_next[STATUS_ENABLED_BIT]   = ctrl_enable;
+            rdata_next[STATUS_CS_ACTIVE_BIT] = ~spi_cs_n;
+        end
+
+        REG_TXDATA:
+        begin
+            rdata_next[7:0] = txdata_reg;
+        end
+
+        REG_RXDATA:
+        begin
+            rdata_next[7:0] = rxdata_reg;
+        end
+
+        REG_IRQ_EN:
+        begin
+            rdata_next[IRQ_DONE_BIT]     = irq_en_done;
+            rdata_next[IRQ_RX_VALID_BIT] = irq_en_rx_valid;
+        end
+
+        REG_IRQ_STATUS:
+        begin
+            rdata_next[IRQ_DONE_BIT]     = irq_done_pending;
+            rdata_next[IRQ_RX_VALID_BIT] = irq_rx_valid_pending;
+        end
+
+        default:
+        begin
+            rdata_next = '0;
+            err_next   = 1'b1;
+        end
+    endcase
+end
