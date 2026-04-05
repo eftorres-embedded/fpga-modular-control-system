@@ -74,8 +74,8 @@ module  spi_regs    #(
     parameter   bit             CPOL        =   1'b0,
     parameter   bit             CPHA        =   1'b1,
     parameter   string          BITORDER    =   "MSB_FIRST",
-    parameter   int unsigned    SPI_DW      =   9,
-    parameter   int unsigned    CLKDIV      =   9)
+    parameter   int unsigned    SPI_DW      =   8,
+    parameter   int unsigned    CLKDIV      =   8)
 
     (
     input   logic               clk,
@@ -160,3 +160,119 @@ module  spi_regs    #(
     //---------------------------------------------------------------
     //Generic MMIO accpetance
     //---------------------------------------------------------------
+    //This block is simple and doesn't back-pressures requests internally.
+    //One response is generated per accepted request
+    assign req_ready = 1'b1;
+
+    logic   req_fire;
+    logic   wr_fire;
+    logic   rd_fire;
+    
+    assign  req_fire    =   req_valid   &&  req_ready;
+    assign  wr_fire     =   req_fire    &&  req_write;
+    assign  rd_fire     =   req_fire    &&  !req_write;
+
+    //-----------------------------------------------------------------
+    //Write decode helpers
+    //-----------------------------------------------------------------
+    logic   wr_ctrl_fire;
+    logic   wr_txdata_fire;
+    logic   wr_irq_en_fire;
+    logic   wr_irq_status_fire;
+
+    assign  wr_ctrl_fire        =   wr_fire &&  (req_addr   ==  REG_CTRL);
+    assign  wr_txdata_fire      =   wr_fire &&  (req_addr   ==  REG_TXDATA);
+    assign  wr_irq_en_fire      =   wr_fire &&  (req_addr   ==  REG_IRQ_EN);
+    assign  wr_irq_status_fire  =   wr_fire &&  (req_addr   ==  REG_IRQ_STATUS);
+
+    //------------------------------------------------------------------
+    //Pluse command from CTRL writes
+    //------------------------------------------------------------------
+    logic   start_comd_fire;
+    logic   clr_done_cmd_fire;
+    logic   clr_rx_valid_cmd_fire;
+
+    assign  start_cmd_fire  =   
+        wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_START_BIT];
+
+    assign  clr_done_fire   = 
+        wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_CLR_DONE_BIT];
+
+    assign  clr_rx_valid_cmd_fire   =
+        wr_ctrl_fire    &&  req_wstrb[0]    &&  req_wdata[CTRL_CRL_RX_VALAID_BIT];
+
+    //--------------------------------------------------------------------
+    //Stored control / data registers
+    //------------------------------------------------------------------
+    logic   ctrl_enable;
+    logic   ctrl_xfer_end;
+    logic   [SPI_DW-1:0] txdata_reg;
+    logic   [SPI_DW-1:0] rxdata_reg;
+
+    //------------------------------------------------------------------
+    //Sticky status bits visible in STATUS register
+    //------------------------------------------------------------------
+    logic   busy;
+    logic   done;
+    logic   rx_valid;
+
+    //-------------------------------------------------------------------
+    //Interrupt enable bits (software-controlled)
+    //------------------------------------------------------------------
+    logic   irq_en_done;
+    logic   irq_en_rx_valid;
+
+    //------------------------------------------------------------------
+    //Interrupt pending bits (hardware sets, software clears with W1C)
+    //------------------------------------------------------------------
+    logic   irq_done_pending;
+    logic   irq_rx_valid_pending;
+
+    //-----------------------------------------------------------------
+    //Vendor SPI core interface
+    //-----------------------------------------------------------------
+    logic                   core_wvalid;
+    logic                   core_wready;
+    logic   [SPI_DW-1:0]    core_wdata;
+    logic                   core_transfer_end;
+
+    logic   [SPI_DW-1:0]    core_rdata;
+    logic   [SPI_DW-1:0]    core_rvalid;
+
+    //-----------------------------------------------------------------
+    //Internal event naming
+    //----------------------------------------------------------------
+    logic   start_fire;
+    logic   tx_fire;
+    logic   rx_fire;
+
+    //----------------------------------------------------------------
+    //Transfer-launch acceptance policy
+    //----------------------------------------------------------------
+    //start_cmd_fire means software asked to start
+    //start_fire Means the wrapper accepted the request
+    //
+    //A START is accepted only when:
+    // - peripheral is enabled
+    // - no transfer is currently in progress
+    // - vendor core is ready to accpt a new word
+    assign start_fire   =   start_cmd_fire  && ctrl_enable  && !busy    && core_wready;
+
+    //One accepted START launches one SPI word.
+    assign tx_fire  =   start_fire;
+
+    //The vendor core assesrts )rvalid when a received word is available
+    //In this wrapper, that also means the one-word transfer is complete
+    assign rx_fire  =   core_rvalid;
+
+    //------------------------------------------------------------------
+    //Vendor core drie signals
+    //------------------------------------------------------------------
+    //core_wvalid is a one-cycle pulse when a transfer is launched
+    assign  core_wvalid         =   tx_fire;
+    assign  core_wdata          =   tx_data_reg[SPI_DW-1:0];
+    assign  core_transfer_end   =   ctrl_xfer_end;
+
+    //------------------------------------------------------------------
+    //CTRL and TXDATA storage
+    //------------------------------------------------------------------
