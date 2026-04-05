@@ -548,3 +548,5 @@ u_spi_master(
     .O_sclk(spi_sclk),
     .O_mosi(spi_mosi),
     .I_miso(spi_miso));    
+
+endmodule
