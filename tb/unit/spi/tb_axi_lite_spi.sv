@@ -6,8 +6,14 @@
 
 module tb_axi_lite_spi;
 
-    localparam int unsigned AXIL_ADDR_W = 12;
-    localparam int unsigned DATA_W      = 32;
+    localparam int unsigned ADDR_W   = 12;
+    localparam int unsigned DATA_W   = 32;
+
+    localparam bit          CPOL     = 1'b0;
+    localparam bit          CPHA     = 1'b1;
+    localparam string       BITORDER = "MSB_FIRST";
+    localparam int unsigned SPI_DW   = 8;
+    localparam int unsigned CLKDIV   = 8;
 
     localparam logic [1:0] AXI_RESP_OKAY   = 2'b00;
     localparam logic [1:0] AXI_RESP_SLVERR = 2'b10;
@@ -18,7 +24,7 @@ module tb_axi_lite_spi;
     logic                         clk;
     logic                         rst_n;
 
-    logic [AXIL_ADDR_W-1:0]       s_axil_awaddr;
+    logic [ADDR_W-1:0]            s_axil_awaddr;
     logic                         s_axil_awvalid;
     logic                         s_axil_awready;
 
@@ -31,7 +37,7 @@ module tb_axi_lite_spi;
     logic                         s_axil_bvalid;
     logic                         s_axil_bready;
 
-    logic [AXIL_ADDR_W-1:0]       s_axil_araddr;
+    logic [ADDR_W-1:0]            s_axil_araddr;
     logic                         s_axil_arvalid;
     logic                         s_axil_arready;
 
@@ -50,8 +56,13 @@ module tb_axi_lite_spi;
     // DUT
     //--------------------------------------------------------------------------
     axi_lite_spi #(
-        .AXIL_ADDR_W (AXIL_ADDR_W),
-        .DATA_W      (DATA_W)
+        .ADDR_W   (ADDR_W),
+        .DATA_W   (DATA_W),
+        .CPOL     (CPOL),
+        .CPHA     (CPHA),
+        .BITORDER (BITORDER),
+        .SPI_DW   (SPI_DW),
+        .CLKDIV   (CLKDIV)
     ) dut (
         .clk            (clk),
         .rst_n          (rst_n),
@@ -159,9 +170,7 @@ module tb_axi_lite_spi;
     //--------------------------------------------------------------------------
     // AXI-Lite write helpers
     //--------------------------------------------------------------------------
-
-    // Send AW only, wait until accepted
-    task automatic axi_send_aw(input logic [AXIL_ADDR_W-1:0] addr);
+    task automatic axi_send_aw(input logic [ADDR_W-1:0] addr);
         begin
             @(posedge clk);
             s_axil_awaddr  <= addr;
@@ -177,7 +186,6 @@ module tb_axi_lite_spi;
         end
     endtask
 
-    // Send W only, wait until accepted
     task automatic axi_send_w(
         input logic [DATA_W-1:0]         data,
         input logic [(DATA_W/8)-1:0]     strb
@@ -199,7 +207,6 @@ module tb_axi_lite_spi;
         end
     endtask
 
-    // Wait for write response
     task automatic axi_wait_b_and_check(input logic [1:0] exp_bresp);
         begin
             s_axil_bready <= 1'b1;
@@ -215,12 +222,11 @@ module tb_axi_lite_spi;
         end
     endtask
 
-    // Full write, AW first then W
     task automatic axi_write_aw_then_w(
-        input logic [AXIL_ADDR_W-1:0]     addr,
-        input logic [DATA_W-1:0]          data,
-        input logic [(DATA_W/8)-1:0]      strb,
-        input logic [1:0]                 exp_bresp
+        input logic [ADDR_W-1:0]         addr,
+        input logic [DATA_W-1:0]         data,
+        input logic [(DATA_W/8)-1:0]     strb,
+        input logic [1:0]                exp_bresp
     );
         begin
             fork
@@ -235,12 +241,11 @@ module tb_axi_lite_spi;
         end
     endtask
 
-    // Full write, W first then AW
     task automatic axi_write_w_then_aw(
-        input logic [AXIL_ADDR_W-1:0]     addr,
-        input logic [DATA_W-1:0]          data,
-        input logic [(DATA_W/8)-1:0]      strb,
-        input logic [1:0]                 exp_bresp
+        input logic [ADDR_W-1:0]         addr,
+        input logic [DATA_W-1:0]         data,
+        input logic [(DATA_W/8)-1:0]     strb,
+        input logic [1:0]                exp_bresp
     );
         begin
             fork
@@ -256,12 +261,12 @@ module tb_axi_lite_spi;
     endtask
 
     //--------------------------------------------------------------------------
-    // AXI-Lite read helpers
+    // AXI-Lite read helper
     //--------------------------------------------------------------------------
     task automatic axi_read(
-        input  logic [AXIL_ADDR_W-1:0]     addr,
-        output logic [DATA_W-1:0]          data,
-        output logic [1:0]                 resp
+        input  logic [ADDR_W-1:0]        addr,
+        output logic [DATA_W-1:0]        data,
+        output logic [1:0]               resp
     );
         begin
             @(posedge clk);
@@ -302,59 +307,39 @@ module tb_axi_lite_spi;
 
         reset_dut();
 
-        //----------------------------------------------------------------------
-        // Test 1: reset sanity
-        //----------------------------------------------------------------------
         expect_equal_u32("reset rdata", s_axil_rdata, 32'h0000_0000);
         expect_equal_u2 ("reset bresp", s_axil_bresp, AXI_RESP_OKAY);
         expect_equal_u2 ("reset rresp", s_axil_rresp, AXI_RESP_OKAY);
 
-        //----------------------------------------------------------------------
-        // Test 2: write with AW first, then W
-        //----------------------------------------------------------------------
         $display("\n[TEST] AW first, then W");
         axi_write_aw_then_w(12'h008, 32'hA5A5_1234, 4'hF, AXI_RESP_OKAY);
 
-        //----------------------------------------------------------------------
-        // Test 3: read back TXDATA
-        //----------------------------------------------------------------------
         $display("\n[TEST] Read back TXDATA");
         axi_read(12'h008, rd_data, rd_resp);
         expect_equal_u2 ("RRESP read TXDATA", rd_resp, AXI_RESP_OKAY);
         expect_equal_u32("RDATA read TXDATA", rd_data, 32'hA5A5_1234);
 
-        //----------------------------------------------------------------------
-        // Test 4: write with W first, then AW
-        //----------------------------------------------------------------------
         $display("\n[TEST] W first, then AW");
         axi_write_w_then_aw(12'h010, 32'h0000_00AA, 4'hF, AXI_RESP_OKAY);
 
-        //----------------------------------------------------------------------
-        // Test 5: read back IRQ_EN
-        //----------------------------------------------------------------------
         $display("\n[TEST] Read back IRQ_EN");
         axi_read(12'h010, rd_data, rd_resp);
         expect_equal_u2 ("RRESP read IRQ_EN", rd_resp, AXI_RESP_OKAY);
         expect_equal_u32("RDATA read IRQ_EN", rd_data, 32'h0000_00AA);
 
-        //----------------------------------------------------------------------
-        // Test 6: simultaneous pending write + read
-        //         write should be launched first
-        //----------------------------------------------------------------------
         $display("\n[TEST] Write priority over read");
-
         fork
             begin
-                axi_send_aw(12'h000);                 // CTRL
+                axi_send_aw(12'h000);
             end
             begin
                 wait_clks(1);
-                axi_send_w(32'h0000_0001, 4'hF);      // ENABLE
+                axi_send_w(32'h0000_0001, 4'hF);
             end
             begin
                 wait_clks(1);
                 @(posedge clk);
-                s_axil_araddr  <= 12'h004;            // STATUS
+                s_axil_araddr  <= 12'h004;
                 s_axil_arvalid <= 1'b1;
                 while (!(s_axil_arvalid && s_axil_arready)) begin
                     @(posedge clk);
@@ -365,10 +350,8 @@ module tb_axi_lite_spi;
             end
         join
 
-        // Expect write response first
         axi_wait_b_and_check(AXI_RESP_OKAY);
 
-        // Then expect read response
         s_axil_rready <= 1'b1;
         while (!s_axil_rvalid) begin
             @(posedge clk);
@@ -377,15 +360,9 @@ module tb_axi_lite_spi;
         @(posedge clk);
         s_axil_rready <= 1'b0;
 
-        //----------------------------------------------------------------------
-        // Test 7: bad write address -> SLVERR
-        //----------------------------------------------------------------------
         $display("\n[TEST] Bad write address -> SLVERR");
         axi_write_aw_then_w(12'h100, 32'hDEAD_BEEF, 4'hF, AXI_RESP_SLVERR);
 
-        //----------------------------------------------------------------------
-        // Test 8: bad read address -> SLVERR
-        //----------------------------------------------------------------------
         $display("\n[TEST] Bad read address -> SLVERR");
         axi_read(12'h104, rd_data, rd_resp);
         expect_equal_u2("RRESP bad read", rd_resp, AXI_RESP_SLVERR);
@@ -401,28 +378,15 @@ endmodule
 
 //------------------------------------------------------------------------------
 // Simple spi_regs stub for wrapper verification
-//
-// Purpose:
-//   This is NOT your production spi_regs.sv.
-//   It is only a small behavioral model so the AXI-Lite wrapper can be tested
-//   in isolation.
-//
-// Behavior:
-//   - one MMIO request at a time
-//   - accepts request immediately when idle
-//   - returns response after a small fixed latency
-//   - implements a tiny register map:
-//       0x00 CTRL
-//       0x04 STATUS
-//       0x08 TXDATA
-//       0x0C RXDATA
-//       0x10 IRQ_EN
-//       0x14 IRQ_STATUS
-//   - invalid address returns rsp_err=1
 //------------------------------------------------------------------------------
 module spi_regs #(
-    parameter int unsigned ADDR_W = 12,
-    parameter int unsigned DATA_W = 32
+    parameter int unsigned ADDR_W   = 12,
+    parameter int unsigned DATA_W   = 32,
+    parameter bit          CPOL     = 1'b0,
+    parameter bit          CPHA     = 1'b1,
+    parameter string       BITORDER = "MSB_FIRST",
+    parameter int unsigned SPI_DW   = 8,
+    parameter int unsigned CLKDIV   = 8
 ) (
     input  logic                     clk,
     input  logic                     rst_n,
@@ -471,9 +435,11 @@ module spi_regs #(
     assign req_ready = !busy_q && !rsp_valid;
 
     assign irq      = |(reg_irq_en & reg_irq_status);
-    assign spi_sclk = 1'b0;
-    assign spi_mosi = 1'b0;
-    assign spi_cs_n = 1'b1;
+
+    // Keep outputs alive and deterministic
+    assign spi_sclk = CPOL ^ busy_q;
+    assign spi_mosi = latched_wdata_q[0];
+    assign spi_cs_n = !busy_q;
 
     function automatic logic [31:0] apply_wstrb(
         input logic [31:0] old_data,
@@ -494,7 +460,7 @@ module spi_regs #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             reg_ctrl        <= '0;
-            reg_status      <= 32'h0000_0008; // TX_READY=1
+            reg_status      <= 32'h0000_0008;
             reg_txdata      <= '0;
             reg_rxdata      <= 32'h1234_5678;
             reg_irq_en      <= '0;
@@ -513,14 +479,12 @@ module spi_regs #(
             rsp_err         <= 1'b0;
         end
         else begin
-            // consume response
             if (rsp_valid && rsp_ready) begin
                 rsp_valid <= 1'b0;
                 rsp_rdata <= '0;
                 rsp_err   <= 1'b0;
             end
 
-            // accept request
             if (req_valid && req_ready) begin
                 busy_q          <= 1'b1;
                 latency_cnt_q   <= 2'd2;
@@ -543,7 +507,7 @@ module spi_regs #(
                         REG_CTRL: begin
                             if (latched_write_q) begin
                                 reg_ctrl   <= apply_wstrb(reg_ctrl, latched_wdata_q, latched_wstrb_q);
-                                reg_status <= 32'h0000_0018; // TX_READY + ENABLED-ish example
+                                reg_status <= 32'h0000_0018;
                             end
                             else begin
                                 rsp_rdata <= reg_ctrl;
@@ -596,7 +560,7 @@ module spi_regs #(
                         end
 
                         default: begin
-                            rsp_err <= 1'b1;
+                            rsp_err   <= 1'b1;
                             rsp_rdata <= 32'h0000_0000;
                         end
                     endcase
