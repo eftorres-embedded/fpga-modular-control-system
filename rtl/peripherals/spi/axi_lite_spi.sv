@@ -33,7 +33,7 @@
 //------------------------------------------------------------------------------
 
 module axi_lite_spi #(
-    parameter int unsigned 		ADDR_W 		= 12,
+    parameter int unsigned 		ADDR_W      = 12,
     parameter int unsigned 		DATA_W      = 32,
 	parameter   bit             CPOL        = 1'b0,
     parameter   bit             CPHA        = 1'b1,
@@ -48,7 +48,7 @@ module axi_lite_spi #(
     //AXI4-Lite slave interface
     //--------------------------------------------------------------------------
     //Write address channel
-    input  logic [AXIL_ADDR_W-1:0]       s_axil_awaddr,
+    input  logic [ADDR_W-1:0]           s_axil_awaddr,
     input  logic                         s_axil_awvalid,
     output logic                         s_axil_awready,
 
@@ -64,7 +64,7 @@ module axi_lite_spi #(
     input  logic                         s_axil_bready,
 
     //Read address channel
-    input  logic [AXIL_ADDR_W-1:0]       s_axil_araddr,
+    input  logic [ADDR_W-1:0]           s_axil_araddr,
     input  logic                         s_axil_arvalid,
     output logic                         s_axil_arready,
 
@@ -98,14 +98,14 @@ module axi_lite_spi #(
     //ARVALID can arrive  while still holding a write address, etc.
     //--------------------------------------------------------------------------
     logic                      aw_hold_valid;
-    logic [AXIL_ADDR_W-1:0]    aw_hold_addr;
+    logic [ADDR_W-1:0]    aw_hold_addr;
 
     logic                      w_hold_valid;
     logic [DATA_W-1:0]         w_hold_data;
     logic [(DATA_W/8)-1:0]     w_hold_strb;
 
     logic                      ar_hold_valid;
-    logic [AXIL_ADDR_W-1:0]    ar_hold_addr;
+    logic [ADDR_W-1:0]    ar_hold_addr;
 
     //--------------------------------------------------------------------------
     //AXI handshake aliases
@@ -129,7 +129,7 @@ module axi_lite_spi #(
     logic                      req_valid;
     logic                      req_ready;
     logic                      req_write;
-    logic [AXIL_ADDR_W-1:0]    req_addr;
+    logic [ADDR_W-1:0]    req_addr;
     logic [DATA_W-1:0]         req_wdata;
     logic [(DATA_W/8)-1:0]     req_wstrb;
 
@@ -147,7 +147,7 @@ module axi_lite_spi #(
     //--------------------------------------------------------------------------
     logic                      req_pending_valid;
     logic                      req_pending_write;
-    logic [AXIL_ADDR_W-1:0]    req_pending_addr;
+    logic [ADDR_W-1:0]    req_pending_addr;
     logic [DATA_W-1:0]         req_pending_wdata;
     logic [(DATA_W/8)-1:0]     req_pending_wstrb;
 
@@ -407,7 +407,7 @@ module axi_lite_spi #(
     //   0x14 IRQ_STATUS
     //--------------------------------------------------------------------------
     spi_regs #(
-        .ADDR_W (AXIL_ADDR_W),
+        .ADDR_W (ADDR_W),
         .DATA_W (DATA_W)
     ) u_spi_regs (
         .clk        (clk),
