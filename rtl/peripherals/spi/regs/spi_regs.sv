@@ -49,9 +49,10 @@
 //          bit 1   RX_VALID_IP     RO/W1C  interrupt pending for rx valid
 //
 // -----------------------Policy--------------------------
-//One START sends exactly one SPIO word
-//START is ignored while buys
-//ENABLE and XFER_END may only be updated while idle
+//One START sends exactly one SPI byte
+//START is ignored while busy
+//If XFER_END=0, CS remains active after the byte and software may launch another byte
+//If XFER_END=1, teh completed byte is treated as the final byte of the transaction
 //TXDATA may be updated while busy; it applies to the next transfer
 //CLR_DONE / CLR_RX_VALID are allowed anytime
 //
@@ -162,7 +163,7 @@ module  spi_regs    #(
     //---------------------------------------------------------------
     //This block is simple and doesn't back-pressures requests internally.
     //One response is generated per accepted request
-    assign req_ready = 1'b1;
+    assign req_ready = !rsp_valid;
 
     logic   req_fire;
     logic   wr_fire;
@@ -239,12 +240,19 @@ module  spi_regs    #(
     logic   [SPI_DW-1:0]    core_rdata;
     logic                   core_rvalid;
 
-    //-----------------------------------------------------------------
+    //----------------------------------------------------------------
     //Internal event naming
     //----------------------------------------------------------------
     logic   start_fire;
     logic   tx_fire;
     logic   rx_fire;
+
+    //----------------------------------------------------------------
+    //xfer_open register for multi-byte transactions
+    //----------------------------------------------------------------
+    //xfer_open = 1: CS-held transaction is still open
+    //xfer_open = 0: no transaction in progress
+    logic xfer_open; 
 
     //----------------------------------------------------------------
     //Transfer-launch acceptance policy
@@ -255,8 +263,8 @@ module  spi_regs    #(
     //A START is accepted only when:
     // - peripheral is enabled
     // - no transfer is currently in progress
-    // - vendor core is ready to accpt a new word
-    assign start_fire   =   start_cmd_fire  && ctrl_enable  && !busy    && core_wready;
+    // - vendor core is ready to accept a new word
+    assign start_fire   =   start_cmd_fire  && ctrl_enable   && core_wready;
 
     //One accepted START launches one SPI word.
     assign tx_fire  =   start_fire;
@@ -287,11 +295,15 @@ module  spi_regs    #(
         else
         begin
             //CTRL RW policy:
-            // -ENABLE and XFER_END are only writable while idle
+            // -ENABLE is only writable while idle
+            // -ctrl_xfer_end is now writable outside iddle to allow multibyte xfers
             // -This prevents active transfer behavior from changing mid-transaction
-            if(wr_ctrl_fire &&  !busy   &&  req_wstrb[0])
+            if(wr_ctrl_fire  &&  req_wstrb[0])
             begin
-                ctrl_enable     <=  req_wdata[CTRL_ENABLE_BIT];
+                if(!busy)
+                begin
+                    ctrl_enable <=  req_wdata[CTRL_ENABLE_BIT];
+                end
                 ctrl_xfer_end   <=  req_wdata[CTRL_XFER_END_BIT];
             end
 
@@ -313,25 +325,39 @@ module  spi_regs    #(
         if(!rst_n)
         begin
             busy            <=  1'b0;
+            xfer_open       <=  1'b0;
             done            <=  1'b0;
             rx_valid        <=  1'b0;
             rxdata_reg      <=  '0;
         end
         else
         begin
-            //Enter busy stat when the wrapper successfully launches a transfer
+            //Launching a byte opnes/continues a transaction
             if(tx_fire)
             begin
-                busy    <=  1'b1;
+                busy        <=  1'b1;
+                xfer_open   <=  1'b1;
             end
 
             //In this one-word wrapper, receiving one word marks completition
+            //Modification done: done and busy only assert on the final byte, not after
+            //byte
             if(rx_fire)
             begin
-                busy        <=  1'b0;
-                done        <=  1'b1;
                 rx_valid    <=  1'b1;
                 rxdata_reg  <=  core_rdata[7:0];
+
+                if(ctrl_xfer_end)
+                begin
+                    busy    <=  1'b0;
+                    done    <=  1'b1;
+                    xfer_open   <=  1'b0;
+                end
+                else
+                begin
+                    busy        <=  1'b1;
+                    xfer_open   <=  1'b1; 
+                end
             end
 
             //Sticky STATUS flags are cleared explicityly by sofware through CTRL
@@ -390,8 +416,12 @@ module  spi_regs    #(
             //Hardware sets pending bits when the event occurs.
             if(rx_fire)
             begin
-                irq_done_pending        <=  1'b1;
                 irq_rx_valid_pending    <=  1'b1;
+
+                if(ctrl_xfer_end)
+                begin
+                    irq_done_pending        <=  1'b1;
+                end
             end
 
             //Sofware clears pending bits by writing 1 to IRQ_STATUS (W1C)
