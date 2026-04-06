@@ -407,29 +407,34 @@ module axi_lite_spi #(
     //   0x14 IRQ_STATUS
     //--------------------------------------------------------------------------
     spi_regs #(
-        .ADDR_W (ADDR_W),
-        .DATA_W (DATA_W)
+        .ADDR_W(ADDR_W),
+        .DATA_W(DATA_W),
+        .CPOL(CPOL),
+        .CPHA(CPHA),
+        .BITORDER(BITORDER),
+        .SPI_DW(SPI_DW),
+        .CLKDIV(CLKDIV)
     ) u_spi_regs (
-        .clk        (clk),
-        .rst_n      (rst_n),
+        .clk(clk),
+        .rst_n(rst_n),
 
-        .req_valid  (req_valid),
-        .req_ready  (req_ready),
-        .req_write  (req_write),
-        .req_addr   (req_addr),
-        .req_wdata  (req_wdata),
-        .req_wstrb  (req_wstrb),
+        .req_valid(req_valid),
+        .req_ready(req_ready),
+        .req_write(req_write),
+        .req_addr(req_addr),
+        .req_wdata(req_wdata),
+        .req_wstrb(req_wstrb),
 
-        .rsp_valid  (rsp_valid),
-        .rsp_ready  (rsp_ready),
-        .rsp_rdata  (rsp_rdata),
-        .rsp_err    (rsp_err),
+        .rsp_valid(rsp_valid),
+        .rsp_ready(rsp_ready),
+        .rsp_rdata(rsp_rdata),
+        .rsp_err(rsp_err),
 
-        .irq        (irq),
-        .spi_sclk   (spi_sclk),
-        .spi_mosi   (spi_mosi),
-        .spi_miso   (spi_miso),
-        .spi_cs_n   (spi_cs_n)
+        .irq(irq),
+        .spi_sclk(spi_sclk),
+        .spi_mosi(spi_mosi),
+        .spi_miso(spi_miso),
+        .spi_cs_n(spi_cs_n)
     );
 
 endmodule
