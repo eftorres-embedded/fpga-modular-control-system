@@ -67,7 +67,7 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
   </table>
   <table class="blueBar">
    <tr>
-    <td class="l">2026.04.01.22:45:21</td>
+    <td class="l">2026.04.06.01:09:18</td>
     <td class="r">Datasheet</td>
    </tr>
   </table>
@@ -192,7 +192,7 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
        <a href="#module_clock_bridge">clock_bridge</a>
       </td>
       <td class="from">out_clk&#160;&#160;</td>
-      <td class="main" rowspan="17">intel_niosv</td>
+      <td class="main" rowspan="22">intel_niosv</td>
      </tr>
      <tr>
       <td class="to">&#160;&#160;clk</td>
@@ -274,6 +274,32 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
       <td></td>
       <td class="to">&#160;&#160;s_axil</td>
      </tr>
+     <tr style="height:6px">
+      <td></td>
+     </tr>
+     <tr>
+      <td></td>
+      <td></td>
+      <td class="from">data_manager&#160;&#160;</td>
+      <td class="neighbor" rowspan="4">
+       <a href="#module_spi_master_0">spi_master_0</a>
+      </td>
+     </tr>
+     <tr>
+      <td></td>
+      <td></td>
+      <td class="to">&#160;&#160;s_axil</td>
+     </tr>
+     <tr>
+      <td></td>
+      <td></td>
+      <td class="from">platform_irq_rx&#160;&#160;</td>
+     </tr>
+     <tr>
+      <td></td>
+      <td></td>
+      <td class="to">&#160;&#160;SPI_Interrupt</td>
+     </tr>
     </table>
    </div>
    <br/>
@@ -293,7 +319,7 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
        </tr>
        <tr>
         <td class="parametername">dataSlaveMapParam</td>
-        <td class="parametervalue">&lt;address-map&gt;&lt;slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /&gt;&lt;slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /&gt;&lt;slave name='pwm_module.s_axil' start='0x30000' end='0x31000' type='AXI_Lite_PWM_Full.s_axil' /&gt;&lt;slave name='intel_niosv.timer_sw_agent' start='0x31000' end='0x31040' type='intel_niosv_m.timer_sw_agent' /&gt;&lt;slave name='jtag_uart.avalon_jtag_slave' start='0x31040' end='0x31048' type='altera_avalon_jtag_uart.avalon_jtag_slave' /&gt;&lt;/address-map&gt;</td>
+        <td class="parametervalue">&lt;address-map&gt;&lt;slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /&gt;&lt;slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /&gt;&lt;slave name='pwm_module.s_axil' start='0x30000' end='0x31000' type='AXI_Lite_PWM_Full.s_axil' /&gt;&lt;slave name='spi_master_0.s_axil' start='0x31000' end='0x32000' type='spi_master.s_axil' /&gt;&lt;slave name='intel_niosv.timer_sw_agent' start='0x32000' end='0x32040' type='intel_niosv_m.timer_sw_agent' /&gt;&lt;slave name='jtag_uart.avalon_jtag_slave' start='0x32040' end='0x32048' type='altera_avalon_jtag_uart.avalon_jtag_slave' /&gt;&lt;/address-map&gt;</td>
        </tr>
        <tr>
         <td class="parametername">enableDebug</td>
@@ -365,7 +391,7 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
        </tr>
        <tr>
         <td class="parametername">AUTO_PLATFORM_IRQ_RX_INTERRUPTS_USED</td>
-        <td class="parametervalue">1</td>
+        <td class="parametervalue">3</td>
        </tr>
        <tr>
         <td class="parametername">generateLegacySim</td>
@@ -430,7 +456,7 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
        </tr>
        <tr>
         <td class="parametername">MTIME_OFFSET</td>
-        <td class="parametervalue">0x00031000</td>
+        <td class="parametervalue">0x00032000</td>
        </tr>
        <tr>
         <td class="parametername">NIOSV_CORE_VARIANT</td>
@@ -1030,7 +1056,7 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
        <a href="#module_clock_bridge">clock_bridge</a>
       </td>
       <td class="from">out_clk&#160;&#160;</td>
-      <td class="main" rowspan="15">reset_bridge</td>
+      <td class="main" rowspan="18">reset_bridge</td>
      </tr>
      <tr>
       <td class="to">&#160;&#160;clk</td>
@@ -1073,6 +1099,22 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
       <td class="from">out_reset&#160;&#160;</td>
       <td class="neighbor" rowspan="2">
        <a href="#module_pwm_module">pwm_module</a>
+      </td>
+     </tr>
+     <tr>
+      <td></td>
+      <td></td>
+      <td class="to">&#160;&#160;reset</td>
+     </tr>
+     <tr style="height:6px">
+      <td></td>
+     </tr>
+     <tr>
+      <td></td>
+      <td></td>
+      <td class="from">out_reset&#160;&#160;</td>
+      <td class="neighbor" rowspan="2">
+       <a href="#module_spi_master_0">spi_master_0</a>
       </td>
      </tr>
      <tr>
@@ -1154,9 +1196,108 @@ div.greydiv { vertical-align:top ; text-align:center ; background:#eeeeee ; bord
     </tr>
    </table>
   </div>
+  <a name="module_spi_master_0"> </a>
+  <div>
+   <hr/>
+   <h2>spi_master_0</h2>spi_master v1.0
+   <br/>
+   <div class="greydiv">
+    <table class="connectionboxes">
+     <tr>
+      <td class="neighbor" rowspan="4">
+       <a href="#module_intel_niosv">intel_niosv</a>
+      </td>
+      <td class="from">data_manager&#160;&#160;</td>
+      <td class="main" rowspan="10">spi_master_0</td>
+     </tr>
+     <tr>
+      <td class="to">&#160;&#160;s_axil</td>
+     </tr>
+     <tr>
+      <td class="from">platform_irq_rx&#160;&#160;</td>
+     </tr>
+     <tr>
+      <td class="to">&#160;&#160;SPI_Interrupt</td>
+     </tr>
+     <tr style="height:6px">
+      <td></td>
+     </tr>
+     <tr>
+      <td class="neighbor" rowspan="2">
+       <a href="#module_clock_bridge">clock_bridge</a>
+      </td>
+      <td class="from">out_clk&#160;&#160;</td>
+     </tr>
+     <tr>
+      <td class="to">&#160;&#160;clock</td>
+     </tr>
+     <tr style="height:6px">
+      <td></td>
+     </tr>
+     <tr>
+      <td class="neighbor" rowspan="2">
+       <a href="#module_reset_bridge">reset_bridge</a>
+      </td>
+      <td class="from">out_reset&#160;&#160;</td>
+     </tr>
+     <tr>
+      <td class="to">&#160;&#160;reset</td>
+     </tr>
+    </table>
+   </div>
+   <br/>
+   <br/>
+   <table class="flowbox">
+    <tr>
+     <td class="parametersbox">
+      <h2>Parameters</h2>
+      <table>
+       <tr>
+        <td class="parametername">ADDR_W</td>
+        <td class="parametervalue">12</td>
+       </tr>
+       <tr>
+        <td class="parametername">DATA_W</td>
+        <td class="parametervalue">32</td>
+       </tr>
+       <tr>
+        <td class="parametername">CPOL</td>
+        <td class="parametervalue">1</td>
+       </tr>
+       <tr>
+        <td class="parametername">CPHA</td>
+        <td class="parametervalue">1</td>
+       </tr>
+       <tr>
+        <td class="parametername">SPI_DW</td>
+        <td class="parametervalue">8</td>
+       </tr>
+       <tr>
+        <td class="parametername">CLKDIV</td>
+        <td class="parametervalue">8</td>
+       </tr>
+       <tr>
+        <td class="parametername">deviceFamily</td>
+        <td class="parametervalue">UNKNOWN</td>
+       </tr>
+       <tr>
+        <td class="parametername">generateLegacySim</td>
+        <td class="parametervalue">false</td>
+       </tr>
+      </table>
+     </td>
+    </tr>
+   </table>&#160;&#160;
+   <table class="flowbox">
+    <tr>
+     <td class="parametersbox">
+      <h2>Software Assignments</h2>(none)</td>
+    </tr>
+   </table>
+  </div>
   <table class="blueBar">
    <tr>
-    <td class="l">generation took 0.00 seconds</td>
+    <td class="l">generation took 0.02 seconds</td>
     <td class="r">rendering took 0.02 seconds</td>
    </tr>
   </table>

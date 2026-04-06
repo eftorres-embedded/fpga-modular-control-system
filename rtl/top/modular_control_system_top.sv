@@ -1,3 +1,4 @@
+//modular_control_system_top.sv
 //`define ENABLE_ADC_CLOCK
 `define ENABLE_CLOCK1
 //`define ENABLE_CLOCK2
@@ -12,7 +13,7 @@
 `define ENABLE_LED
 `define ENABLE_SW
 //`define ENABLE_VGA
-//`define ENABLE_ACCELEROMETER
+`define ENABLE_ACCELEROMETER
 `define ENABLE_ARDUINO
 `define ENABLE_GPIO
 
@@ -95,8 +96,8 @@ module modular_control_system_top(
 	output		          		GSENSOR_CS_N,
 	input 		     [2:1]		GSENSOR_INT,
 	output		          		GSENSOR_SCLK,
-	inout 		          		GSENSOR_SDI,
-	inout 		          		GSENSOR_SDO,
+	output 		          		GSENSOR_SDI,
+	input			          		GSENSOR_SDO,
 `endif
 
 	//////////// Arduino: 3.3-V LVTTL //////////
@@ -331,13 +332,15 @@ assign esp_01s_en =	SW[0];
 logic				pwm_raw;
 assign	LEDR[0]		=	pwm_raw;
 
+
 niosv_modular_control_system u_niosv (
-		.clk_clk(MAX10_CLK1_50),	// clock_in_clk.clk
-		.rst_n_reset_n(rst_n),		// reset_in_rst.reset_n
-		.pwm_out_conduit(pwm_raw)  // pwm_out.conduit
-	);
-
-
+		.clk_clk              (MAX10_CLK1_50),	//clk.clk
+		.pwm_out_conduit      (pwm_raw),			//pwm_out.conduit
+		.rst_n_reset_n        (rst_n),			//rst_n.reset_n
+		.spi_master_sclk      (GSENSOR_SCLK),	//spi_master.sclk
+		.spi_master_mosi      (GSENSOR_SDI),	//mosi
+		.spi_master_miso      (GSENSOR_SDO),	//miso
+		.spi_master_cs_n      (GSENSOR_CS_N));	//cs_n
 
 endmodule
 
