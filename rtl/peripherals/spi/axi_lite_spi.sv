@@ -110,14 +110,13 @@ module axi_lite_spi #(
     logic ar_fire;
     logic b_fire;
     logic r_fire;
-    logic rsp_fire;
 
     assign aw_fire = s_axil_awvalid && s_axil_awready;
     assign w_fire  = s_axil_wvalid  && s_axil_wready;
     assign ar_fire = s_axil_arvalid && s_axil_arready;
     assign b_fire  = s_axil_bvalid  && s_axil_bready;
     assign r_fire  = s_axil_rvalid  && s_axil_rready;
-    assign rsp_fire =   rsp_valid   &&  rsp_ready;
+    
 
     //--------------------------------------------------------------------------
     //Internal MMIO interface to spi_regs.sv
@@ -155,6 +154,10 @@ module axi_lite_spi #(
     //Alias for when a requisition can happen
     logic req_fire;
     assign req_fire = req_valid && req_ready;
+
+    //Alias for when a response can happen
+    logic rsp_fire;
+    assign rsp_fire =   rsp_valid   &&  rsp_ready;
 
     //these staging registers are used to keep code neat and clean
     //they connect to the MMIO side
