@@ -434,6 +434,10 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[34]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[35]
 set_global_assignment -name FLOW_ENABLE_RTL_VIEWER ON
 set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
+set_global_assignment -name VERILOG_FILE ../../rtl/peripherals/spi/vendor/opencores_verilog_spi/trunk/clk_valid.v
+set_global_assignment -name VERILOG_FILE ../../rtl/peripherals/spi/vendor/opencores_verilog_spi/trunk/spi_master.v
+set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/spi/regs/spi_regs.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/spi/axi_lite_spi.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/uart/core/uart_tx_engine.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/uart/core/uart_rx_engine.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/uart/core/uart_baudgen.sv

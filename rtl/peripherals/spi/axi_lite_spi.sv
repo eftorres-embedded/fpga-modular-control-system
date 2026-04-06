@@ -33,9 +33,14 @@
 //------------------------------------------------------------------------------
 
 module axi_lite_spi #(
-    parameter int unsigned AXIL_ADDR_W = 12,
-    parameter int unsigned DATA_W      = 32
-) (
+    parameter int unsigned 		ADDR_W 		= 12,
+    parameter int unsigned 		DATA_W      = 32,
+	parameter   bit             CPOL        = 1'b0,
+    parameter   bit             CPHA        = 1'b1,
+    parameter   string          BITORDER    = "MSB_FIRST",
+    parameter   int unsigned    SPI_DW      = 8,
+    parameter   int unsigned    CLKDIV      = 8) 
+	(
     input  logic                         clk,
     input  logic                         rst_n,
 
