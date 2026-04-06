@@ -135,6 +135,7 @@ module  spi_regs    #(
     localparam  int STATUS_TX_READY_BIT =   3;
     localparam  int STATUS_ENABLED_BIT  =   4;
     localparam  int STATUS_CS_ACTIVE_BIT=   5;
+    localparam  int STATU_XFER_OPEN_BIT =   6;    
 
     //--------------------------------------------------------------
     //IRQ_EN / IRQ_STATUS bits
@@ -255,6 +256,13 @@ module  spi_regs    #(
     logic xfer_open; 
 
     //----------------------------------------------------------------
+    //Launch-time latched final-byte qualifier
+    //----------------------------------------------------------------
+    //keep track to keep the xfer_end value that was present when
+    //corresponding byte was launched
+    logic launched_xfer_end;
+
+    //----------------------------------------------------------------
     //Transfer-launch acceptance policy
     //----------------------------------------------------------------
     //start_cmd_fire means software asked to start
@@ -264,7 +272,7 @@ module  spi_regs    #(
     // - peripheral is enabled
     // - no transfer is currently in progress
     // - vendor core is ready to accept a new word
-    assign start_fire   =   start_cmd_fire  && ctrl_enable   && core_wready;
+    assign start_fire   =   start_cmd_fire  && ctrl_enable  && !busy && core_wready;
 
     //One accepted START launches one SPI word.
     assign tx_fire  =   start_fire;
@@ -326,6 +334,7 @@ module  spi_regs    #(
         begin
             busy            <=  1'b0;
             xfer_open       <=  1'b0;
+            launched_xfer_end   <=  1'b1;
             done            <=  1'b0;
             rx_valid        <=  1'b0;
             rxdata_reg      <=  '0;
@@ -333,10 +342,15 @@ module  spi_regs    #(
         else
         begin
             //Launching a byte opnes/continues a transaction
+            // - BUSY becomes 1 and can't accept new data
+            // - transaction is open
+            // - latch wheter this launched byte is the final byte
+
             if(tx_fire)
             begin
                 busy        <=  1'b1;
                 xfer_open   <=  1'b1;
+                launched_xfer_end   <=  ctrl_xfer_end;
             end
 
             //In this one-word wrapper, receiving one word marks completition
@@ -344,18 +358,17 @@ module  spi_regs    #(
             //byte
             if(rx_fire)
             begin
+                busy        <=  1'b0;
                 rx_valid    <=  1'b1;
                 rxdata_reg  <=  core_rdata[7:0];
 
-                if(ctrl_xfer_end)
+                if(launched_xfer_end)
                 begin
-                    busy    <=  1'b0;
-                    done    <=  1'b1;
+                    done        <=  1'b1;
                     xfer_open   <=  1'b0;
                 end
                 else
                 begin
-                    busy        <=  1'b1;
                     xfer_open   <=  1'b1; 
                 end
             end
@@ -418,7 +431,7 @@ module  spi_regs    #(
             begin
                 irq_rx_valid_pending    <=  1'b1;
 
-                if(ctrl_xfer_end)
+                if(launched_xfer_end)
                 begin
                     irq_done_pending        <=  1'b1;
                 end
@@ -479,6 +492,7 @@ begin
             rdata_next[STATUS_TX_READY_BIT]  = core_wready;
             rdata_next[STATUS_ENABLED_BIT]   = ctrl_enable;
             rdata_next[STATUS_CS_ACTIVE_BIT] = ~spi_cs_n;
+            rdata_next[STATUS_XFER_OPEN_BIT]    =   xfer_open;
         end
 
         REG_TXDATA:
