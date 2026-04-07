@@ -248,7 +248,7 @@ module  spi_regs    #(
     logic   ctrl_xfer_end;
     logic   [SPI_DW-1:0] txdata_reg;
     logic   [SPI_DW-1:0] rxdata_reg;
-
+    logic   start_pending; //mode 1: cpol=0, cpha=1 needs a larger window for core_wready
     //------------------------------------------------------------------
     //Sticky status bits visible in STATUS register
     //------------------------------------------------------------------
@@ -313,7 +313,7 @@ module  spi_regs    #(
     // - peripheral is enabled
     // - no transfer is currently in progress
     // - vendor core is ready to accept a new word
-    assign start_fire   =   start_cmd_fire  && ctrl_enable  && !busy && core_wready;
+    assign start_fire   =   start_pending  && ctrl_enable  && !busy && core_wready;
 
     //One accepted START launches one SPI word.
     assign tx_fire  =   start_fire;
@@ -321,6 +321,32 @@ module  spi_regs    #(
     //The vendor core assesrts )rvalid when a received word is available
     //In this wrapper, that also means the one-word transfer is complete
     assign rx_fire  =   core_rvalid;
+
+    //fix a glitch on mode 3, and makes the module more robust
+    //this wrapper will hold the start request until the vendor core is actually ready
+    //software no longer has to "hit" core_ready exactly
+    always_ff @(posedge  clk  or negedge rst_n)
+    begin
+        if(!rst_n)
+        begin
+            start_pending   <=  1'b0;
+        end
+        else
+        begin
+            //Latch a START request wehn software asks for one
+            // and no byte is currently in flight.
+            if(start_cmd_fire && ctrl_enable && !busy)
+            begin
+                start_pending   <=1'b1;
+            end
+
+            //Clear it once the byte is actually launched.
+            if(tx_fire)
+            begin
+                start_pending   <=  1'b0;
+            end
+        end
+    end
 
     //------------------------------------------------------------------
     // Vendor core drive signals

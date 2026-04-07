@@ -36,9 +36,9 @@ module tb_spi_regs;
     // Change these four values to test a different SPI configuration.
     // Re-run the same testbench for the other modes / bit order / divider.
     // -------------------------------------------------------------------------
-    localparam bit    CPOL_TB     = 1'b0;
+    localparam bit    CPOL_TB     = 1'b1;
     localparam bit    CPHA_TB     = 1'b1;
-    localparam string BITORDER_TB = "MSB_FIRST";
+    localparam string BITORDER_TB = "LSB_FIRST";
     localparam int    CLKDIV_TB   = 8;
 
     // -------------------------------------------------------------------------
