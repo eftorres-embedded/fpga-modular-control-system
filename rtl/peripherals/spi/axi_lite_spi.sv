@@ -129,7 +129,7 @@ module axi_lite_spi #(
     logic                      req_valid;
     logic                      req_ready;
     logic                      req_write;
-    logic [ADDR_W-1:0]    req_addr;
+    logic [ADDR_W-1:0]    		req_addr;
     logic [DATA_W-1:0]         req_wdata;
     logic [(DATA_W/8)-1:0]     req_wstrb;
 

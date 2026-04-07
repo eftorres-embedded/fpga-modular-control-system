@@ -78,3 +78,4 @@ build/sim/
 .vscode/
 .DS_Store
 Thumbs.db
+*sv.bak
