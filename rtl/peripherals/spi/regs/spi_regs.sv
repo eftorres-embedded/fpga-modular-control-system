@@ -1,71 +1,111 @@
-//spi_regs.sv
+// spi_regs.sv
 // -----------------------------------------------------------------------------
-// This module wraps the SPI core from:
+// MMIO register wrapper for the OpenCores SPI master:
 // https://opencores.org/projects/spi_verilog_interface
 // Licensed under LGPL
 // -----------------------------------------------------------------------------
 //
-//CPU-facing MMIO restister block for a simple SPI master perifpheral
-//Version 1 design goals:
-// -Deterministic, one-byte-per-start behavior
-// -Vendor SPI master treated as a black box
-// -Sticky DONE and RX_VALID status bit
-// -START / Clear bits are write-one pulse actions
-// -AXI-Lite Wrapper talks to this block through a generic MMIO interface
-// -DONE_IE and RX_VALID_IE are spearate interrupt-enable bits
-// -DONE_IP and RX_VALID_IP are separate interrupt-pending bits
-// -irq output is level-sensitive and stays asserted until software clears pending bits
+// CPU-facing register block for a simple SPI master peripheral.
 //
-// -
+// Design goals:
+// - Deterministic one-byte-per-START behavior
+// - Vendor SPI master treated as a black box
+// - Sticky DONE and RX_VALID status bits
+// - START / clear operations implemented as write-one pulse actions
+// - Generic MMIO request/response interface for use behind an AXI-Lite wrapper
+// - Separate interrupt enable bits for DONE and RX_VALID
+// - Separate interrupt pending bits for DONE and RX_VALID
+// - Level-sensitive IRQ output that remains asserted until software clears the
+//   corresponding pending bit(s)
 //
-//Register map (32-bit words):
-//  0x00    CTRL
-//          bit 0   ENABLE          WR      Turn SPI module on
-//          bit 1   START           W1P     Start transaction
-//          bit 2   XFER_END        WR      Default:1 > Realease CS after transfer; 0 > CS stays low
-//          bit 3   CLR_DONE        W1P     Clears the DONE flag from STATUS register
-//          bit 4   CLR_RX_VALID    W1P     Clears the RX_VALID flag from  STATUS register
+// Register map (32-bit words):
 //
-//  0X04    STATUS
-//          bit 0   BUSY            RO      Transactions is in progress
-//          bit 1   DONE            RO      Transaction has finished    (sticky)
-//          bit 2   RX_VALID        RO      Data received is valide     (sticky)
-//          bit 3   TX_READY        RO      SPI module can send another word
-//          bit 4   ENABLED         RO      SPI module is on (enabled)
-//          bit 5   CS_ACTIVE       RO      CS is asserted
+//   0x00  CTRL
+//         bit 0   ENABLE        RW
+//                 Enable the SPI peripheral
+//         bit 1   START         W1P
+//                 Launch one SPI byte transfer
+//         bit 2   XFER_END      RW
+//                 End-of-transfer qualifier for the NEXT launched byte:
+//                 1 = this launched byte is the final byte of the transaction
+//                 0 = keep the transaction open after this byte completes
+//         bit 3   CLR_DONE      W1P
+//                 Clear STATUS.DONE
+//         bit 4   CLR_RX_VALID  W1P
+//                 Clear STATUS.RX_VALID
 //
-//  0x08    TXDATA
-//          bits[7:0] TX byte       WO
+//   0x04  STATUS
+//         bit 0   BUSY          RO
+//                 A byte is currently in flight; START is not accepted
+//         bit 1   DONE          RO (sticky)
+//                 Final byte of the transaction has completed
+//         bit 2   RX_VALID      RO (sticky)
+//                 RXDATA holds a received byte from the most recent completed
+//                 SPI byte transfer
+//         bit 3   TX_READY      RO
+//                 Vendor SPI core is ready to accept another byte
+//         bit 4   ENABLED       RO
+//                 Current value of CTRL.ENABLE
+//         bit 5   CS_ACTIVE     RO
+//                 Chip select is currently asserted at the SPI pins
+//         bit 6   XFER_OPEN     RO
+//                 A transaction is currently open. This may remain set between
+//                 bytes during a multi-byte transfer even when BUSY=0.
 //
-//  0x0C    RXDATA
-//          bits[7:0] RX byte       RO
+//   0x08  TXDATA
+//         bits [7:0]  TX byte   RW
+//         Holding register for the next byte to be launched
 //
-//  0x10    IRQ_EN
-//          bit 0   DONE_IE         RW      interrupt enable for transfer done
-//          bit 1   RX_VALID_IE     RW      interrupt enable for RX valid
+//   0x0C  RXDATA
+//         bits [7:0]  RX byte   RO
+//         Most recently received byte
 //
-//  0x14    IRQ_STATUS
-//          bit 0   DONE_IP         RO/W1C  interrupt   pending for done
-//          bit 1   RX_VALID_IP     RO/W1C  interrupt pending for rx valid
+//   0x10  IRQ_EN
+//         bit 0   DONE_IE       RW
+//                 Interrupt enable for DONE event
+//         bit 1   RX_VALID_IE   RW
+//                 Interrupt enable for RX_VALID event
 //
-// -----------------------Policy--------------------------
-//One START sends exactly one SPI byte
-//START is ignored while busy
-//If XFER_END=0, CS remains active after the byte and software may launch another byte
-//If XFER_END=1, teh completed byte is treated as the final byte of the transaction
-//TXDATA may be updated while busy; it applies to the next transfer
-//CLR_DONE / CLR_RX_VALID are allowed anytime
+//   0x14  IRQ_STATUS
+//         bit 0   DONE_IP       RO/W1C
+//                 Interrupt pending for DONE event
+//         bit 1   RX_VALID_IP   RO/W1C
+//                 Interrupt pending for RX_VALID event
 //
-//Notation:
-// -RW      =   normal read/write storage bit
-// -RO      =   read-only from software perspective
-// -W1P     =   write-one pulse; action bit, not stored
-// -RO/W1C  =   read-only sticky bit; write 1 clears it    
+// Policy / behavior:
+// - One START launches exactly one SPI byte
+// - START is accepted only when:
+//     * ENABLE = 1
+//     * BUSY   = 0
+//     * vendor core TX interface is ready
+// - BUSY is byte-scoped:
+//     * BUSY = 1 while the current byte is in flight
+//     * BUSY = 0 once that byte completes
+// - XFER_OPEN is transaction-scoped:
+//     * set when a byte is launched
+//     * remains set across intermediate bytes of a multi-byte transaction
+//     * clears only when the launched final byte completes
+// - CTRL.XFER_END applies to the NEXT launched byte
+// - The launched byte captures its own XFER_END qualifier at launch time;
+//   software may update CTRL.XFER_END later for the following byte without
+//   changing the completion behavior of the byte already in flight
+// - TXDATA may be rewritten while BUSY=1; it serves as a staging register for
+//   the next byte and does not affect the byte already launched
+// - CTRL.ENABLE may only be changed when no transaction is open
+// - CLR_DONE / CLR_RX_VALID are allowed at any time
 //
-//Notes:
-// -XFER_END should stay 1 in software for sing-word transaction
-// -XFER_END=0 is a future feautrue behavior for multi-word CS hold
-//----------------------------------------------------------------------
+// Interrupt behavior:
+// - RX_VALID event occurs after every completed byte
+// - DONE event occurs only after the final byte of a transaction
+// - IRQ is level-sensitive:
+//     IRQ = (DONE_IE && DONE_IP) || (RX_VALID_IE && RX_VALID_IP)
+// - Software must clear IRQ_STATUS pending bits explicitly
+//
+// Notation:
+// - RW     = normal read/write storage bit
+// - RO     = read-only from software perspective
+// - W1P    = write-one pulse; action bit, not stored
+// - RO/W1C = sticky status/pending bit; write 1 clears it
 
 module  spi_regs    #(
     parameter   int unsigned    ADDR_W      =   12,
@@ -135,7 +175,7 @@ module  spi_regs    #(
     localparam  int STATUS_TX_READY_BIT =   3;
     localparam  int STATUS_ENABLED_BIT  =   4;
     localparam  int STATUS_CS_ACTIVE_BIT=   5;
-    localparam  int STATU_XFER_OPEN_BIT =   6;    
+    localparam  int STATUS_XFER_OPEN_BIT =   6;    
 
     //--------------------------------------------------------------
     //IRQ_EN / IRQ_STATUS bits
@@ -160,19 +200,17 @@ module  spi_regs    #(
     end
 
     //---------------------------------------------------------------
-    //Generic MMIO accpetance
+    // Generic MMIO acceptance
     //---------------------------------------------------------------
-    //This block is simple and doesn't back-pressures requests internally.
-    //One response is generated per accepted request
+    // This block allows only one outstanding MMIO request/response pair.
+    // A new request is accepted only when no response is currently pending.
     assign req_ready = !rsp_valid;
 
     logic   req_fire;
     logic   wr_fire;
-    logic   rd_fire;
     
     assign  req_fire    =   req_valid   &&  req_ready;
     assign  wr_fire     =   req_fire    &&  req_write;
-    assign  rd_fire     =   req_fire    &&  !req_write;
 
     //-----------------------------------------------------------------
     //Write decode helpers
@@ -188,7 +226,7 @@ module  spi_regs    #(
     assign  wr_irq_status_fire  =   wr_fire &&  (req_addr   ==  REG_IRQ_STATUS);
 
     //------------------------------------------------------------------
-    //Pluse command from CTRL writes
+    // Pulse commands generated from CTRL writes
     //------------------------------------------------------------------
     logic   start_cmd_fire;
     logic   clr_done_cmd_fire;
@@ -261,6 +299,9 @@ module  spi_regs    #(
     //keep track to keep the xfer_end value that was present when
     //corresponding byte was launched
     logic launched_xfer_end;
+    logic start_xfer_end;
+
+    assign start_xfer_end   =   (wr_ctrl_fire && req_wstrb[0]) ?  req_wdata[CTRL_XFER_END_BIT]    : ctrl_xfer_end;
 
     //----------------------------------------------------------------
     //Transfer-launch acceptance policy
@@ -282,16 +323,25 @@ module  spi_regs    #(
     assign rx_fire  =   core_rvalid;
 
     //------------------------------------------------------------------
-    //Vendor core drie signals
-    //------------------------------------------------------------------
-    //core_wvalid is a one-cycle pulse when a transfer is launched
+    // Vendor core drive signals
+    //------------------------------------------------------------------------------------------------------------------------
+    // core_wvalid is a one-cycle pulse when a byte transfer is launched.
+    // core_transfer_end presents the current launch qualifier on the launch
+    // cycle, and otherwise holds the qualifier associated with the byte
+    // already in flight.
     assign  core_wvalid         =   tx_fire;
     assign  core_wdata          =   txdata_reg[SPI_DW-1:0];
-    assign  core_transfer_end   =   ctrl_xfer_end;
+    assign  core_transfer_end   =   tx_fire ?   start_xfer_end   :   launched_xfer_end;
 
     //------------------------------------------------------------------
     //CTRL and TXDATA storage
     //------------------------------------------------------------------
+            // CTRL write policy:
+            // - ENABLE is writable only when no transaction is open
+            // - XFER_END may be updated between bytes to prepare the next launch
+            // TXDATA is a staging register for the next byte.
+            // Writing TXDATA while BUSY=1 is safe; the in-flight byte has already
+            // been captured by the vendor core on tx_fire.
     always_ff @(posedge clk or negedge rst_n)
     begin
         if(!rst_n)
@@ -308,7 +358,7 @@ module  spi_regs    #(
             // -This prevents active transfer behavior from changing mid-transaction
             if(wr_ctrl_fire  &&  req_wstrb[0])
             begin
-                if(!busy)
+                if(!xfer_open)
                 begin
                     ctrl_enable <=  req_wdata[CTRL_ENABLE_BIT];
                 end
@@ -350,12 +400,12 @@ module  spi_regs    #(
             begin
                 busy        <=  1'b1;
                 xfer_open   <=  1'b1;
-                launched_xfer_end   <=  ctrl_xfer_end;
+                launched_xfer_end   <=  start_xfer_end;
             end
 
-            //In this one-word wrapper, receiving one word marks completition
-            //Modification done: done and busy only assert on the final byte, not after
-            //byte
+            // A received byte completes the current in-flight byte.
+            // RX_VALID is asserted for every completed byte.
+            // DONE is asserted only when the launched byte was marked final.
             if(rx_fire)
             begin
                 busy        <=  1'b0;
