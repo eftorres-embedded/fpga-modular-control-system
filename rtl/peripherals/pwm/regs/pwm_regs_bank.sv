@@ -24,9 +24,10 @@
 //
 
 module pwm_regs #(
-    parameter   int unsigned    ADDR_W  =   12,
-    parameter   int unsigned    DATA_W  =   32,
-    parameter   int unsigned    CNT_W   =   32,
+    parameter   int unsigned    ADDR_W      =   12,
+    parameter   int unsigned    DATA_W      =   32,
+    parameter   int unsigned    CNT_W       =   32,
+    parameter   int unsigned    CHANNELS    =   4,
 
     // If 1: APPLY waits until period_end_i before updating active regs,
     // unless startup/inactive bypass is needed.
@@ -57,13 +58,21 @@ module pwm_regs #(
     //---------------------------------------
     // Interface signals to/from PWM core
     //---------------------------------------
+    //Status from PWM core
     input   logic                       period_end_i,   // one-cycle pulse from core
     input   logic   [CNT_W-1:0]         cnt_i,          // live counter from core
 
+    //Active configuration outputs to PWM_CORE
     output  logic                       enable_o,
-    output  logic                       use_default_duty_o,
+    output  logic   [CHANNELS-1:0]      ch_enable_o,
     output  logic   [CNT_W-1:0]         period_cycles_o,
-    output  logic   [CNT_W-1:0]         duty_cycles_o);
+    output  logic   [CNT_W-1:0]         duty_cycles_o   [CHANNELS]
+    
+    //-----------------------------------------
+    //Placeholder outputs for future V3 motor features
+    //-----------------------------------------
+    output  logic   [CHANNELS-1:0]      polarity_o,
+    output  logic   [DATA_W-1:0         motor_ctrl_o);
 
     //------------------------------------------------
     // Register offsets (byte)
@@ -79,7 +88,7 @@ module pwm_regs #(
     // Internal state: shadow + active
     //------------------------------------------------
 
-	logic   [DATA_W-1:0]     ctrl_shadow;
+	logic   [DATA_W-1:0]    ctrl_shadow;
     logic   [CNT_W-1:0]     period_shadow;
     logic   [CNT_W-1:0]     duty_shadow;
 
