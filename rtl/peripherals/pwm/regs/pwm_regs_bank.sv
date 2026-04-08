@@ -77,24 +77,43 @@ module pwm_regs #(
     //------------------------------------------------
     // Register offsets (byte)
     //------------------------------------------------
-    localparam  logic   [ADDR_W-1:0]    REG_CTRL    = 'h00;
-    localparam  logic   [ADDR_W-1:0]    REG_PERIOD  = 'h04;
-    localparam  logic   [ADDR_W-1:0]    REG_DUTY    = 'h08;
-    localparam  logic   [ADDR_W-1:0]    REG_APPLY   = 'h0C;
-    localparam  logic   [ADDR_W-1:0]    REG_STATUS  = 'h10;
-    localparam  logic   [ADDR_W-1:0]    REG_CNT     = 'h14;
+    localparam  logic   [ADDR_W-1:0]    REG_CTRL        =   'h00;
+    localparam  logic   [ADDR_W-1:0]    REG_PERIOD      =   'h04;
+    localparam  logic   [ADDR_W-1:0]    REG_APPLY       =   'h08;
+    localparam  logic   [ADDR_W-1:0]    REG_CH_ENABLE   =   'h0C;
+    localparam  logic   [ADDR_W-1:0]    REG_STATUS      =   'h10;
+    localparam  logic   [ADDR_W-1:0]    REG_CNT         =   'h14;
+    localparam  logic   [ADDR_W-1:0]    REG_POLARITY    =   'h18;   //placeholder for V3
+    localparam  logic   [ADDR_W-1:0]    REG_MOTOR_CTRL  =   'h1C;   //placeholder for V3
+
+    //------------------------------------------------
+    //Base of banked duty register region (one per channel)
+    //REG_DUTY[i]   =   REG_DUTY_BASE + 4*i
+    //------------------------------------------------
+    localparam  logic   [ADDR_W-1:0]    REG_DUTY_BASE   =   'h20;
 
     //------------------------------------------------
     // Internal state: shadow + active
     //------------------------------------------------
-
+    //shadow
 	logic   [DATA_W-1:0]    ctrl_shadow;
     logic   [CNT_W-1:0]     period_shadow;
-    logic   [CNT_W-1:0]     duty_shadow;
-
+    logic   [CNT_W-1:0]     duty_shadow[CHANNELS];
+    logic   [CHANNELS-1:0]  ch_enable_shadow;
+    //placeholder for V3
+    logic   [CHANNELS-1:0]  polarity_shadow;
+    logic   [DATA_W-1:0]    motor_ctrl_shadow;
+    
+    //active
 	logic   [DATA_W-1:0]    ctrl_active;
     logic   [CNT_W-1:0]     period_active;
-    logic   [CNT_W-1:0]     duty_active;
+    logic   [CNT_W-1:0]     duty_active[CHANNELS];
+    logic   [CHANNELS-1]    ch_enable_active;
+    //placeholder for V3
+    logic   [CHANNELS-1:0]  polarity_active;
+    logic   [DATA_W-1:0]    motor_ctrl_active;
+
+
 
     //------------------------------------------------
     // APPLY handling
