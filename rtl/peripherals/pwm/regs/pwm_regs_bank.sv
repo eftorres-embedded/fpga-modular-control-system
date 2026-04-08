@@ -1,27 +1,48 @@
-//pwm_core_bank.sv
-//this is just a temporary file it will be use as a scratch pad before commiting to the oriignal pwm_core_ip.sv file//pwm_regs.sv
+// pwm_regs.sv
 //
-// Generic MMIO register file for PWM core.
+// Generic MMIO register file for PWM core, V2 multi-channel version.
 //
-// Features:
-// - Bus-agnostic MMIO (req_valid/req_ready, rsp_valid/rsp_ready)
-// - Shadow registers for CTRL / PERIOD / DUTY
-// - Separate APPLY register (write 1 to request commit)
-// - Optional boundary-synchronous commit to period_end_i
-// - Startup-safe APPLY behavior: if PWM is not yet in a valid active-running
-//   state, APPLY commits immediately even when APPLY_ON_PERIOD_END = 1
+// -----------------------------------------------------------------------------
+// Design intent
+// -----------------------------------------------------------------------------
+// This module is still the register/configuration layer of the PWM subsystem.
+// V2 is intentionally an incremental extension of V1, not a redesign.
 //
-// Software contract:
-// 1. Write REG_CTRL bits [1:0] if needed
-// 2. Write REG_PERIOD
-// 3. Write REG_DUTY
-// 4. Write REG_APPLY bit[0] = 1
+// The choices preserved from V1 are:
+//   - bus-agnostic MMIO interface
+//   - shadow registers written by software
+//   - active registers consumed by hardware
+//   - explicit REG_APPLY commit mechanism
+//   - optional deferred commit at PWM period boundary
 //
-// Notes:
-// - REG_CTRL reads back SHADOW control bits (what software configured)
-// - REG_STATUS exposes ACTIVE control bits
-// - REG_APPLY is command-style; reads return 0
+// The main V2 change is scaling from one duty register to CHANNELS duty registers,
+// while keeping one shared period and one shared timebase.
 //
+// -----------------------------------------------------------------------------
+// Architectural choices worth remembering
+// -----------------------------------------------------------------------------
+// 1) CTRL remains a full DATA_W register.
+//    Reason: this matches V1 style, keeps MMIO behavior normal, supports
+//    merge_wstrb() cleanly, and leaves room for future control bits.
+//
+// 2) DUTY registers are banked starting at 0x20 using:
+//       REG_DUTY[i] = REG_DUTY_BASE + 4*i
+//    Reason: simple software model, simple decode, natural 32-bit spacing.
+//
+// 3) Shadow registers are what software reads back.
+//    Reason: software should see what it last configured, even before APPLY.
+//
+// 4) REG_POLARITY and REG_MOTOR_CTRL are placeholders in V2.
+//    Reason: reserve addresses now so V3 does not require a disruptive remap.
+//
+// 5) APPLY can be immediate or boundary-synchronized.
+//    Reason: preserve V1 glitch-free update model and startup-safe behavior.
+//
+//
+// Assumption for V2:
+// - MMIO register width is 32 bits
+// - Channel bitmask registers (REG_CH_ENABLE, REG_POLARITY) are also 32 bits
+// - Therefore CHANNELS must be <= DATA_W, and in normal use DATA_W = 32
 
 module pwm_regs #(
     parameter   int unsigned    ADDR_W      =   12,
