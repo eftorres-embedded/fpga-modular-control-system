@@ -1,24 +1,47 @@
 //pwm_core_ip.sv
 //
-//v2 multi-channel PWM core
 //
-//Purpose
-//-Glue layer that composes the PWM subsystem from two reusable blocks:
-//  1) pwm_timebase : generates a period counter and period boundary pulses
-//  2) pwm_compare  : generates pwm_raw via (cnt < duty_eff)
+// V2 multi-channel PWM core
 //
-//What this block does:
-//-Selects an active PWM period:
-//  -If period_cycles_i == 0, use DEFAULT_PERIOD_CYCLES
-//  -Otherwise use period_cycles_i
-//-Selects an active duty:
-//  -If use_default_duty == 1, use DEFAULT_DUTY_CYCLES
-//  -Otherwise use duty_cycles_i
+// Purpose
+// -------
+// This module is the composition layer for the pure-PWM subsystem.
+// It keeps the same architectural style as V1:
 //
-//Outputs
-//-cnt          :  free-running counter from timebase (wraps at effective period)
-//-period_end   : one-clock pulse at end of each PWM period
-//-pwm_raw      : raw PWM signal (pre-mode processing)
+//   1) One shared pwm_timebase instance
+//   2) Multiple pwm_compare instances, one per channel
+//
+// The timebase is shared across all channels, so every channel runs at the
+// same PWM frequency (same period), while each channel still has its own
+// duty-cycle setting.
+//
+// V2 intent
+// ---------
+// - Preserve the reusable V1 building blocks
+// - Scale from 1 PWM output to N PWM outputs
+// - Keep motor-control-specific behavior out of this module for now
+//   (no complementary outputs, no dead-time, no polarity processing yet)
+//
+// Functional summary
+// ------------------
+// - Select an active shared period:
+//     * if period_cycles_i == 0 -> use DEFAULT_PERIOD_CYCLES
+//     * else                    -> use period_cycles_i
+//
+// - Instantiate one shared pwm_timebase
+//
+// - Instantiate CHANNELS copies of pwm_compare
+//     * each channel sees the same cnt and period_cycles_eff
+//     * each channel gets its own duty_cycles_i[i]
+//     * each channel gets its own effective enable:
+//           enable && ch_enable_i[i]
+//
+// Outputs
+// -------
+// - cnt        : shared free-running PWM counter
+// - period_end : one-clock pulse at the end of each PWM period
+// - pwm_out    : vector of raw PWM outputs, one bit per channel
+//
 
 module pwm_core_ip #(
     parameter int unsigned CNT_WIDTH                =   32,
@@ -60,10 +83,10 @@ module pwm_core_ip #(
 //-----------------------------------------------------------------------
 
 //Shared active period that will be fed into the timebase
-//This is the runtime period unless fotware supplied 0.
+//This is the runtime period unless software supplied 0.
 logic   [CNT_WIDTH-1:0] period_active;
 
-//Effective period after timbebase-side safty clamping.
+//Effective period after timebase-side safety clamping.
 //pwm_timebase guarantees this will not be an illegal value such as 0 or 1
 logic   [CNT_WIDTH-1:0] period_cycles_eff;
 
@@ -121,7 +144,7 @@ generate
             .CNT_WIDTH(CNT_WIDTH)
         )
         u_pwmcompare(
-            .enable(ch_enable_ff[i]),
+            .enable(ch_enable_eff[i]),
             .cnt(cnt),
             .period_cycles_eff(period_cycles_eff),
             .duty_cycles(duty_cycles_i[i]),
