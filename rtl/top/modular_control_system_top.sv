@@ -332,7 +332,7 @@ assign esp_01s_en =	SW[0];
 logic				pwm_raw;
 assign	LEDR[0]		=	pwm_raw;
 
-
+//assign GSENSOR_CS_N = 0;
 niosv_modular_control_system u_niosv (
 		.clk_clk              (MAX10_CLK1_50),	//clk.clk
 		.pwm_out_conduit      (pwm_raw),			//pwm_out.conduit
