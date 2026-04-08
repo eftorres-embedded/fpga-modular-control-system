@@ -463,3 +463,4 @@ set_global_assignment -name ENABLE_SIGNALTAP ON
 set_global_assignment -name USE_SIGNALTAP_FILE debug_spi_adx1345.stp
 set_global_assignment -name SIGNALTAP_FILE debug_spi_adx1345.stp
 set_global_assignment -name ENABLE_LOGIC_ANALYZER_INTERFACE OFF
+set_global_assignment -name SLD_FILE db/debug_spi_adx1345_auto_stripped.stp
