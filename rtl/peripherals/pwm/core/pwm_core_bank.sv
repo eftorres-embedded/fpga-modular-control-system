@@ -22,24 +22,34 @@
 
 module pwm_core_ip #(
     parameter int unsigned CNT_WIDTH                =   32,
-    parameter int unsigned DEFAULT_PERIOD_CYCLES    =   32'd5_000,
-    parameter int unsigned DEFAULT_DUTY_CYCLES      =   32'd2_500
+    parameter int unsigned CHANNELS                 =   4,
+    parameter int unsigned DEFAULT_DUTY_CYCLES      =   32'd5_000
 )
 (
    input    logic               clk,
    input    logic               rst_n,
+   
+   //Global enable
    input    logic               enable,
 
-   //Runtime overwrites
+   //Per-channel output enable mask
+   input    logic   [CHANNELS-1:0]  ch_enable_i,
+   
+   //Global runtime period
    input    logic   [CNT_WIDTH-1:0] period_cycles_i,
-   input    logic   [CNT_WIDTH-1:0] duty_cycles_i,
+
+   //Per-channel runtime duty values
+   input    logic   [CNT_WIDTH-1:0] duty_cycles_i[CHANNELS],
 
    //use default duty
-   input    logic                   use_default_duty,
+   //input    logic                   use_default_duty,
 
+    //Global timebase visibility/debug
    output   logic   [CNT_WIDTH-1:0] cnt,
    output   logic                   period_end,
-   output   logic                   pwm_raw
+
+   //Muli-channel Pwm outputs
+   output   logic   [CHANNELS-1:0]  pwm_out
 );
 
 logic   [CNT_WIDTH-1:0] period_active;
