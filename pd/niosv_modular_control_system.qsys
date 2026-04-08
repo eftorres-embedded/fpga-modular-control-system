@@ -271,7 +271,7 @@
  </module>
  <module name="spi_master_0" kind="spi_master" version="1.0" enabled="1">
   <parameter name="ADDR_W" value="12" />
-  <parameter name="CLKDIV" value="8" />
+  <parameter name="CLKDIV" value="20" />
   <parameter name="CPHA" value="1" />
   <parameter name="CPOL" value="1" />
   <parameter name="DATA_W" value="32" />

@@ -31,6 +31,7 @@ sw/**/build/
 sw/**/CMakeFiles/
 sw/**/Makefile
 sw/bsp/*
+gdbopxdriscv.ini
 
 # ---- Quartus ----
 
@@ -54,6 +55,8 @@ quartus/project/simulation/
 *.qdf
 *.qpf.bak
 *.qsf.bak
+*~
+*~
 
 # ---- Platform Designer ----
 

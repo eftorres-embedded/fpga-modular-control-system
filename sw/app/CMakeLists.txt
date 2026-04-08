@@ -14,11 +14,13 @@ add_executable(app.elf)
 
 target_sources(app.elf
     PRIVATE
-        main.c
+        src/main.c
+        ../drivers/src/spi_regs.c
 )
 
 target_include_directories(app.elf
     PRIVATE
+        ../drivers/include
     PUBLIC
 )
 
