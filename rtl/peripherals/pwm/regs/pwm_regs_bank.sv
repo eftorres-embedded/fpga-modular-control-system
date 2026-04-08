@@ -87,13 +87,13 @@ module pwm_regs #(
     output  logic                       enable_o,
     output  logic   [CHANNELS-1:0]      ch_enable_o,
     output  logic   [CNT_W-1:0]         period_cycles_o,
-    output  logic   [CNT_W-1:0]         duty_cycles_o   [CHANNELS]
+    output  logic   [CNT_W-1:0]         duty_cycles_o   [CHANNELS],
     
     //-----------------------------------------
     //Placeholder outputs for future V3 motor features
     //-----------------------------------------
     output  logic   [CHANNELS-1:0]      polarity_o,
-    output  logic   [DATA_W-1:0         motor_ctrl_o);
+    output  logic   [DATA_W-1:0]        motor_ctrl_o);
 
     //------------------------------------------------
     // Register offsets (byte)
