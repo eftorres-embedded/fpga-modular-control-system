@@ -329,7 +329,7 @@ assign esp_01s_en =	SW[0];
 
 
 
-logic				pwm_raw;
+logic		[9:0]					pwm_out;
 assign	LEDR[9:0]		=	pwm_out;
 
 //assign GSENSOR_CS_N = 0;
