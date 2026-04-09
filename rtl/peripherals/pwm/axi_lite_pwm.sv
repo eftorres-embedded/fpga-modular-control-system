@@ -1,21 +1,47 @@
-//axi_lite_pwm.sv
+// axi_lite_pwm.sv
 //
-// AXI-Lite wrapper for PWM subsystem.
+// AXI4-Lite wrapper for the V2 PWM subsystem.
 //
-//Notes: 
-// - 32-bit data only
-// - Byte addresses are passed through directly to pwm_subsystem
-// - Single internal MMIO request/response channel is shared between reads and writes
-// - Reads and writes are serialized internally 
-// - AXI Write response uses OKAY/SLVERR based on rsp_err
-// - AXI read response uses OKAY/SLVERR based on rsp_err
+// -----------------------------------------------------------------------------
+// Design intent
+// -----------------------------------------------------------------------------
+// This wrapper translates an AXI4-Lite slave interface into the internal
+// bus-agnostic MMIO request/response interface used by pwm_subsystem.
 //
-//Register map (byte offsets):
-//  0x00    :   CTRL
-//  0x04    :   PERIOD
-//  0x08    :   DUTY
-//  0x0C    :   STATUS
-//  0x10    :   CNT
+// The wrapper keeps the same architectural style as the original version:
+//   - single internal MMIO request channel
+//   - single internal MMIO response channel
+//   - reads and writes serialized through one Moore FSM
+//   - decoupled AXI channels captured in holding registers
+//
+// -----------------------------------------------------------------------------
+// Notes
+// -----------------------------------------------------------------------------
+// - 32-bit AXI data bus only
+// - byte addresses are passed directly to pwm_subsystem
+// - reads and writes are serialized internally
+// - write response uses OKAY / SLVERR from rsp_err
+// - read response uses OKAY / SLVERR from rsp_err
+//
+// -----------------------------------------------------------------------------
+// V2 register map note
+// -----------------------------------------------------------------------------
+// The actual register map is implemented inside pwm_regs.sv.
+// The byte offsets visible through AXI-Lite are:
+//
+//   0x00  REG_CTRL
+//   0x04  REG_PERIOD
+//   0x08  REG_APPLY
+//   0x0C  REG_CH_ENABLE
+//   0x10  REG_STATUS
+//   0x14  REG_CNT
+//   0x18  REG_POLARITY      (placeholder in V2)
+//   0x1C  REG_MOTOR_CTRL    (placeholder in V2)
+//   0x20  REG_DUTY[0]
+//   0x24  REG_DUTY[1]
+//   0x28  REG_DUTY[2]
+//   ...
+//   0x20 + 4*i = REG_DUTY[i]
 
 module  axi_lite_pwm    #(
     parameter   int unsigned    AXI_ADDR_W              =   12,
