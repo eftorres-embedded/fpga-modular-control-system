@@ -74,7 +74,6 @@ module pwm_subsystem #(
     // control inputs to pwm_core_ip.
     logic                   enable;
     logic   [CHANNELS-1:0]  ch_enable;
-    logic                   use_default_duty;
     logic   [CNT_W-1:0]     period_cycles;
     logic   [CNT_W-1:0]     duty_cycles[CHANNELS];
 
@@ -113,7 +112,6 @@ module pwm_subsystem #(
 
         //Active configuration outputs
         .enable_o(enable),
-        .use_default_duty_o(use_default_duty),
         .period_cycles_o(period_cycles),
         .duty_cycles_o(duty_cycles),
 
