@@ -21,6 +21,7 @@ module  axi_lite_pwm    #(
     parameter   int unsigned    AXI_ADDR_W              =   12,
     parameter   int unsigned    AXI_DATA_W              =   32,
     parameter   int unsigned    CNT_W                   =   32,
+    parameter   int unsigned    CHANNELS                =   4,
     parameter   bit             APPLY_ON_PERIOD_END     =   1'b1)
 
     (
@@ -64,7 +65,7 @@ module  axi_lite_pwm    #(
     //--------------------------------------------------------
     output  logic   [CNT_W-1:0]                 cnt,
     output  logic                               period_end,
-    output  logic                               pwm_raw);
+    output  logic   [CHANNELS-1:0]              pwm_out);
 
     //---------------------------------------------------------
     //AXI response encodings
@@ -189,6 +190,7 @@ module  axi_lite_pwm    #(
         .ADDR_W(AXI_ADDR_W),
         .DATA_W(AXI_DATA_W),
         .CNT_W(CNT_W),
+        .CHANNELS(CHANNELS),
         .APPLY_ON_PERIOD_END(APPLY_ON_PERIOD_END))
         
         u_pwm_subsystem (
@@ -209,7 +211,7 @@ module  axi_lite_pwm    #(
 
         .cnt(cnt),
         .period_end(period_end),
-        .pwm_raw(pwm_raw));  
+        .pwm_out(pwm_out));  
 
         
     //--------------------------------------------------------------
