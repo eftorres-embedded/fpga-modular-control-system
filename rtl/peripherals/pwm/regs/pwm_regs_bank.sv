@@ -356,16 +356,16 @@ module pwm_regs #(
     always_comb
     begin
 
-        ch_enable_shadow    <= merge_wstrb(
+        ch_enable_merged    <= merge_wstrb(
             {{(DATA_W-CHANNELS){1'b0}},ch_enable_shadow},
             req_wdata,
-            req_wstrb)[CHANNELS-1:0];
+            req_wstrb);
 
 
-        polarity_shadow <=  merge_wstrb(
+        polarity_merge <=  merge_wstrb(
             {{(DATA_W-CHANNELS){1'b0}}, polarity_shadow},
             req_wdata,
-            req_wstrb)[CHANNELS-1:0];
+            req_wstrb);
 
     end
 
@@ -496,7 +496,8 @@ module pwm_regs #(
 
                             default:
                             begin
-                                rsp_err <= 1'b1;
+                                // No additional action.
+                                //rsp_err is already driven from err_next
                             end
                         endcase
                     end
@@ -511,7 +512,13 @@ module pwm_regs #(
     assign  enable_o            =   ctrl_active[0]; //enable_active;
     assign  ch_enable_o         =   ch_enable_active;
     assign  period_cycles_o     =   period_active;
-    assign  duty_cycles_o       =   duty_active;
     assign  polarity_o          =   polarity_active;
     assign  motor_ctrl_o        =   motor_ctrl_active;
+    //assign  duty_cycles_o       =   duty_active;
+    genvar idx;
+    generate
+        for(idx=0; idx<CHANNELS;idx++) begin : g_duty_out
+            assign  duty_cycles_o[idx]  =   duty_active[idx];
+        end
+    endgenerate
 endmodule
