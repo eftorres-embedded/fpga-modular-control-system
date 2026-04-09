@@ -766,3 +766,20 @@ V2 is therefore an **incremental expansion**, not a redesign.
 
 V3 will build on the V2 multichannel foundation and begin adding motor-control-specific output behavior. The first planned additions are placeholder-backed implementations for complementary outputs, polarity handling, and dead-time insertion, along with control bits for motor-oriented modes such as brake/coast or paired-channel behavior. V3 should still preserve the shared timebase and synchronized APPLY model, but it will start interpreting some channels as coordinated motor-drive outputs rather than only independent raw PWM channels. The goal is for V2 to stabilize the scalable banked PWM architecture so V3 can focus only on output semantics and protection features.
 
+
+## 2026-04-08 — `tb_pwm_regs` multichannel immediate-apply test
+
+Captured waveform and transcript for the V2 multichannel `pwm_regs` testbench in immediate-apply mode.
+
+### Waveform
+![tb_pwm_regs multichannel immediate apply waveform](img/2026-04-08-tb_pwm_regs_multichannel_Immediate_apply_wave.png)
+
+### Transcript
+![tb_pwm_regs multichannel immediate apply transcript](img/2026-04-08-tb_pwm_regs_multichannel_Immediate_apply_transcript.png)
+
+### Notes
+- Verified multichannel `REG_DUTY[i]` register bank behavior
+- Verified shadow-to-active transfer on `REG_APPLY`
+- Verified `REG_CH_ENABLE` active update behavior
+- Verified immediate-apply mode testbench passed cleanly
+
