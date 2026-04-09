@@ -142,7 +142,7 @@ module pwm_regs #(
 	logic   [DATA_W-1:0]    ctrl_active;
     logic   [CNT_W-1:0]     period_active;
     logic   [CNT_W-1:0]     duty_active[CHANNELS];
-    logic   [CHANNELS-1]    ch_enable_active;
+    logic   [CHANNELS-1:0]  ch_enable_active;
     //placeholder for V3
     logic   [CHANNELS-1:0]  polarity_active;
     logic   [DATA_W-1:0]    motor_ctrl_active;
@@ -169,14 +169,14 @@ module pwm_regs #(
     //------------------------------------------------------------------
     //Duty-bank addresss decode signals
     //------------------------------------------------------------------
-    logic       duty_addr_hit; //is the MMIO address one of the REG_DUTY[i] addresses?
-    int unsiged duty_idx;       //converts the REG_DUTY[i] address to its pwm_out channel: channel 1, 2, 3...
+    logic           duty_addr_hit; //is the MMIO address one of the REG_DUTY[i] addresses?
+    int unsigned    duty_idx;       //converts the REG_DUTY[i] address to its pwm_out channel: channel 1, 2, 3...
     
 
     //-------------------------------------------------
     //Ready/valid: single outstanding response
     //-------------------------------------------------
-    assign  rsp_fire    =   rsp_valid && rsp_ready
+    assign  rsp_fire    =   rsp_valid && rsp_ready;
     assign  req_ready   =   (!rsp_valid) || (rsp_fire);
     assign  req_fire    =   req_valid && req_ready;
     
@@ -274,8 +274,7 @@ module pwm_regs #(
                 begin
                     rdata_next[0] = period_end_i;
                     rdata_next[1] = apply_pending;
-                    rdata_next[2] = ctrl_active[0]; //enable
-                    rdata_next[3] = ctrl_active[1];	//default period
+                    rdata_next[2] = ctrl_active[0]; //active global enable
                 end
 
                 REG_CNT:
@@ -359,7 +358,7 @@ module pwm_regs #(
             polarity_shadow     <=  '0;
             motor_ctrl_shadow   <=  '0;
 
-            for(k=0; k<CHANNELS; K++)
+            for(k=0; k<CHANNELS; k++)
             begin
                 duty_shadow[k]  <=  '0;
                 duty_active[k]  <=  '0;
@@ -427,7 +426,7 @@ module pwm_regs #(
 				begin
                     if(duty_addr_hit)
                     begin
-                        duty_shadow[duty_ixd]   <=  merge_wstrb(
+                        duty_shadow[duty_idx]   <=  merge_wstrb(
                             duty_shadow[duty_idx],
                             req_wdata,
                             req_wstrb);
