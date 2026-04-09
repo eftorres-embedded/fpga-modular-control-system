@@ -783,3 +783,44 @@ Captured waveform and transcript for the V2 multichannel `pwm_regs` testbench in
 - Verified `REG_CH_ENABLE` active update behavior
 - Verified immediate-apply mode testbench passed cleanly
 
+## 2026-04-09 — `tb_pwm_regs` multichannel deferred-apply test (`APPLY_ON_PERIOD_END = 1`)
+
+Created and ran a dedicated V2 register-layer testbench for deferred apply mode using `tb_pwm_regs_apply_on_period_end.sv`. The goal was to verify that shadow register writes do not immediately update the active configuration when `APPLY_ON_PERIOD_END = 1`, and that the commit occurs only on a valid `period_end_i` pulse.
+
+### Test intent
+This testbench was used to confirm:
+- reset defaults remain correct
+- multichannel shadow register writes still work
+- active registers do not update immediately after `REG_APPLY`
+- `apply_pending` asserts while waiting for the period boundary
+- shadow-to-active commit occurs only when `period_end_i` pulses
+- invalid duty-bank address access still returns `rsp_err=1`
+
+### Result
+The testbench completed successfully in Questa with:
+- all checks passing
+- `Errors: 0`
+- `Warnings: 0` from the testbench execution summary
+
+This validates that the V2 `pwm_regs.sv` implementation still preserves the original V1 shadow/active register philosophy while correctly supporting deferred multichannel commits.
+
+### Waveform
+![tb_pwm_regs multichannel apply-on-period-end waveform](img/2026-04-08-tb_pwm_regs_multichannel_apply_period_end_wave.png)
+
+### Test result
+![tb_pwm_regs multichannel apply-on-period-end transcript](img/2026-04-08-tb_pwm_regs_multichannel_apply_period_end_testresult.png)
+
+### Key observations
+- Initial shadow programming did not affect active outputs before `REG_APPLY`
+- The first apply established the active configuration
+- A later apply request entered deferred mode as expected
+- `apply_pending` remained set until `period_end_i`
+- Active period, channel enable mask, polarity placeholder, motor control placeholder, and all `duty_active[i]` values updated only at the boundary event
+
+### Conclusion
+Both `pwm_regs.sv` operating modes are now verified in simulation:
+- immediate apply mode (`APPLY_ON_PERIOD_END = 0`)
+- deferred apply mode (`APPLY_ON_PERIOD_END = 1`)
+
+This is a strong checkpoint before moving on to V2 integration work in `pwm_core_ip.sv` and `pwm_subsystem.sv`.
+
