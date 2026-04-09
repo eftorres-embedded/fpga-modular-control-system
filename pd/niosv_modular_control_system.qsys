@@ -65,6 +65,22 @@
          type = "String";
       }
    }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
    element onchip_memory
    {
       datum _sortIndex
@@ -161,7 +177,12 @@
  <parameter name="useTestBenchNamingPattern" value="false" />
  <instanceScript></instanceScript>
  <interface name="clk" internal="clock_bridge.in_clk" type="clock" dir="end" />
- <interface name="pwm_out" internal="pwm_module.pwm_out" type="conduit" dir="end" />
+ <interface
+   name="pwm_module_pwm_channel"
+   internal="pwm_module.PWM_Channel"
+   type="conduit"
+   dir="end" />
+ <interface name="pwm_out" internal="pwm_module.pwm_out" />
  <interface name="rst_n" internal="reset_bridge.in_reset" type="reset" dir="end" />
  <interface
    name="spi_master"
@@ -252,10 +273,11 @@
   <parameter name="useShallowMemBlocks" value="false" />
   <parameter name="writable" value="true" />
  </module>
- <module name="pwm_module" kind="AXI_Lite_PWM_Full" version="1.0" enabled="1">
+ <module name="pwm_module" kind="AXI_Lite_PWM_Full" version="2.0" enabled="1">
   <parameter name="APPLY_ON_PERIOD_END" value="true" />
   <parameter name="AXI_ADDR_W" value="12" />
   <parameter name="AXI_DATA_W" value="32" />
+  <parameter name="CHANNELS" value="10" />
   <parameter name="CNT_W" value="32" />
  </module>
  <module

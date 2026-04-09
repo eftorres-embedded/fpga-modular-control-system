@@ -330,17 +330,17 @@ assign esp_01s_en =	SW[0];
 
 
 logic				pwm_raw;
-assign	LEDR[0]		=	pwm_raw;
+assign	LEDR[9:0]		=	pwm_out;
 
 //assign GSENSOR_CS_N = 0;
 niosv_modular_control_system u_niosv (
-		.clk_clk              (MAX10_CLK1_50),	//clk.clk
-		.pwm_out_conduit      (pwm_raw),			//pwm_out.conduit
-		.rst_n_reset_n        (rst_n),			//rst_n.reset_n
-		.spi_master_sclk      (GSENSOR_SCLK),	//spi_master.sclk
-		.spi_master_mosi      (GSENSOR_SDI),	//mosi
-		.spi_master_miso      (GSENSOR_SDO),	//miso
-		.spi_master_cs_n      (GSENSOR_CS_N));	//cs_n
+		.clk_clk									(MAX10_CLK1_50),	//clk.clk
+		.pwm_module_pwm_channel_pwm_out	(pwm_out),			//pwm_out.conduit
+		.rst_n_reset_n							(rst_n),			//rst_n.reset_n
+		.spi_master_sclk						(GSENSOR_SCLK),	//spi_master.sclk
+		.spi_master_mosi						(GSENSOR_SDI),	//mosi
+		.spi_master_miso						(GSENSOR_SDO),	//miso
+		.spi_master_cs_n						(GSENSOR_CS_N));	//cs_n
 
 endmodule
 

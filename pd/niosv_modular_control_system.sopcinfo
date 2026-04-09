@@ -5,11 +5,11 @@
  version="1.0"
  fabric="QSYS">
  <!-- Format version 25.1 1129 (Future versions may contain additional information.) -->
- <!-- 2026.04.07.22:05:00 -->
+ <!-- 2026.04.09.00:43:24 -->
  <!-- A collection of modules and connections -->
  <parameter name="AUTO_GENERATION_ID">
   <type>java.lang.Integer</type>
-  <value>1775617500</value>
+  <value>1775713404</value>
   <derived>false</derived>
   <enabled>true</enabled>
   <visible>false</visible>
@@ -4217,7 +4217,7 @@ parameters are a RESULT of the module parameters. -->
  <module
    name="pwm_module"
    kind="AXI_Lite_PWM_Full"
-   version="1.0"
+   version="2.0"
    path="pwm_module">
   <!-- Describes a single module. Module parameters are
 the requested settings for a module instance. -->
@@ -4240,6 +4240,14 @@ the requested settings for a module instance. -->
   <parameter name="CNT_W">
    <type>int</type>
    <value>32</value>
+   <derived>false</derived>
+   <enabled>true</enabled>
+   <visible>true</visible>
+   <valid>true</valid>
+  </parameter>
+  <parameter name="CHANNELS">
+   <type>int</type>
+   <value>10</value>
    <derived>false</derived>
    <enabled>true</enabled>
    <visible>true</visible>
@@ -4580,7 +4588,7 @@ parameters are a RESULT of the module parameters. -->
     <role>awready</role>
    </port>
   </interface>
-  <interface name="pwm_out" kind="conduit_end" version="25.1">
+  <interface name="PWM_Channel" kind="conduit_end" version="25.1">
    <!-- The connection points exposed by a module instance for the
 particular module parameters. Connection points and their
 parameters are a RESULT of the module parameters. -->
@@ -4619,10 +4627,10 @@ parameters are a RESULT of the module parameters. -->
    <type>conduit</type>
    <isStart>false</isStart>
    <port>
-    <name>pwm_raw</name>
+    <name>pwm_out</name>
     <direction>Output</direction>
-    <width>1</width>
-    <role>conduit</role>
+    <width>10</width>
+    <role>pwm_out</role>
    </port>
   </interface>
  </module>
@@ -6305,7 +6313,7 @@ parameters are a RESULT of the module parameters. -->
   <type>com.altera.entityinterfaces.IElementClass</type>
   <subtype>com.altera.entityinterfaces.IModule</subtype>
   <displayName>PWM Complete - AXI4 Lite</displayName>
-  <version>1.0</version>
+  <version>2.0</version>
  </plugin>
  <plugin>
   <instanceCount>2</instanceCount>
