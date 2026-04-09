@@ -181,7 +181,8 @@ module pwm_regs #(
     assign  req_fire    =   req_valid && req_ready;
 
     //---------------------------------------------------
-    //to be on the safeside, so we don't [CHANNELS-1:0] on a function
+    //Temporary merged MMIO write value.
+    //Kept as full DATA_W words so we do not slice a function return directly
     //---------------------------------------------------
     logic   [DATA_W-1:0]    ch_enable_merged;
     logic   [DATA_W-1:0]    polarity_merged;
@@ -356,13 +357,13 @@ module pwm_regs #(
     always_comb
     begin
 
-        ch_enable_merged    <= merge_wstrb(
+        ch_enable_merged    = merge_wstrb(
             {{(DATA_W-CHANNELS){1'b0}},ch_enable_shadow},
             req_wdata,
             req_wstrb);
 
 
-        polarity_merge <=  merge_wstrb(
+        polarity_merged =  merge_wstrb(
             {{(DATA_W-CHANNELS){1'b0}}, polarity_shadow},
             req_wdata,
             req_wstrb);
