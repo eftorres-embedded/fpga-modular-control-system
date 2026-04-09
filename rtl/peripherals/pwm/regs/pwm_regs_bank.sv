@@ -179,6 +179,12 @@ module pwm_regs #(
     assign  rsp_fire    =   rsp_valid && rsp_ready;
     assign  req_ready   =   (!rsp_valid) || (rsp_fire);
     assign  req_fire    =   req_valid && req_ready;
+
+    //---------------------------------------------------
+    //to be on the safeside, so we don't [CHANNELS-1:0] on a function
+    //---------------------------------------------------
+    logic   [DATA_W-1:0]    ch_enable_merged;
+    logic   [DATA_W-1:0]    polarity_merged;
     
 
     //-------------------------------------------------
@@ -345,6 +351,25 @@ module pwm_regs #(
     end
 
     //----------------------------------------------------------
+    //channel enable merge & polarity merge
+    //----------------------------------------------------------
+    always_comb
+    begin
+
+        ch_enable_shadow    <= merge_wstrb(
+            {{(DATA_W-CHANNELS){1'b0}},ch_enable_shadow},
+            req_wdata,
+            req_wstrb)[CHANNELS-1:0];
+
+
+        polarity_shadow <=  merge_wstrb(
+            {{(DATA_W-CHANNELS){1'b0}}, polarity_shadow},
+            req_wdata,
+            req_wstrb)[CHANNELS-1:0];
+
+    end
+
+    //----------------------------------------------------------
     //sequential logic
     //----------------------------------------------------------
     integer k;
@@ -448,18 +473,12 @@ module pwm_regs #(
 
                             REG_CH_ENABLE:
                             begin
-                                ch_enable_shadow    <= merge_wstrb(
-                                    {{(DATA_W-CHANNELS){1'b0}},ch_enable_shadow},
-                                    req_wdata,
-                                    req_wstrb)[CHANNELS-1:0];
+                                ch_enable_shadow    <=  ch_enable_merged[CHANNELS-1:0];
                             end
 
                             REG_POLARITY:
                             begin
-                                polarity_shadow <=  merge_wstrb(
-                                    {{(DATA_W-CHANNELS){1'b0}}, polarity_shadow},
-                                    req_wdata,
-                                    req_wstrb)[CHANNELS-1:0];
+                                polarity_shadow     <=  polarity_merged[CHANNELS-1:0];
                             end
 
                             REG_MOTOR_CTRL:
