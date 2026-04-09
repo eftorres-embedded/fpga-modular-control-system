@@ -112,6 +112,7 @@ module pwm_subsystem #(
 
         //Active configuration outputs
         .enable_o(enable),
+        .ch_enable_o(ch_enable),
         .period_cycles_o(period_cycles),
         .duty_cycles_o(duty_cycles),
 
