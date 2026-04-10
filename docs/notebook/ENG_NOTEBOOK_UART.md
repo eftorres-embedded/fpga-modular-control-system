@@ -82,8 +82,69 @@ with baudgen shared by both engines
 ```
 
 ### For uart_buffered.sv
+- This module should be bus-agnostic 
+- instantiate baugen
+- instantiate tx_engine
+- instantiate rx_engine
+- instantiate TX 2-byte skid
+- instantiate RX 2-byte skid
 
+in summary:
 
+```text
+TX launcher stream  ->  tx_skid2        ->  uart_tx_engine  ->  uart_tx pin
+uart_rx pin         ->  uart_rx_engine  ->  rx_skid2        ->  RX capture stream
+```
+### uart_tx_ram_window.sv
+Owns the software-to-UART buffering side:
+- TX RAM storage
+- software write path into the TX window
+- launch/read pointer
+- queued-byte count
+- empty/full status
+- tx_done pulse/sticky status generation
+- stream output toward TX skid/ TX engine
+
+### uart_rx_ram_window.sv
+Owns the UART-to-software buffering side:
+- RX RAM storage
+- hardware capture path into the RX window
+- write pointer
+- software consume/read pointer
+- queued-byte count
+- data-available/full/overflow status
+- RX-related event pulses
+
+### uart_buffered_regs.sv
+This is where the buffered design will live:
+- software-visible register map
+- instantiate TX RAM window
+- instantiate RX RAM window
+- TX Launcher logic
+- RX capture logic
+- occupancy/state counter
+- interrrupt generation
+- overflow/statusbits
+
+### axi_lite_uart_buffered.sv
+Just a thin wrapper
+- AXI4-Lite decode/handshake
+- convert AXI transactions to your internal MMIO/register interrface
+- instantiate uart_buffered_regs.sv
+
+## File-level organization proposition
+```text
+uart_baudgen.sv
+uart_tx_engine.sv
+uart_rx_engine.sv
+uart_skid2.sv
+
+uart_buffered.sv              // pure stream-level UART composition
+uart_tx_ram_window.sv         // TX RAM + TX-side control
+uart_rx_ram_window.sv         // RX RAM + RX-side control
+uart_buffered_regs.sv         // MMIO decode + control regs + IRQ aggregation
+axi_lite_uart_buffered.sv     // thin AXI4-Lite wrapper
+```
 
 
 
