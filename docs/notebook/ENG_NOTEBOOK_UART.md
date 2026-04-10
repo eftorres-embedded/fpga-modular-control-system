@@ -191,112 +191,65 @@ axi_lite_uart_buffered.sv
 
 ## uart_minimal layout
 ```text
-+------------------+        +---------------------------+        +---------------------------+        +-----------+
-|  TX stream in    | -----> | 1-byte TX elastic buffer  | -----> |      uart_tx_engine       | -----> | uart_tx   |
-|------------------|        |---------------------------|        |---------------------------|        | pin       |
-| tx_valid         |        | holds one pending byte    |        | stream-to-serial TX FSM   |        +-----------+
-| tx_ready         |        | decouples random writes   |        | start/data/stop bits      |
-| tx_data[7:0]     |        | from TX engine timing     |        | tx_busy                   |
-+------------------+        +---------------------------+        +---------------------------+
-                                                                                 ^
-                                                                                 |
-                                                                                 |
-                                                       +-------------------------+-------------------------+
-                                                       |                    uart_baudgen                   |
-                                                       |---------------------------------------------------|
-                                                       | clk, rst_n                                        |
-                                                       | baud_en                                           |
-                                                       | div_x16                                           |
-                                                       |---------------------------------------------------|
-                                                       | baud_x16_tick                                     |
-                                                       | baud_1x_tick                                      |
-                                                       +---------------------------------------------------+
-                                                                                |
-                                                                                |
-                                                                                v
-+-----------+                                                  +---------------------------+        +------------------+
-| uart_rx   | -----------------------------------------------> |      uart_rx_engine       | -----> |  RX stream out   |
-| pin       |                                                  |---------------------------|        |------------------|
-+-----------+                                                  | synchronizer              |        | rx_valid         |
-                                                               | 16x oversampling          |        | rx_ready         |
-                                                               | byte capture              |        | rx_data[7:0]     |
-                                                               | 1-byte output hold        |        +------------------+
-                                                               | rx_busy                   |
-                                                               +---------------------------+
-
-```                    
-
-
-
-
-## uart_buffered layout
-```txt
 +---------------------------+      +---------------------------+
 |       axi_lite_uart       | ---> |         uart_regs         |
-|---------------------------|      |---------------------------|
+|                           |      |                           |
 | thin AXI wrapper          |      | MMIO decode               |
 | AXI handshake             |      | control regs              |
 | MMIO req/rsp bridge       |      | baud_div reg              |
-+---------------------------+      | status / irq regs         |
-                                   | readback mux              |
-                                   +---------------------------+
+|                           |      | status / irq regs         |
+|                           |      | readback mux              |
++---------------------------+      +---------------------------+
                                               |
                                               |
-                      +-----------------------+-------------------------+                                                  
-                      |                                                  |
-                      |                                                  |
-                      v                                                  v
-    +----------------------------------+                +----------------------------------+            
-    |        uart_rx_ram_window        |                |        uart_tx_ram_window        |            
-    |----------------------------------|                |----------------------------------|            
-    | RX RAM storage                   |                | TX RAM storage                   |            
-    | HW capture path                  |                | SW write path                    |            
-    | rx_wr_ptr / rx_rd_ptr            |                | tx_wr_ptr / tx_rd_ptr            |            
-    | rx_count / empty / full          |                | tx_count / empty / full          |            
-    | rx_overflow / data_avail         |                | tx_done pulse / sticky           |            
-    | RX software read / pop / clear   |                | TX launcher stream output        |            
-    +----------------------------------+                +----------------------------------+            
-                    ^                                                   |
-                    |                                                   | TX launcher stream 
-                    |                                                   v                                                 
-                    |                                   +---------------------------+      +---------------------------+  
-                    |                                   |         tx_skid2          |      |      uart_tx_engine       |
-                    |                                   |---------------------------|      |---------------------------|
-                    |                                   | 2-byte TX elastic buffer  |      | stream-to-serial TX FSM   |
-                    |                                   | decouples TX launcher     |----->| start/data/stop bits      |-------------------------> uart_tx pin
-                    |RX capture stream                  +---------------------------+      | tx_busy                   |
-                    |                                                                      +---------------------------+
-                    |                                                                                   ^
-                    |                                                                                   |
-                    |                                                                                   | 
-                    |                                                                                   |
-                    |                                                                                   |
-                    v                                                                                   |baud_x16_tick
-        +---------------------------+                                                                   |
-        |         rx_skid2          |                                                                   |
-        |---------------------------|                                                                   |            
-        | 2-byte RX elastic buffer  |                                                                   |
-        | decouples RX capture      |                                                       +---------------------------+
-        +---------------------------+                                                       |       uart_baudgen        |
-                    ^                                                                       |---------------------------|
-                    |                                                                       | clk, rst_n                |
-                    |                                                                       | baud_en                   |
-                    |                                                                       | div_x16                   |
-                    |                                                                       | baud_x16_tick             |
-                    |                                                                       | baud_1x_tick              |
-                    |                                                                       +---------------------------+
-                    |                                                                                   |
-                    |                                                                                   |
-                    |                                                                                   | baud_x16_tick
-                    |                                                                                   |
-                    |                                                                                   v
-                    |                                                                       +---------------------------+      
-                    |                                                                       |       uart_rx_engine      |      
-                    |                                                                       |---------------------------|      
-                    ----------------------------------------------------------------------- |                           |
-                                                                                            | 16x oversampling          |---------->uart_rx pin
-                                                                                            | byte capture              |      
-                                                                                            | 1-byte output hold        |
-                                                                                            | rx_busy                   |
-                                                                                            +---------------------------+
+                     +------------------------+------------------------+
+                     |                                                 |
+                     |                                                 |
+                     v                                                 v
+      +----------------------------------+              +----------------------------------+
+      |        uart_rx_ram_window        |              |        uart_tx_ram_window        |
+      |                                  |              |                                  |
+      | RX RAM storage                   |              | TX RAM storage                   |
+      | HW capture path                  |              | SW write path                    |
+      | rx_wr_ptr / rx_rd_ptr            |              | tx_wr_ptr / tx_rd_ptr            |
+      | rx_count / empty / full          |              | tx_count / empty / full          |
+      | rx_overflow / data_avail         |              | tx_done pulse / sticky           |
+      | RX software read / pop / clear   |              | TX launcher stream output        |
+      +----------------------------------+              +----------------------------------+
+                     ^                                                 |
+                     |                                                 |
+                     | RX capture stream                               | TX launcher stream
+                     |                                                 |
+                     |                                                 v
+      +----------------------------------+              +----------------------------------+
+      |            rx_skid2              |              |            tx_skid2              |
+      |                                  |              |                                  |
+      | 2-byte RX elastic buffer         |              | 2-byte TX elastic buffer         |
+      | decouples RX capture             |              | decouples TX launcher            |
+      +----------------------------------+              +----------------------------------+
+                     ^                                                 |
+                     |                                                 |
+                     |                                                 v
++-----------+      +----------------------------------+      +----------------------------------+      +-----------+
+| uart_rx   | ---> |         uart_rx_engine           |      |         uart_tx_engine           | ---> | uart_tx   |
+| pin       |      |                                  |      |                                  |      | pin       |
++-----------+      | synchronizer                     |      | stream-to-serial TX FSM          |      +-----------+
+                   | 16x oversampling                 |      | start/data/stop bits             |
+                   | byte capture                     |      | tx_busy                          |
+                   | 1-byte output hold               |      |                                  |
+                   | rx_busy                          |      |                                  |
+                   +----------------------------------+      +----------------------------------+
+                                   ^                                   ^
+                                   |                                   |
+                                   +---------------+   +---------------+
+                                                   |   |
+                             +-----------------------------------------------+
+                             |                 uart_baudgen                  |
+                             |                                               |
+                             | clk, rst_n                                    |
+                             | baud_en                                       |
+                             | div_x16                                       |
+                             | baud_x16_tick                                 |
+                             | baud_1x_tick                                  |
+                             +-----------------------------------------------+
 ```
