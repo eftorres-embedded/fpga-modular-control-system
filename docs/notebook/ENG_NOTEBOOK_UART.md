@@ -20,6 +20,7 @@ The current modules I have is:
 - stream-style input
 - no bus baked in
 - protocol FSM is isolated
+* `Keep as shared core`
 
 * uart_rx_engine.sv is clean for reuse, already has:
 - input synchronizer
@@ -27,9 +28,40 @@ The current modules I have is:
 - byte capture
 - a one-byte output hold via output_buffer/output_valid
 - stream handshake on the output 
+* Limitation: no framing error/stop-bit validation flag
+- Keep the current engine logic
+- add framing_err_pulse
+- break_detect
 
 * uart_baudgen.sv is clean for reuse
 
-* uart_port_ip.sv
+* uart_port_ip.sv doesn't match our goal yet, it currently is:
+- TX engine direct stream input
+- RX engine feeding a 64-byte RX FIFO
+- Extra ouput staging aroudn that FIFO
+* What it currently does: Mixes baude gen, shared cores, RX FIFO policy, FIFO-to-stream output stage
+- This file can be use as the base for uart_minimal.sv
+- - We must
+    -   ranem it to uart_minimal.sv
+    -   remove the 64-byte sync_fifo
+    -   remove the FIFO refill output-stage circuitry
+    -   wirting RX engine stream directly outward
+
+The current top is not a buffered RAM-window UART
+Missing:
+- TX RAM window
+- RX RAM window
+- register file/MMIO block
+- interrupts
+- AXI4-Lite wrapper
+- 2-byte TX skid buffer
+- 2-byte RX skid buffer
+- Software-visible status/error handling
+
+## What should be done in summary:
+### For implementations: uart_minimal.sv & uart_buffered.sv
+
+
+
 
 
