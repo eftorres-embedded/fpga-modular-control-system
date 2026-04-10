@@ -60,6 +60,29 @@ Missing:
 
 ## What should be done in summary:
 ### For implementations: uart_minimal.sv & uart_buffered.sv
+- uart_baudgen.sv
+- uart_tx_engine.sv
+- uart_rx_engine.sv
+- Add a `new` uart_skid2.sv
+
+### For uart_minimal.sv
+- instantiate baudgen
+- instantiate tx_engine
+- instantiate rx_engine
+- no RAM windows
+- no AXI
+- no interrupts
+- no internal RX FIFO
+it should work in summary
+```text
+tx stream   ->  uart_tx_engine  -> uart_tx pin
+uart_rx pin ->  uart_rx_engine  -> rx stream
+
+with baudgen shared by both engines
+```
+
+### For uart_buffered.sv
+
 
 
 
