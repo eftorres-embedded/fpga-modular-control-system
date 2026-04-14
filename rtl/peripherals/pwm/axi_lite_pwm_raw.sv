@@ -1,12 +1,12 @@
-// axi_lite_pwm.sv
+// axi_lite_pwm_raw.sv
 //
-// AXI4-Lite wrapper for the V2 PWM subsystem.
+// AXI4-Lite wrapper for the V3 PWM subsystem.
 //
 // -----------------------------------------------------------------------------
 // Design intent
 // -----------------------------------------------------------------------------
 // This wrapper translates an AXI4-Lite slave interface into the internal
-// bus-agnostic MMIO request/response interface used by pwm_subsystem.
+// bus-agnostic MMIO request/response interface used by pwm_subsystem_raw.
 //
 // The wrapper keeps the same architectural style as the original version:
 //   - single internal MMIO request channel
@@ -18,15 +18,15 @@
 // Notes
 // -----------------------------------------------------------------------------
 // - 32-bit AXI data bus only
-// - byte addresses are passed directly to pwm_subsystem
+// - byte addresses are passed directly to pwm_subsystem_raw
 // - reads and writes are serialized internally
 // - write response uses OKAY / SLVERR from rsp_err
 // - read response uses OKAY / SLVERR from rsp_err
 //
 // -----------------------------------------------------------------------------
-// V2 register map note
+// V3 register map note
 // -----------------------------------------------------------------------------
-// The actual register map is implemented inside pwm_regs.sv.
+// The actual register map is implemented inside pwm_regs_common.sv.
 // The byte offsets visible through AXI-Lite are:
 //
 //   0x00  REG_CTRL
@@ -35,15 +35,13 @@
 //   0x0C  REG_CH_ENABLE
 //   0x10  REG_STATUS
 //   0x14  REG_CNT
-//   0x18  REG_POLARITY      (placeholder in V2)
-//   0x1C  REG_MOTOR_CTRL    (placeholder in V2)
 //   0x20  REG_DUTY[0]
 //   0x24  REG_DUTY[1]
 //   0x28  REG_DUTY[2]
 //   ...
 //   0x20 + 4*i = REG_DUTY[i]
 
-module  axi_lite_pwm    #(
+module  axi_lite_pwm_raw    #(
     parameter   int unsigned    AXI_ADDR_W              =   12,
     parameter   int unsigned    AXI_DATA_W              =   32,
     parameter   int unsigned    CNT_W                   =   32,
@@ -91,7 +89,7 @@ module  axi_lite_pwm    #(
     //--------------------------------------------------------
     output  logic   [CNT_W-1:0]                 cnt,
     output  logic                               period_end,
-    output  logic   [CHANNELS-1:0]              pwm_out);
+    output  logic   [CHANNELS-1:0]              pwm_o);
 
     //---------------------------------------------------------
     //AXI response encodings
@@ -212,7 +210,7 @@ module  axi_lite_pwm    #(
     //The AXI wrapper's job is to translate the bus protocol
     //into the req/rsp MMIO interface
     //----------------------------------------------------------
-    pwm_subsystem #(
+    pwm_subsystem_raw #(
         .ADDR_W(AXI_ADDR_W),
         .DATA_W(AXI_DATA_W),
         .CNT_W(CNT_W),
@@ -237,7 +235,7 @@ module  axi_lite_pwm    #(
 
         .cnt(cnt),
         .period_end(period_end),
-        .pwm_out(pwm_out));  
+        .pwm_o(pwm_o));  
 
         
     //--------------------------------------------------------------

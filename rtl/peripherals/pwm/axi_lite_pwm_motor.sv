@@ -1,6 +1,6 @@
 // axi_lite_pwm_motor.sv
 //
-// AXI4-Lite wrapper for the V2 PWM subsystem.
+// AXI4-Lite wrapper for the V3 PWM subsystem.
 //
 // -----------------------------------------------------------------------------
 // Design intent
@@ -24,9 +24,9 @@
 // - read response uses OKAY / SLVERR from rsp_err
 //
 // -----------------------------------------------------------------------------
-// V2 register map note
+// V3 register map note
 // -----------------------------------------------------------------------------
-// The actual register map is implemented inside pwm_regs.sv.
+// The actual register map is implemented inside pwm_regs_hbridge_ext.sv and pwm_regs_common.sv
 // The byte offsets visible through AXI-Lite are:
 //
 //   0x00  REG_CTRL
@@ -35,13 +35,14 @@
 //   0x0C  REG_CH_ENABLE
 //   0x10  REG_STATUS
 //   0x14  REG_CNT
-//   0x18  REG_POLARITY      (placeholder in V2)
-//   0x1C  REG_MOTOR_CTRL    (placeholder in V2)
 //   0x20  REG_DUTY[0]
 //   0x24  REG_DUTY[1]
 //   0x28  REG_DUTY[2]
 //   ...
 //   0x20 + 4*i = REG_DUTY[i]
+//   0x40  DIR_MAsK
+//   0x44  BRAKE_MASK
+//   0x48  COAST_MASK
 
 module  axi_lite_pwm_motor    #(
     parameter   int unsigned    AXI_ADDR_W              =   12,
@@ -239,7 +240,7 @@ module  axi_lite_pwm_motor    #(
 
         .cnt(cnt),
         .period_end(period_end),
-        .pwm_out(pwm_o),
+        .pwm_o(pwm_o),
         .in1_o(in1_o),
         .in2_o(in2_o));  
 
