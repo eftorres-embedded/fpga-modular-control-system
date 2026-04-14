@@ -29,7 +29,6 @@ module pwm_regs_hbridge_ext #(
 
     // Decoded MMIO access strobes from parent subsystem
     input  logic                    wr_en,
-    input  logic                    rd_en,
     input  logic [ADDR_W-1:0]       addr,
     input  logic [DATA_W-1:0]       wdata,
     input  logic [(DATA_W/8)-1:0]   wstrb,
