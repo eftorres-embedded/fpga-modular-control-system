@@ -132,7 +132,6 @@ module pwm_subsystem_motor #(
     assign common_rsp_ready = pending_common && rsp_ready;
 
     assign ext_wr_en = req_fire && route_to_ext && req_write;
-    assign ext_rd_en = req_fire && route_to_ext && !req_write;
 
     //-------------------------------------------------------------------------
     //Common register block
