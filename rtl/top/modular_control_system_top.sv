@@ -140,7 +140,45 @@ wire [8:0]fifo_dout;
 wire	baud_x16_tick;
 wire	baud_1x_tick;
 
+//-----------------------------------------------------
+//Self Balancing Signal declarations
+//-----------------------------------------------------
 
+//non-essential hardware
+logic	music_beeper;	//uart input
+logic	int_ir;			//
+logic	short_led		//
+
+assign	GPIO[19]	=	music_beeper;
+assign	int_ir 	=	GPIO[35];
+assign	GPIO[29]	=	short_led;
+
+//quadrature encoder
+logic	[1:0]	hall_sensor_a;
+logic	[1:0]	hall_sensor_b;
+
+assign	GPIO[33:32]	=	hall_sensor_a;
+assign	GPIO[31:30]	=	hall_sensor_b;
+
+//six-Axis (Gyro + Accelerometer) MPU-6500 I2C
+
+logic			gyro_acc_sda;
+logic			gyro_acc_sda_en;
+logic			gyro_acc_sda_in;
+logic			gyro_acc_scl;
+
+assign		GPIO[21]				=	gyro_sda_en		?	gyro_acc_sda	:	1'bz;
+assign		gyro_acc_sda_in	=	GPIO[21];
+
+//Motor h-bridge tb6612
+logic			motor_a_pwm;
+logic	[1:0]	motor_a_in;
+logic			motor_b_pwm;
+logic	[1:0]	motor_b_in;
+
+//Ultrasonic distance sensor
+logic			u_sonic_echo;
+logic			u_sonic_trig;
 
 //=======================================================
 //  Structural coding
