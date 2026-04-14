@@ -215,4 +215,8 @@ module pwm_regs_hbridge_ext #(
             end
         end
     end
+
+    assign  dir_mask_o      =   dir_active;
+    assign  brake_mask_o    =   brake_active;
+    assign  coast_mask_o    =   coast_active;
 endmodule
