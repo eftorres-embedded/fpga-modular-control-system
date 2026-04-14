@@ -93,7 +93,10 @@ module pwm_regs_common #(
     output  logic                       enable_o,
     output  logic   [CHANNELS-1:0]      ch_enable_o,
     output  logic   [CNT_W-1:0]         period_cycles_o,
-    output  logic   [CNT_W-1:0]         duty_cycles_o   [CHANNELS]);
+    output  logic   [CNT_W-1:0]         duty_cycles_o   [CHANNELS],
+    
+    //give the motor extension (and others) the exact same commit point as the common registers
+    output logic apply_commit_o);
 
     //This register block uses 32-bit MMIO words and 32-bit channel mask registers.
     //For that reason, CHANNELS is expected to be 32 or less.
@@ -465,6 +468,9 @@ module pwm_regs_common #(
     assign  enable_o            =   ctrl_active[0]; //enable_active;
     assign  ch_enable_o         =   ch_enable_active;
     assign  period_cycles_o     =   period_active;
+    //keeps the common APPLY behavior centralized and lets the H-bridge extension commit on
+    //the same APPLY event
+    assign apply_commit_o       =   apply_commit_now;
 
     genvar idx;
     generate
