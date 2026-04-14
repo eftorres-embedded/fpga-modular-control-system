@@ -433,6 +433,19 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[34]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[35]
 set_global_assignment -name FLOW_ENABLE_RTL_VIEWER ON
 set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
+set_global_assignment -name ENABLE_SIGNALTAP ON
+set_global_assignment -name USE_SIGNALTAP_FILE debug_spi_adx1345.stp
+set_global_assignment -name ENABLE_LOGIC_ANALYZER_INTERFACE OFF
+set_global_assignment -name ENABLE_OCT_DONE OFF
+set_global_assignment -name EXTERNAL_FLASH_FALLBACK_ADDRESS 00000000
+set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
+set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "SINGLE COMP IMAGE WITH ERAM"
+set_global_assignment -name CRC_ERROR_OPEN_DRAIN OFF
+set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
+set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
+set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
+set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
+set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/platform/de10_lite/self_balancing_io.sv
 set_global_assignment -name VERILOG_FILE ../../rtl/peripherals/spi/vendor/opencores_verilog_spi/trunk/clk_valid.v
 set_global_assignment -name VERILOG_FILE ../../rtl/peripherals/spi/vendor/opencores_verilog_spi/trunk/spi_master.v
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/spi/regs/spi_regs.sv
@@ -457,18 +470,6 @@ set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/common/hex_to_sseg.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/top/modular_control_system_top.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/core/pwm_core_ip.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/axi_lite_pwm.sv
-set_global_assignment -name ENABLE_SIGNALTAP ON
-set_global_assignment -name USE_SIGNALTAP_FILE debug_spi_adx1345.stp
 set_global_assignment -name SIGNALTAP_FILE debug_spi_adx1345.stp
-set_global_assignment -name ENABLE_LOGIC_ANALYZER_INTERFACE OFF
-set_global_assignment -name ENABLE_OCT_DONE OFF
-set_global_assignment -name EXTERNAL_FLASH_FALLBACK_ADDRESS 00000000
-set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
-set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "SINGLE COMP IMAGE WITH ERAM"
-set_global_assignment -name CRC_ERROR_OPEN_DRAIN OFF
-set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
-set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
-set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
-set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
 set_global_assignment -name SLD_FILE db/debug_spi_adx1345_auto_stripped.stp
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

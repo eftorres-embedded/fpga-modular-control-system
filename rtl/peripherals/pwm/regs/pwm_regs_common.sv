@@ -1,25 +1,34 @@
-//pwm_regs.sv
+// pwm_regs_common.sv
 //
-//Generic MMIO register file for PWM core, V2 multi-channel version.
+// Common MMIO register file for the PWM family.
 //
-//-----------------------------------------------------------------------------
-//Design intent
-//-----------------------------------------------------------------------------
-//This module is still the register/configuration layer of the PWM subsystem.
-//V2 is intentionally an incremental extension of V1, not a redesign.
+// -----------------------------------------------------------------------------
+// Design intent
+// -----------------------------------------------------------------------------
+// This file is the common/base register block shared by all PWM personalities.
 //
-//The choices preserved from V1 are:
-//  - bus-agnostic MMIO interface
-//  - shadow registers written by software
-//  - active registers consumed by hardware
-//  - explicit REG_APPLY commit mechanism
-//  - optional deferred commit at PWM period boundary
+// It preserves the working V2 behavior from pwm_regs.sv for:
+//   - generic bus-agnostic MMIO interface
+//   - shadow registers written by software
+//   - active registers consumed by hardware
+//   - explicit REG_APPLY commit mechanism
+//   - optional deferred commit at PWM period boundary
+//   - one shared period and banked duty registers
 //
-//The main V2 change is scaling from one duty register to CHANNELS duty registers,
-//while keeping one shared period and one shared timebase.
+// Personality-specific control (H-bridge / servo / future modes) is intentionally
+// moved out of this file into separate extension register blocks.
 //
-//-----------------------------------------------------------------------------
-//Architectural choices worth remembering
+// -----------------------------------------------------------------------------
+// Address-map note
+// -----------------------------------------------------------------------------
+// To minimize software churn, the common block keeps the duty-bank base at 0x20,
+// matching the current V2 layout.
+//
+// That means 0x18 and 0x1C are intentionally left unused by this common block.
+// A higher-level subsystem can later route those or other extension windows to
+// personality-specific register blocks if desired.
+//
+//Architectural choices 
 //-----------------------------------------------------------------------------
 //1) CTRL remains a full DATA_W register.
 //   Reason: this matches V1 style, keeps MMIO behavior normal, supports
@@ -32,19 +41,16 @@
 //3) Shadow registers are what software reads back.
 //   Reason: software should see what it last configured, even before APPLY.
 //
-//4) REG_POLARITY and REG_MOTOR_CTRL are placeholders in V2.
-//   Reason: reserve addresses now so V3 does not require a disruptive remap.
 //
-//5) APPLY can be immediate or boundary-synchronized.
+//4) APPLY can be immediate or boundary-synchronized.
 //   Reason: preserve V1 glitch-free update model and startup-safe behavior.
 //
 //
 //Assumption for V2:
 //- MMIO register width is 32 bits
-//- Channel bitmask registers (REG_CH_ENABLE, REG_POLARITY) are also 32 bits
 //- Therefore CHANNELS must be <= DATA_W, and in normal use DATA_W = 32
 
-module pwm_regs #(
+module pwm_regs_common #(
     parameter   int unsigned    ADDR_W      =   12,
     parameter   int unsigned    DATA_W      =   32,
     parameter   int unsigned    CNT_W       =   32,
@@ -87,15 +93,8 @@ module pwm_regs #(
     output  logic                       enable_o,
     output  logic   [CHANNELS-1:0]      ch_enable_o,
     output  logic   [CNT_W-1:0]         period_cycles_o,
-    output  logic   [CNT_W-1:0]         duty_cycles_o   [CHANNELS],
-    
-    //-----------------------------------------
-    //Placeholder outputs for future V3 motor features
-    //-----------------------------------------
-    output  logic   [CHANNELS-1:0]      polarity_o,
-    output  logic   [DATA_W-1:0]        motor_ctrl_o);
+    output  logic   [CNT_W-1:0]         duty_cycles_o   [CHANNELS]);
 
-    //V2 sizing assumption:
     //This register block uses 32-bit MMIO words and 32-bit channel mask registers.
     //For that reason, CHANNELS is expected to be 32 or less.
     //That is sufficient for the intended use cases (motors / LEDs) and keeps the
@@ -105,7 +104,7 @@ module pwm_regs #(
     begin
         if (CHANNELS > DATA_W)
         begin
-            $error("pwm_regs: CHANNELS (%0d) must be <= DATA_W (%0d)", CHANNELS, DATA_W);
+            $error("pwm_regs_common: CHANNELS (%0d) must be <= DATA_W (%0d)", CHANNELS, DATA_W);
         end
     end
 
@@ -118,11 +117,10 @@ module pwm_regs #(
     localparam  logic   [ADDR_W-1:0]    REG_CH_ENABLE   =   'h0C;
     localparam  logic   [ADDR_W-1:0]    REG_STATUS      =   'h10;
     localparam  logic   [ADDR_W-1:0]    REG_CNT         =   'h14;
-    localparam  logic   [ADDR_W-1:0]    REG_POLARITY    =   'h18;   //placeholder for V3
-    localparam  logic   [ADDR_W-1:0]    REG_MOTOR_CTRL  =   'h1C;   //placeholder for V3
     //------------------------------------------------
     //Base of banked duty register region (one per channel)
     //REG_DUTY[i]   =   REG_DUTY_BASE + 4*i
+    //0x18 and 0x1C intentionally left unused here to preserve the V2 duty map
     //------------------------------------------------
     localparam  logic   [ADDR_W-1:0]    REG_DUTY_BASE   =   'h20;
 
@@ -134,19 +132,12 @@ module pwm_regs #(
     logic   [CNT_W-1:0]     period_shadow;
     logic   [CNT_W-1:0]     duty_shadow[CHANNELS];
     logic   [CHANNELS-1:0]  ch_enable_shadow;
-    //placeholder for V3
-    logic   [CHANNELS-1:0]  polarity_shadow;
-    logic   [DATA_W-1:0]    motor_ctrl_shadow;
     
     //active
 	logic   [DATA_W-1:0]    ctrl_active;
     logic   [CNT_W-1:0]     period_active;
     logic   [CNT_W-1:0]     duty_active[CHANNELS];
     logic   [CHANNELS-1:0]  ch_enable_active;
-    //placeholder for V3
-    logic   [CHANNELS-1:0]  polarity_active;
-    logic   [DATA_W-1:0]    motor_ctrl_active;
-
 
 
     //------------------------------------------------
@@ -185,8 +176,7 @@ module pwm_regs #(
     //Kept as full DATA_W words so we do not slice a function return directly
     //---------------------------------------------------
     logic   [DATA_W-1:0]    ch_enable_merged;
-    logic   [DATA_W-1:0]    polarity_merged;
-    
+   
 
     //-------------------------------------------------
     //Helper function: byte-write merge for 32-bit regs
@@ -289,17 +279,6 @@ module pwm_regs #(
                     rdata_next = cnt_i;
                 end
 
-                REG_POLARITY:
-                begin
-                    rdata_next  =   '0;
-                    rdata_next[CHANNELS-1:0]    =   polarity_shadow;
-                end
-
-                REG_MOTOR_CTRL:
-                begin
-                    rdata_next  =   motor_ctrl_shadow;
-                end
-
                 default:
                 begin
                     rdata_next = '0;
@@ -356,18 +335,10 @@ module pwm_regs #(
     //----------------------------------------------------------
     always_comb
     begin
-
         ch_enable_merged    = merge_wstrb(
             {{(DATA_W-CHANNELS){1'b0}},ch_enable_shadow},
             req_wdata,
             req_wstrb);
-
-
-        polarity_merged =  merge_wstrb(
-            {{(DATA_W-CHANNELS){1'b0}}, polarity_shadow},
-            req_wdata,
-            req_wstrb);
-
     end
 
     //----------------------------------------------------------
@@ -381,8 +352,6 @@ module pwm_regs #(
             ctrl_shadow		    <=  '0;
             ch_enable_shadow    <=  '0;
             period_shadow	    <=  '0;
-            polarity_shadow     <=  '0;
-            motor_ctrl_shadow   <=  '0;
 
             for(k=0; k<CHANNELS; k++)
             begin
@@ -393,8 +362,6 @@ module pwm_regs #(
             ctrl_active		    <=  '0;
             ch_enable_active    <=  '0;
             period_active	    <=  '0;
-            polarity_active     <=  '0;
-            motor_ctrl_active   <=  '0;
             
             apply_pending	<=  1'b0;
 
@@ -421,8 +388,6 @@ module pwm_regs #(
                 ctrl_active		    <=  ctrl_shadow;
                 ch_enable_active    <=  ch_enable_shadow;
                 period_active	    <=  period_shadow;
-                polarity_active     <=  polarity_shadow;
-                motor_ctrl_active   <=  motor_ctrl_shadow;
                 
                 for(k=0;k<CHANNELS;k++)
                 begin
@@ -477,19 +442,6 @@ module pwm_regs #(
                                 ch_enable_shadow    <=  ch_enable_merged[CHANNELS-1:0];
                             end
 
-                            REG_POLARITY:
-                            begin
-                                polarity_shadow     <=  polarity_merged[CHANNELS-1:0];
-                            end
-
-                            REG_MOTOR_CTRL:
-                            begin
-                                motor_ctrl_shadow   <=  merge_wstrb(
-                                    motor_ctrl_shadow,
-                                    req_wdata,
-                                    req_wstrb);
-                            end
-
                             REG_APPLY:
                             begin
                                 //No stored data; apply_pulse handles command semantics
@@ -513,9 +465,7 @@ module pwm_regs #(
     assign  enable_o            =   ctrl_active[0]; //enable_active;
     assign  ch_enable_o         =   ch_enable_active;
     assign  period_cycles_o     =   period_active;
-    assign  polarity_o          =   polarity_active;
-    assign  motor_ctrl_o        =   motor_ctrl_active;
-    //assign  duty_cycles_o       =   duty_active;
+
     genvar idx;
     generate
         for(idx=0; idx<CHANNELS;idx++) begin : g_duty_out

@@ -140,55 +140,41 @@ wire [8:0]fifo_dout;
 wire	baud_x16_tick;
 wire	baud_1x_tick;
 
+///-----------------------------------------------------
+// Internal signals connected to self_balancing_io
 //-----------------------------------------------------
-//Self Balancing Signal declarations
-//-----------------------------------------------------
 
-//non-essential hardware
-logic	music_beeper;	//uart input
-logic	int_ir;			//
-logic	short_led;		//
+//auxiliary / non-essential hardware
+logic       sb_beeper_o;
+logic       sb_ir_i;
+logic       sb_status_led_o;
 
-assign	GPIO[19]	=	music_beeper;
-assign	int_ir 	=	GPIO[35];
-assign	GPIO[29]	=	short_led;
+//motor hall sensors
+logic [1:0] motor_a_hall_i;
+logic [1:0] motor_b_hall_i;
 
-//quadrature encoder
-logic	[1:0]	hall_sensor_a;
-logic	[1:0]	hall_sensor_b;
+//MPU-6500 I2C
+logic       mpu_i2c_scl_drive_low;
+logic       mpu_i2c_scl_i;
+logic       mpu_i2c_sda_drive_low;
+logic       mpu_i2c_sda_i;
 
-assign	GPIO[33:32]	=	hall_sensor_a;
-assign	GPIO[31:30]	=	hall_sensor_b;
+//TB6612 control
+logic       motor_a_pwm_o;
+logic       motor_a_in1_o;
+logic       motor_a_in2_o;
 
-//six-Axis (Gyro + Accelerometer) MPU-6500 I2C
+logic       motor_b_pwm_o;
+logic       motor_b_in1_o;
+logic       motor_b_in2_o;
 
-logic			gyro_acc_sda;
-logic			gyro_acc_sda_en;
-logic			gyro_acc_sda_in;
-logic			gyro_acc_scl;
+// ultrasonic
+logic       usonic_echo_i;
+logic       usonic_trig_o;
 
-assign		GPIO[21]				=	gyro_acc_sda_en		?	gyro_acc_sda	:	1'bz;
-assign		gyro_acc_sda_in	=	GPIO[21];
 
-//Motor h-bridge tb6612
-logic			motor_a_pwm;
-logic	[1:0]	motor_a_in;
-logic			motor_b_pwm;
-logic	[1:0]	motor_b_in;
 
-assign	GPIO[22]		=	motor_a_pwm;
-assign	GPIO[23]		=	motor_a_in[1];
-assign	GPIO[24]		=	motor_a_in[0];
 
-assign	GPIO[27]		=	motor_b_pwm;
-assign	GPIO[26:25]	=	motor_b_in;
-
-//Ultrasonic distance sensor
-logic		u_sonic_echo;
-logic		u_sonic_trig;
-
-assign	ultra_sonic_echo		=	GPIO[4];
-assign	GPIO[28]					=	u_sonic_trig;
 
 //=======================================================
 //  Structural coding
@@ -376,11 +362,58 @@ hex_to_sseg			count2(.hex({1'b0,1'b0,lcd_fifo_count[9:8]}), 	.dp_in(dp), 		.sseg
 //assign esp_01s_en =	SW[0];
 
 
+//-----------------------------------------------------
+// Self-Balancing module signals
+//-----------------------------------------------------
+assign sb_beeper_o              = 1'b0;
+assign sb_status_led_o          = pwm_out[0];
+
+assign mpu_i2c_scl_drive_low    = 1'b0;
+assign mpu_i2c_sda_drive_low    = 1'b0;
+
+assign motor_a_pwm_o            = SW[0];
+assign motor_a_in1_o            = SW[1];
+assign motor_a_in2_o            = SW[2];
+
+assign motor_b_pwm_o            = SW[3];
+assign motor_b_in1_o            = SW[4];
+assign motor_b_in2_o            = SW[5];
+
+assign usonic_trig_o            = 1'b0;
+
+
+self_balancing_io u_self_balancing_io (
+    .GPIO                  (GPIO),
+
+    .beeper_o              (sb_beeper_o),
+    .ir_i                  (sb_ir_i),
+    .status_led_o          (sb_status_led_o),
+
+    .motor_a_hall_i        (motor_a_hall_i),
+    .motor_b_hall_i        (motor_b_hall_i),
+
+    .mpu_i2c_scl_drive_low (mpu_i2c_scl_drive_low),
+    .mpu_i2c_scl_i         (mpu_i2c_scl_i),
+    .mpu_i2c_sda_drive_low (mpu_i2c_sda_drive_low),
+    .mpu_i2c_sda_i         (mpu_i2c_sda_i),
+
+    .motor_a_pwm_o         (motor_a_pwm_o),
+    .motor_a_in1_o         (motor_a_in1_o),
+    .motor_a_in2_o         (motor_a_in2_o),
+
+    .motor_b_pwm_o         (motor_b_pwm_o),
+    .motor_b_in1_o         (motor_b_in1_o),
+    .motor_b_in2_o         (motor_b_in2_o),
+
+    .usonic_echo_i         (usonic_echo_i),
+    .usonic_trig_o         (usonic_trig_o)
+);
+
+
 //PWM out
 logic		[9:0]					pwm_out;
 assign	LEDR[9:0]		=	pwm_out;
 
-//assign GSENSOR_CS_N = 0;
 niosv_modular_control_system u_niosv (
 		.clk_clk									(MAX10_CLK1_50),	//clk.clk
 		.pwm_module_pwm_channel_pwm_out	(pwm_out),			//pwm_out.conduit
