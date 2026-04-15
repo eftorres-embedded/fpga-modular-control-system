@@ -371,14 +371,6 @@ assign sb_status_led_o          = pwm_out[0];
 assign mpu_i2c_scl_drive_low    = 1'b0;
 assign mpu_i2c_sda_drive_low    = 1'b0;
 
-assign motor_a_pwm_o            = SW[0];
-assign motor_a_in1_o            = SW[1];
-assign motor_a_in2_o            = SW[2];
-
-assign motor_b_pwm_o            = SW[3];
-assign motor_b_in1_o            = SW[4];
-assign motor_b_in2_o            = SW[5];
-
 assign usonic_trig_o            = 1'b0;
 
 
@@ -415,13 +407,16 @@ logic		[9:0]					pwm_out;
 assign	LEDR[9:0]		=	pwm_out;
 
 niosv_modular_control_system u_niosv (
-		.clk_clk									(MAX10_CLK1_50),	//clk.clk
-		.pwm_module_pwm_channel_pwm_out	(pwm_out),			//pwm_out.conduit
-		.rst_n_reset_n							(rst_n),			//rst_n.reset_n
-		.spi_master_sclk						(GSENSOR_SCLK),	//spi_master.sclk
-		.spi_master_mosi						(GSENSOR_SDI),	//mosi
-		.spi_master_miso						(GSENSOR_SDO),	//miso
-		.spi_master_cs_n						(GSENSOR_CS_N));	//cs_n
+		.clk_clk				(MAX10_CLK1_50),	//clk.clk
+		.led_pwm_raw		(pwm_out[9:0]),	//pwm_out.conduit
+		.rst_n_reset_n		(rst_n),				//rst_n.reset_n
+		.spi_master_sclk	(GSENSOR_SCLK),	//spi_master.sclk
+		.spi_master_mosi	(GSENSOR_SDI),		//mosi
+		.spi_master_miso	(GSENSOR_SDO),		//miso
+		.spi_master_cs_n	(GSENSOR_CS_N),
+		.motor_pwm_pwm		({motor_a_pwm_o,motor_b_pwm_o}),
+		.motor_pwm_in1		({motor_a_in1_o,motor_b_in1_o}),
+		.motor_pwm_in2		({motor_a_in2_o,motor_b_in2_o}));
 
 endmodule
 

@@ -34,22 +34,22 @@ on the Quartus Prime software download page.
 	(port
 		(pt 0 152)
 		(input)
-		(text "motor_pwm_pwm[3..0]" (rect 0 0 93 12)(font "Arial" (font_size 8)))
-		(text "motor_pwm_pwm[3..0]" (rect 4 141 118 152)(font "Arial" (font_size 8)))
+		(text "motor_pwm_pwm[1..0]" (rect 0 0 92 12)(font "Arial" (font_size 8)))
+		(text "motor_pwm_pwm[1..0]" (rect 4 141 118 152)(font "Arial" (font_size 8)))
 		(line (pt 0 152)(pt 128 152)(line_width 3))
 	)
 	(port
 		(pt 0 168)
 		(input)
-		(text "motor_pwm_in1[3..0]" (rect 0 0 83 12)(font "Arial" (font_size 8)))
-		(text "motor_pwm_in1[3..0]" (rect 4 157 118 168)(font "Arial" (font_size 8)))
+		(text "motor_pwm_in1[1..0]" (rect 0 0 82 12)(font "Arial" (font_size 8)))
+		(text "motor_pwm_in1[1..0]" (rect 4 157 118 168)(font "Arial" (font_size 8)))
 		(line (pt 0 168)(pt 128 168)(line_width 3))
 	)
 	(port
 		(pt 0 184)
 		(input)
-		(text "motor_pwm_in2[3..0]" (rect 0 0 84 12)(font "Arial" (font_size 8)))
-		(text "motor_pwm_in2[3..0]" (rect 4 173 118 184)(font "Arial" (font_size 8)))
+		(text "motor_pwm_in2[1..0]" (rect 0 0 83 12)(font "Arial" (font_size 8)))
+		(text "motor_pwm_in2[1..0]" (rect 4 173 118 184)(font "Arial" (font_size 8)))
 		(line (pt 0 184)(pt 128 184)(line_width 3))
 	)
 	(port
@@ -69,8 +69,8 @@ on the Quartus Prime software download page.
 	(port
 		(pt 0 112)
 		(output)
-		(text "led_pwm_raw[3..0]" (rect 0 0 75 12)(font "Arial" (font_size 8)))
-		(text "led_pwm_raw[3..0]" (rect 4 101 106 112)(font "Arial" (font_size 8)))
+		(text "led_pwm_raw[9..0]" (rect 0 0 75 12)(font "Arial" (font_size 8)))
+		(text "led_pwm_raw[9..0]" (rect 4 101 106 112)(font "Arial" (font_size 8)))
 		(line (pt 0 112)(pt 128 112)(line_width 3))
 	)
 	(port

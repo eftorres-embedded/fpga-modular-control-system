@@ -5,11 +5,11 @@
  version="1.0"
  fabric="QSYS">
  <!-- Format version 25.1 1129 (Future versions may contain additional information.) -->
- <!-- 2026.04.14.22:37:43 -->
+ <!-- 2026.04.14.22:52:51 -->
  <!-- A collection of modules and connections -->
  <parameter name="AUTO_GENERATION_ID">
   <type>java.lang.Integer</type>
-  <value>1776224263</value>
+  <value>1776225171</value>
   <derived>false</derived>
   <enabled>true</enabled>
   <visible>false</visible>
@@ -2916,7 +2916,7 @@ the requested settings for a module instance. -->
   </parameter>
   <parameter name="CHANNELS">
    <type>int</type>
-   <value>4</value>
+   <value>10</value>
    <derived>false</derived>
    <enabled>true</enabled>
    <visible>true</visible>
@@ -3298,7 +3298,7 @@ parameters are a RESULT of the module parameters. -->
    <port>
     <name>pwm_o</name>
     <direction>Output</direction>
-    <width>4</width>
+    <width>10</width>
     <role>raw</role>
    </port>
   </interface>
@@ -3336,7 +3336,7 @@ the requested settings for a module instance. -->
   </parameter>
   <parameter name="CHANNELS">
    <type>int</type>
-   <value>4</value>
+   <value>2</value>
    <derived>false</derived>
    <enabled>true</enabled>
    <visible>true</visible>
@@ -3718,19 +3718,19 @@ parameters are a RESULT of the module parameters. -->
    <port>
     <name>pwm_o</name>
     <direction>Input</direction>
-    <width>4</width>
+    <width>2</width>
     <role>pwm</role>
    </port>
    <port>
     <name>in1_o</name>
     <direction>Input</direction>
-    <width>4</width>
+    <width>2</width>
     <role>in1</role>
    </port>
    <port>
     <name>in2_o</name>
     <direction>Input</direction>
-    <width>4</width>
+    <width>2</width>
     <role>in2</role>
    </port>
   </interface>
