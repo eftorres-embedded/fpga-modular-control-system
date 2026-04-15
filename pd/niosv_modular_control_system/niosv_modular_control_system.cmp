@@ -1,12 +1,15 @@
 	component niosv_modular_control_system is
 		port (
-			clk_clk                        : in  std_logic                    := 'X'; -- clk
-			pwm_module_pwm_channel_pwm_out : out std_logic_vector(9 downto 0);        -- pwm_out
-			rst_n_reset_n                  : in  std_logic                    := 'X'; -- reset_n
-			spi_master_sclk                : out std_logic;                           -- sclk
-			spi_master_mosi                : out std_logic;                           -- mosi
-			spi_master_miso                : in  std_logic                    := 'X'; -- miso
-			spi_master_cs_n                : out std_logic                            -- cs_n
+			clk_clk         : in  std_logic                    := 'X'; -- clk
+			led_pwm_raw     : out std_logic_vector(9 downto 0);        -- raw
+			motor_pwm_pwm   : out std_logic_vector(1 downto 0);        -- pwm
+			motor_pwm_in1   : out std_logic_vector(1 downto 0);        -- in1
+			motor_pwm_in2   : out std_logic_vector(1 downto 0);        -- in2
+			rst_n_reset_n   : in  std_logic                    := 'X'; -- reset_n
+			spi_master_sclk : out std_logic;                           -- sclk
+			spi_master_mosi : out std_logic;                           -- mosi
+			spi_master_miso : in  std_logic                    := 'X'; -- miso
+			spi_master_cs_n : out std_logic                            -- cs_n
 		);
 	end component niosv_modular_control_system;
 

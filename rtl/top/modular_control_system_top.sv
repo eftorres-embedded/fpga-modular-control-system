@@ -140,6 +140,40 @@ wire [8:0]fifo_dout;
 wire	baud_x16_tick;
 wire	baud_1x_tick;
 
+///-----------------------------------------------------
+// Internal signals connected to self_balancing_io
+//-----------------------------------------------------
+
+//auxiliary / non-essential hardware
+logic       sb_beeper_o;
+logic       sb_ir_i;
+logic       sb_status_led_o;
+
+//motor hall sensors
+logic [1:0] motor_a_hall_i;
+logic [1:0] motor_b_hall_i;
+
+//MPU-6500 I2C
+logic       mpu_i2c_scl_drive_low;
+logic       mpu_i2c_scl_i;
+logic       mpu_i2c_sda_drive_low;
+logic       mpu_i2c_sda_i;
+
+//TB6612 control
+logic       motor_a_pwm_o;
+logic       motor_a_in1_o;
+logic       motor_a_in2_o;
+
+logic       motor_b_pwm_o;
+logic       motor_b_in1_o;
+logic       motor_b_in2_o;
+
+// ultrasonic
+logic       usonic_echo_i;
+logic       usonic_trig_o;
+
+
+
 
 
 //=======================================================
@@ -168,67 +202,67 @@ hex_to_sseg			count2(.hex({1'b0,1'b0,lcd_fifo_count[9:8]}), 	.dp_in(dp), 		.sseg
 /////////////////////////////////////////////
 //lcd 1602 character
 /////////////////////////////////////////////
-hd44780_parallel_lcd		#(.CLOCK_HZ(50000000))											
-	u_lcd(.clk(MAX10_CLK1_50),
-	.rst_n(rst_n),
-	.host_valid(lcd_host_valid), //host has valid data
-	.host_rs(lcd_txn[8]),			//will the host send data or command (rs <=> register select)
-	.host_data(lcd_txn[7:0]), 		//input data or command from host
-	.host_ready(lcd_host_ready), 	//module finished transaction (ready to receive a new txn)
-	
-	//LCD interface
-	.lcd_rs(GPIO[8]),
-	.lcd_rw(GPIO[9]),
-	.lcd_e(GPIO[10]),
-	.lcd_data_o(lcd_data_o),
-	.lcd_data_i(lcd_data_i),
-	.lcd_data_oe(lcd_data_oe),
-	.init_done(lcd_init_done));
-								
-	assign GPIO[7:0] = lcd_data_oe ? lcd_data_o	: 8'hzz;
-	assign lcd_data_i	= GPIO[7:0];
+//hd44780_parallel_lcd		#(.CLOCK_HZ(50000000))											
+//	u_lcd(.clk(MAX10_CLK1_50),
+//	.rst_n(rst_n),
+//	.host_valid(lcd_host_valid), //host has valid data
+//	.host_rs(lcd_txn[8]),			//will the host send data or command (rs <=> register select)
+//	.host_data(lcd_txn[7:0]), 		//input data or command from host
+//	.host_ready(lcd_host_ready), 	//module finished transaction (ready to receive a new txn)
+//	
+//	//LCD interface
+//	.lcd_rs(GPIO[8]),
+//	.lcd_rw(GPIO[9]),
+//	.lcd_e(GPIO[10]),
+//	.lcd_data_o(lcd_data_o),
+//	.lcd_data_i(lcd_data_i),
+//	.lcd_data_oe(lcd_data_oe),
+//	.init_done(lcd_init_done));
+//								
+//	assign GPIO[7:0] = lcd_data_oe ? lcd_data_o	: 8'hzz;
+//	assign lcd_data_i	= GPIO[7:0];
 
 /////////////////////////////////////////////	
 // FIFO instance
 /////////////////////////////////////////////
-  sync_fifo #(
-    .DEPTH(512),
-    .WIDTH(9)) 
-  u_fifo (
-    .clk    (MAX10_CLK1_50),
-    .rst_n (rst_n),
-
-	//FIFO write side
-    .wr_en  (KEY0_pulse),
-    .din    (SW[8:0]),
-    .full   (),
-	 
-	//FIFO read side
-    .rd_en  (fifo_rd_en),
-    .dout   (fifo_dout),
-    .empty  (fifo_empty),
-
-    .count  (lcd_fifo_count) // optional
-  );
+//  sync_fifo #(
+//    .DEPTH(512),
+//    .WIDTH(9)) 
+//  u_fifo (
+//    .clk    (MAX10_CLK1_50),
+//    .rst_n (rst_n),
+//
+//	//FIFO write side
+//    .wr_en  (KEY0_pulse),
+//    .din    (SW[8:0]),
+//    .full   (),
+//	 
+//	//FIFO read side
+//    .rd_en  (fifo_rd_en),
+//    .dout   (fifo_dout),
+//    .empty  (fifo_empty),
+//
+//    .count  (lcd_fifo_count) // optional
+//  );
   
 /////////////////////////////////////////////////
 //fifo_to_lcd_adapter
 ///////////////////////////////////////////////
-	fifo_to_lcd_adapter	u_adapter(
-		.clk(MAX10_CLK1_50),
-		.rst_n(rst_n),
-
-		//FIFO read side
-		.fifo_empty(fifo_empty),
-		.fifo_dout(fifo_dout),
-		.fifo_rd_en(fifo_rd_en),
-
-		//LCD host side
-		.init_done(lcd_init_done),
-		.host_ready(lcd_host_ready),
-		.host_valid(lcd_host_valid),
-		.host_rs(lcd_txn[8]),
-		.host_data(lcd_txn[7:0]));
+//	fifo_to_lcd_adapter	u_adapter(
+//		.clk(MAX10_CLK1_50),
+//		.rst_n(rst_n),
+//
+//		//FIFO read side
+//		.fifo_empty(fifo_empty),
+//		.fifo_dout(fifo_dout),
+//		.fifo_rd_en(fifo_rd_en),
+//
+//		//LCD host side
+//		.init_done(lcd_init_done),
+//		.host_ready(lcd_host_ready),
+//		.host_valid(lcd_host_valid),
+//		.host_rs(lcd_txn[8]),
+//		.host_data(lcd_txn[7:0]));
 		
 //////////////////////////////////////////
 //////////TX signals and testing ROM/////////
@@ -247,59 +281,59 @@ hd44780_parallel_lcd		#(.CLOCK_HZ(50000000))
 //assign GPIO[34]	= rst_n;
 
 //tx engine
-logic tx_in_valid;
-logic	tx_in_ready;
-logic tx_busy;
-logic	uart_tx;
-logic	[7:0] tx_in_data;
-	
-
-//tester ROM
-localparam int ROM_LEN = 4;
-logic [7:0] rom [0:ROM_LEN-1];
-
-initial begin
-	rom[0] = 8'h55;
-	rom[1] = 8'hAA;
-	rom[2] = 8'h00;
-	rom[3] = 8'hFF;
-end
-
-logic[$clog2(ROM_LEN)-1:0] rom_idx;
-
-//Present current ROM byte continously
-assign tx_in_data = rom[rom_idx];
-
-//offer a byte wheenver tx is ready
-assign tx_in_valid = tx_in_ready;
-
-//advance ROM index only when the byte is acceptted
-logic tx_fire;
-assign tx_fire = tx_in_valid && tx_in_ready;
-
-always_ff @(posedge MAX10_CLK1_50 or negedge rst_n)
-begin
-	if(!rst_n)
-		rom_idx <= '0;
-	else if(tx_fire)
-	begin
-		if(rom_idx == ROM_LEN-1)
-			rom_idx <= '0;
-		else
-			rom_idx <= rom_idx + 1'b1;
-	end
-end
+//logic tx_in_valid;
+//logic	tx_in_ready;
+//logic tx_busy;
+//logic	uart_tx;
+//logic	[7:0] tx_in_data;
+//	
+//
+////tester ROM
+//localparam int ROM_LEN = 4;
+//logic [7:0] rom [0:ROM_LEN-1];
+//
+//initial begin
+//	rom[0] = 8'h55;
+//	rom[1] = 8'hAA;
+//	rom[2] = 8'h00;
+//	rom[3] = 8'hFF;
+//end
+//
+//logic[$clog2(ROM_LEN)-1:0] rom_idx;
+//
+////Present current ROM byte continously
+//assign tx_in_data = rom[rom_idx];
+//
+////offer a byte wheenver tx is ready
+//assign tx_in_valid = tx_in_ready;
+//
+////advance ROM index only when the byte is acceptted
+//logic tx_fire;
+//assign tx_fire = tx_in_valid && tx_in_ready;
+//
+//always_ff @(posedge MAX10_CLK1_50 or negedge rst_n)
+//begin
+//	if(!rst_n)
+//		rom_idx <= '0;
+//	else if(tx_fire)
+//	begin
+//		if(rom_idx == ROM_LEN-1)
+//			rom_idx <= '0;
+//		else
+//			rom_idx <= rom_idx + 1'b1;
+//	end
+//end
 
 
 ////////////////////////////////////////////
 ////////////RX Signasl//////////////////////
 ///////////////////////////////////////////
 
-logic 		uart_rx;
-logic			rx_out_valid;
-logic			rx_out_ready;
-logic	[7:0] rx_out_data;
-logic			rx_busy;	
+//logic 		uart_rx;
+//logic			rx_out_valid;
+//logic			rx_out_ready;
+//logic	[7:0] rx_out_data;
+//logic			rx_busy;	
 
 
 //assign		GPIO[7]			=	rx_out_valid;
@@ -311,36 +345,87 @@ logic			rx_busy;
 ////////////////////////////////////////////
 ////////////ESP Wi-Fi Module////////////////
 ////////////////////////////////////////////
-logic		esp_01s_en; 	//GPIO[13]
-logic		esp_01s_rst;	//GPIO[14]
-logic		esp_01s_tx;		//GPIO[11]
-logic		esp_01s_rx;		//GPIO[12]
+//logic		esp_01s_en; 	//GPIO[13]
+//logic		esp_01s_rst;	//GPIO[14]
+//logic		esp_01s_tx;		//GPIO[11]
+//logic		esp_01s_rx;		//GPIO[12]
+//
+////alias for uart_rx and uart_tx;
+//assign	uart_rx		=	esp_01s_rx;
+//assign	uart_tx		=	esp_01s_tx;
+//
+//assign	GPIO[11]		=	esp_01s_tx;
+//assign	esp_01s_rx	=	GPIO[12];
+//assign	GPIO[13]		=	esp_01s_en;
+//assign	GPIO[14]		=	esp_01s_rst;
+//
+//assign esp_01s_en =	SW[0];
 
-//alias for uart_rx and uart_tx;
-assign	uart_rx		=	esp_01s_rx;
-assign	uart_tx		=	esp_01s_tx;
 
-assign	GPIO[11]		=	esp_01s_tx;
-assign	esp_01s_rx	=	GPIO[12];
-assign	GPIO[13]		=	esp_01s_en;
-assign	GPIO[14]		=	esp_01s_rst;
+//-----------------------------------------------------
+// Self-Balancing module signals
+//-----------------------------------------------------
+assign sb_beeper_o              = 1'b0;
+assign sb_status_led_o          = pwm_out[0];
 
-assign esp_01s_en =	SW[0];
+assign mpu_i2c_scl_drive_low    = 1'b0;
+assign mpu_i2c_sda_drive_low    = 1'b0;
+
+//assign motor_a_pwm_o            = SW[0];
+//assign motor_a_in1_o            = SW[1];
+//assign motor_a_in2_o            = SW[2];
+//
+//assign motor_b_pwm_o            = SW[3];
+//assign motor_b_in1_o            = SW[4];
+//assign motor_b_in2_o            = SW[5];
+
+assign usonic_trig_o            = 1'b0;
 
 
+self_balancing_io u_self_balancing_io (
+    .GPIO                  (GPIO),
 
+    .beeper_o              (sb_beeper_o),
+    .ir_i                  (sb_ir_i),
+    .status_led_o          (sb_status_led_o),
+
+    .motor_a_hall_i        (motor_a_hall_i),
+    .motor_b_hall_i        (motor_b_hall_i),
+
+    .mpu_i2c_scl_drive_low (mpu_i2c_scl_drive_low),
+    .mpu_i2c_scl_i         (mpu_i2c_scl_i),
+    .mpu_i2c_sda_drive_low (mpu_i2c_sda_drive_low),
+    .mpu_i2c_sda_i         (mpu_i2c_sda_i),
+
+    .motor_a_pwm_o         (motor_a_pwm_o),
+    .motor_a_in1_o         (motor_a_in1_o),
+    .motor_a_in2_o         (motor_a_in2_o),
+
+    .motor_b_pwm_o         (motor_b_pwm_o),
+    .motor_b_in1_o         (motor_b_in1_o),
+    .motor_b_in2_o         (motor_b_in2_o),
+
+    .usonic_echo_i         (usonic_echo_i),
+    .usonic_trig_o         (usonic_trig_o)
+);
+
+
+//PWM out
 logic		[9:0]					pwm_out;
 assign	LEDR[9:0]		=	pwm_out;
 
-//assign GSENSOR_CS_N = 0;
+
 niosv_modular_control_system u_niosv (
-		.clk_clk									(MAX10_CLK1_50),	//clk.clk
-		.pwm_module_pwm_channel_pwm_out	(pwm_out),			//pwm_out.conduit
-		.rst_n_reset_n							(rst_n),			//rst_n.reset_n
-		.spi_master_sclk						(GSENSOR_SCLK),	//spi_master.sclk
-		.spi_master_mosi						(GSENSOR_SDI),	//mosi
-		.spi_master_miso						(GSENSOR_SDO),	//miso
-		.spi_master_cs_n						(GSENSOR_CS_N));	//cs_n
+		.clk_clk				(MAX10_CLK1_50),	//clk.clk
+		.led_pwm_raw		(pwm_out[9:0]),	//pwm_out.conduit
+		.rst_n_reset_n		(rst_n),				//rst_n.reset_n
+		.spi_master_sclk	(GSENSOR_SCLK),	//spi_master.sclk
+		.spi_master_mosi	(GSENSOR_SDI),		//mosi
+		.spi_master_miso	(GSENSOR_SDO),		//miso
+		.spi_master_cs_n	(GSENSOR_CS_N),
+		.motor_pwm_pwm		({motor_a_pwm_o,motor_b_pwm_o}),
+		.motor_pwm_in1		({motor_a_in1_o,motor_b_in1_o}),
+		.motor_pwm_in2		({motor_a_in2_o,motor_b_in2_o}));
 
 endmodule
 
