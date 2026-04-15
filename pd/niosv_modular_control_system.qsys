@@ -37,7 +37,7 @@
    {
       datum baseAddress
       {
-         value = "204800";
+         value = "208896";
          type = "String";
       }
    }
@@ -53,7 +53,95 @@
    {
       datum baseAddress
       {
-         value = "204864";
+         value = "208960";
+         type = "String";
+      }
+   }
+   element led_pwm
+   {
+      datum _sortIndex
+      {
+         value = "6";
+         type = "int";
+      }
+   }
+   element led_pwm.s_axil
+   {
+      datum baseAddress
+      {
+         value = "204800";
+         type = "String";
+      }
+   }
+   element motor_pwm
+   {
+      datum _sortIndex
+      {
+         value = "7";
+         type = "int";
+      }
+   }
+   element motor_pwm.s_axil
+   {
+      datum baseAddress
+      {
+         value = "196608";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
          type = "String";
       }
    }
@@ -105,27 +193,6 @@
          type = "String";
       }
    }
-   element pwm_module
-   {
-      datum _sortIndex
-      {
-         value = "5";
-         type = "int";
-      }
-   }
-   element pwm_module.s_axil
-   {
-      datum _lockedAddress
-      {
-         value = "1";
-         type = "boolean";
-      }
-      datum baseAddress
-      {
-         value = "196608";
-         type = "String";
-      }
-   }
    element reset_bridge
    {
       datum _sortIndex
@@ -138,7 +205,7 @@
    {
       datum _sortIndex
       {
-         value = "6";
+         value = "5";
          type = "int";
       }
    }
@@ -177,12 +244,12 @@
  <parameter name="useTestBenchNamingPattern" value="false" />
  <instanceScript></instanceScript>
  <interface name="clk" internal="clock_bridge.in_clk" type="clock" dir="end" />
+ <interface name="led_pwm" internal="led_pwm.pwm_o" type="conduit" dir="end" />
  <interface
-   name="pwm_module_pwm_channel"
-   internal="pwm_module.PWM_Channel"
+   name="motor_pwm"
+   internal="motor_pwm.pwm_hbridge"
    type="conduit"
    dir="end" />
- <interface name="pwm_out" internal="pwm_module.pwm_out" />
  <interface name="rst_n" internal="reset_bridge.in_reset" type="reset" dir="end" />
  <interface
    name="spi_master"
@@ -205,7 +272,7 @@
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="6" />
   <parameter name="AUTO_PLATFORM_IRQ_RX_INTERRUPTS_USED" value="3" />
   <parameter name="clockFrequency" value="50000000" />
-  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /><slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /><slave name='pwm_module.s_axil' start='0x30000' end='0x31000' type='AXI_Lite_PWM_Full.s_axil' /><slave name='spi_master_0.s_axil' start='0x31000' end='0x32000' type='spi_master.s_axil' /><slave name='intel_niosv.timer_sw_agent' start='0x32000' end='0x32040' type='intel_niosv_m.timer_sw_agent' /><slave name='jtag_uart.avalon_jtag_slave' start='0x32040' end='0x32048' type='altera_avalon_jtag_uart.avalon_jtag_slave' /></address-map>]]></parameter>
+  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /><slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /><slave name='motor_pwm.s_axil' start='0x30000' end='0x31000' type='pwm_hbridge_axi4lite.s_axil' /><slave name='spi_master_0.s_axil' start='0x31000' end='0x32000' type='spi_master.s_axil' /><slave name='led_pwm.s_axil' start='0x32000' end='0x33000' type='AXI_Lite_PWM_Raw.s_axil' /><slave name='intel_niosv.timer_sw_agent' start='0x33000' end='0x33040' type='intel_niosv_m.timer_sw_agent' /><slave name='jtag_uart.avalon_jtag_slave' start='0x33040' end='0x33048' type='altera_avalon_jtag_uart.avalon_jtag_slave' /></address-map>]]></parameter>
   <parameter name="deviceFamily" value="MAX 10" />
   <parameter name="enableAvalonInterface" value="false" />
   <parameter name="enableDebug" value="true" />
@@ -241,6 +308,20 @@
   <parameter name="writeBufferDepth" value="64" />
   <parameter name="writeIRQThreshold" value="8" />
  </module>
+ <module name="led_pwm" kind="AXI_Lite_PWM_Raw" version="3.0" enabled="1">
+  <parameter name="APPLY_ON_PERIOD_END" value="true" />
+  <parameter name="AXI_ADDR_W" value="12" />
+  <parameter name="AXI_DATA_W" value="32" />
+  <parameter name="CHANNELS" value="4" />
+  <parameter name="CNT_W" value="32" />
+ </module>
+ <module name="motor_pwm" kind="pwm_hbridge_axi4lite" version="3" enabled="1">
+  <parameter name="APPLY_ON_PERIOD_END" value="true" />
+  <parameter name="AXI_ADDR_W" value="12" />
+  <parameter name="AXI_DATA_W" value="32" />
+  <parameter name="CHANNELS" value="4" />
+  <parameter name="CNT_W" value="32" />
+ </module>
  <module
    name="onchip_memory"
    kind="altera_avalon_onchip_memory2"
@@ -273,13 +354,6 @@
   <parameter name="useShallowMemBlocks" value="false" />
   <parameter name="writable" value="true" />
  </module>
- <module name="pwm_module" kind="AXI_Lite_PWM_Full" version="2.0" enabled="1">
-  <parameter name="APPLY_ON_PERIOD_END" value="true" />
-  <parameter name="AXI_ADDR_W" value="12" />
-  <parameter name="AXI_DATA_W" value="32" />
-  <parameter name="CHANNELS" value="10" />
-  <parameter name="CNT_W" value="32" />
- </module>
  <module
    name="reset_bridge"
    kind="altera_reset_bridge"
@@ -305,7 +379,7 @@
    start="intel_niosv.data_manager"
    end="jtag_uart.avalon_jtag_slave">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00032040" />
+  <parameter name="baseAddress" value="0x00033040" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -330,15 +404,6 @@
    kind="avalon"
    version="25.1"
    start="intel_niosv.data_manager"
-   end="pwm_module.s_axil">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00030000" />
-  <parameter name="defaultConnection" value="false" />
- </connection>
- <connection
-   kind="avalon"
-   version="25.1"
-   start="intel_niosv.data_manager"
    end="spi_master_0.s_axil">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x00031000" />
@@ -348,9 +413,27 @@
    kind="avalon"
    version="25.1"
    start="intel_niosv.data_manager"
-   end="intel_niosv.timer_sw_agent">
+   end="led_pwm.s_axil">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x00032000" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="25.1"
+   start="intel_niosv.data_manager"
+   end="motor_pwm.s_axil">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x00030000" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="25.1"
+   start="intel_niosv.data_manager"
+   end="intel_niosv.timer_sw_agent">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x00033000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -400,12 +483,17 @@
    kind="clock"
    version="25.1"
    start="clock_bridge.out_clk"
-   end="pwm_module.clock" />
+   end="spi_master_0.clock" />
  <connection
    kind="clock"
    version="25.1"
    start="clock_bridge.out_clk"
-   end="spi_master_0.clock" />
+   end="led_pwm.clock" />
+ <connection
+   kind="clock"
+   version="25.1"
+   start="clock_bridge.out_clk"
+   end="motor_pwm.clock" />
  <connection
    kind="interrupt"
    version="25.1"
@@ -434,12 +522,17 @@
    kind="reset"
    version="25.1"
    start="reset_bridge.out_reset"
-   end="pwm_module.reset" />
+   end="spi_master_0.reset" />
  <connection
    kind="reset"
    version="25.1"
    start="reset_bridge.out_reset"
-   end="spi_master_0.reset" />
+   end="led_pwm.reset" />
+ <connection
+   kind="reset"
+   version="25.1"
+   start="reset_bridge.out_reset"
+   end="motor_pwm.reset" />
  <connection
    kind="reset"
    version="25.1"

@@ -213,7 +213,7 @@ module pwm_subsystem_motor #(
 
         .cnt(cnt),
         .period_end(period_end),
-        .pwm_out(pwm_raw)
+        .pwm_o(pwm_raw)
     );
 
     //-------------------------------------------------------------------------

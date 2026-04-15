@@ -1,13 +1,13 @@
 // pwm_subsystem_raw.sv
 //
-// Generic PWM subsystem top-level, V2 multi-channel version.
+// Generic PWM subsystem top-level, V3 multi-channel version.
 //
 // -----------------------------------------------------------------------------
 // Design intent
 // -----------------------------------------------------------------------------
 // This module is the integration layer between:
 //
-//   1) pwm_regs.sv   -> MMIO register/configuration block
+//   1) pwm_regs_common.sv   -> MMIO register/configuration block
 //   2) pwm_core_ip.sv -> shared-timebase, multi-channel PWM generation core
 //   3) pwm_raw_adapter.sv  -> per-channel raw PWM output adapter
 //
@@ -80,17 +80,17 @@ module pwm_subsystem_raw #(
 
     
     //---------------------------------------------------------------------------
-    //Raw PWM from core before adapter state
+    //Raw PWM from core before adapter stage
     //---------------------------------------------------------------------------
     logic   [CHANNELS-1:0]  pwm_raw;
 
-    pwm_regs    #(
+    pwm_regs_common    #(
         .ADDR_W(ADDR_W),
         .DATA_W(DATA_W),
         .CNT_W(CNT_W),
         .CHANNELS(CHANNELS),
         .APPLY_ON_PERIOD_END(APPLY_ON_PERIOD_END))
-    u_pwm_regs(
+    u_pwm_regs_common(
         .clk(clk),
         .rst_n(rst_n),
 
@@ -123,7 +123,7 @@ module pwm_subsystem_raw #(
     // Owns:
     // - shared timebase
     // - per-channel compare generation
-    // - pwm_out vector
+    // - pwm_o vector
     pwm_core_ip #(
         .CNT_WIDTH(CNT_W),
         .CHANNELS(CHANNELS))
@@ -138,7 +138,7 @@ module pwm_subsystem_raw #(
 
         .cnt(cnt),
         .period_end(period_end),
-        .pwm_out(pwm_out));    
+        .pwm_o(pwm_raw));    
 
     //-----------------------------------------------------------------------
     //Per-channel raw adpaters

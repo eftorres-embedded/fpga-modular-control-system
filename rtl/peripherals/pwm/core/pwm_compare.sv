@@ -1,7 +1,7 @@
 //pwm_compare.sv
 //
 //Pure combinational PWM compare:
-// -pwm_raw = enable && (cnt < duty_eff)
+// -pwm_o = enable && (cnt < duty_eff)
 //
 // Precondition/Contract
 // -cnt counts 0 to period_cycles_eff-1
@@ -23,8 +23,7 @@ module pwm_compare #(
 	input		logic	[CNT_WIDTH-1:0]	duty_cycles,
 	
 	//Raw PWM output (to be post-processed by higher-level abstraction: sign-mag, complementary, etc)
-	output	logic							pwm_raw
-	);
+	output	logic							pwm_o);
 	
 	logic	[CNT_WIDTH-1:0] duty_eff;
 		
@@ -34,7 +33,7 @@ module pwm_compare #(
 	assign duty_eff = (duty_cycles >= period_cycles_eff) ? period_cycles_eff : duty_cycles;
 	
 	//Core compare
-	assign pwm_raw = (!enable) ? 1'b0 : (cnt < duty_eff);
+	assign pwm_o = (!enable) ? 1'b0 : (cnt < duty_eff);
 	
 	
 endmodule

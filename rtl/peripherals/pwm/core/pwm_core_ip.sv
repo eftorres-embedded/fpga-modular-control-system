@@ -40,7 +40,7 @@
 // -------
 // - cnt        : shared free-running PWM counter
 // - period_end : one-clock pulse at the end of each PWM period
-// - pwm_out    : vector of raw PWM outputs, one bit per channel
+// - pwm_o    : vector of raw PWM outputs, one bit per channel
 //
 
 module pwm_core_ip #(
@@ -75,8 +75,7 @@ module pwm_core_ip #(
 
    //Muli-channel Pwm outputs
    //Still "pure PWM" outputs in V2, no motor-specific post-processing
-   output   logic   [CHANNELS-1:0]  pwm_out
-);
+   output   logic   [CHANNELS-1:0]  pwm_o);
 
 //------------------------------------------------------------------------
 //Internal signals
@@ -148,7 +147,7 @@ generate
             .cnt(cnt),
             .period_cycles_eff(period_cycles_eff),
             .duty_cycles(duty_cycles_i[i]),
-            .pwm_raw(pwm_out[i])
+            .pwm_o(pwm_o[i])
         );
     end
 endgenerate
