@@ -1,5 +1,9 @@
 	niosv_modular_control_system u0 (
 		.clk_clk         (<connected-to-clk_clk>),         //        clk.clk
+		.i2c_gyro_sda_in (<connected-to-i2c_gyro_sda_in>), //   i2c_gyro.sda_in
+		.i2c_gyro_scl_in (<connected-to-i2c_gyro_scl_in>), //           .scl_in
+		.i2c_gyro_sda_oe (<connected-to-i2c_gyro_sda_oe>), //           .sda_oe
+		.i2c_gyro_scl_oe (<connected-to-i2c_gyro_scl_oe>), //           .scl_oe
 		.led_pwm_raw     (<connected-to-led_pwm_raw>),     //    led_pwm.raw
 		.motor_pwm_pwm   (<connected-to-motor_pwm_pwm>),   //  motor_pwm.pwm
 		.motor_pwm_in1   (<connected-to-motor_pwm_in1>),   //           .in1

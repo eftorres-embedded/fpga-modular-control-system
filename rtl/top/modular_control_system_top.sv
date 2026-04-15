@@ -368,8 +368,8 @@ hex_to_sseg			count2(.hex({1'b0,1'b0,lcd_fifo_count[9:8]}), 	.dp_in(dp), 		.sseg
 assign sb_beeper_o              = 1'b0;
 assign sb_status_led_o          = pwm_out[0];
 
-assign mpu_i2c_scl_drive_low    = 1'b0;
-assign mpu_i2c_sda_drive_low    = 1'b0;
+//assign mpu_i2c_scl_drive_low    = 1'b0;
+//assign mpu_i2c_sda_drive_low    = 1'b0;
 
 //assign motor_a_pwm_o            = SW[0];
 //assign motor_a_in1_o            = SW[1];
@@ -412,7 +412,7 @@ self_balancing_io u_self_balancing_io (
 
 //PWM out
 logic		[9:0]					pwm_out;
-assign	LEDR[9:0]		=	pwm_out;
+//assign	LEDR[9:0]		=	pwm_out;
 
 
 niosv_modular_control_system u_niosv (
@@ -425,8 +425,15 @@ niosv_modular_control_system u_niosv (
 		.spi_master_cs_n	(GSENSOR_CS_N),
 		.motor_pwm_pwm		({motor_a_pwm_o,motor_b_pwm_o}),
 		.motor_pwm_in1		({motor_a_in1_o,motor_b_in1_o}),
-		.motor_pwm_in2		({motor_a_in2_o,motor_b_in2_o}));
-
+		.motor_pwm_in2		({motor_a_in2_o,motor_b_in2_o}),
+		.i2c_gyro_sda_in (mpu_i2c_sda_i), //   i2c_gyro.sda_in
+		.i2c_gyro_scl_in (mpu_i2c_scl_i), //   scl_in
+		.i2c_gyro_sda_oe (mpu_i2c_sda_drive_low), //   sda_oe
+		.i2c_gyro_scl_oe (mpu_i2c_scl_drive_low)); //   scl_oe
+		
+assign LEDR[1]	=	mpu_i2c_scl_drive_low;
+assign LEDR[2]	=	mpu_i2c_sda_drive_low;
+		
 endmodule
 
 

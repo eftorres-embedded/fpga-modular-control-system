@@ -2,281 +2,181 @@
 #include <stdint.h>
 #include <unistd.h>
 
-// -----------------------------------------------------------------------------
-// Platform Designer base addresses
-// -----------------------------------------------------------------------------
-#define MOTOR_PWM_BASE   0x00030000u
-#define LED_PWM_BASE     0x00032000u
+/*
+ * Minimal Avalon I2C Host idle/reset debug test
+ *
+ * Purpose:
+ *   Isolate whether the I2C core is already non-idle / driving the bus
+ *   before any transfer command is ever queued.
+ *
+ * What this test does:
+ *   1) Prints the raw CSR state immediately after boot.
+ *   2) Forces CTRL = 0 (core disabled), then prints state again.
+ *   3) Programs timing registers while still disabled, then prints state.
+ *   4) Enables the core (CTRL.EN = 1), prints state immediately, then again
+ *      after short delays.
+ *   5) Disables the core again and prints the final state.
+ *
+ * What this test does NOT do:
+ *   - It does NOT write TFR_CMD.
+ *   - It does NOT try to talk to the MPU-6500.
+ *
+ * Expected use:
+ *   Run this together with Signal Tap on:
+ *     mpu_i2c_scl_drive_low
+ *     mpu_i2c_scl_i
+ *     mpu_i2c_sda_drive_low
+ *     mpu_i2c_sda_i
+ *
+ * Assumptions:
+ *   - Avalon I2C Host base address = 0x00033000
+ *   - Avalon I2C Host is configured for Avalon-MM FIFO access
+ *   - I2C host clock = 50 MHz
+ */
 
-// -----------------------------------------------------------------------------
-// Common PWM-family register map
-// -----------------------------------------------------------------------------
-#define REG_CTRL         0x00u
-#define REG_PERIOD       0x04u
-#define REG_APPLY        0x08u
-#define REG_CH_ENABLE    0x0Cu
-#define REG_STATUS       0x10u
-#define REG_CNT          0x14u
-#define REG_DUTY_BASE    0x20u
+#define I2C_BASE_ADDR           0x00033000u
 
-// -----------------------------------------------------------------------------
-// Motor flavor extension registers
-// -----------------------------------------------------------------------------
-#define REG_DIR_MASK     0x40u
-#define REG_BRAKE_MASK   0x44u
-#define REG_COAST_MASK   0x48u
+/* Avalon I2C register word offsets */
+#define REG_TFR_CMD             0x0u
+#define REG_RX_DATA             0x1u
+#define REG_CTRL                0x2u
+#define REG_ISER                0x3u
+#define REG_ISR                 0x4u
+#define REG_STATUS              0x5u
+#define REG_TFR_CMD_FIFO_LVL    0x6u
+#define REG_RX_DATA_FIFO_LVL    0x7u
+#define REG_SCL_LOW             0x8u
+#define REG_SCL_HIGH            0x9u
+#define REG_SDA_HOLD            0xAu
 
-#define CTRL_GLOBAL_EN   (1u << 0)
+/* CTRL bits */
+#define CTRL_EN                 (1u << 0)
+#define CTRL_BUS_SPEED_FAST     (1u << 1)
 
-// -----------------------------------------------------------------------------
-// LED raw-PWM config
-// -----------------------------------------------------------------------------
-#define LED_PWM_CHANNELS    10u
-#define LED_PWM_PERIOD      10000u
-#define FRAME_DELAY_US      8000u
+/* ISR bits */
+#define ISR_TX_READY            (1u << 0)
+#define ISR_RX_READY            (1u << 1)
+#define ISR_NACK_DET            (1u << 2)
+#define ISR_ARBLOST_DET         (1u << 3)
+#define ISR_RX_OVER             (1u << 4)
+#define ISR_ALL_W1C_ERRORS      (ISR_NACK_DET | ISR_ARBLOST_DET | ISR_RX_OVER)
 
-// 32-sample sine-like lookup, normalized to 0..1000
-#define LED_WAVE_STEPS      32u
-static const uint16_t led_wave_table[LED_WAVE_STEPS] = {
-    500, 598, 691, 778, 854, 916, 962, 990,
-    1000, 990, 962, 916, 854, 778, 691, 598,
-    500, 402, 309, 222, 146, 84, 38, 10,
-    0, 10, 38, 84, 146, 222, 309, 402
-};
+/* STATUS bits */
+#define STATUS_CORE_BUSY        (1u << 0)
 
-// -----------------------------------------------------------------------------
-// Motor PWM config
-// 50 MHz / 2500 = 20 kHz PWM
-// Timing based on FRAME_DELAY_US = 8000 us
-//   5.0 s  / 0.008 s = 625 frames
-//   2.0 s  / 0.008 s = 250 frames
-//   0.5 s  / 0.008 s = 62.5 -> 63 frames
-// -----------------------------------------------------------------------------
-#define MOTOR_PWM_PERIOD     2500u
-#define MOTOR_MAX_DUTY       ((MOTOR_PWM_PERIOD * 80u) / 100u)  // 80%
-
-#define MOTOR_RAMP_FRAMES    625u
-#define MOTOR_HOLD_FRAMES    250u
-#define MOTOR_BRAKE_FRAMES   63u
-
-// Based on your top-level concatenation:
-//   {motor_a_*, motor_b_*} -> bit1 = motor A, bit0 = motor B
-#define MOTOR_CH_B           0u
-#define MOTOR_CH_A           1u
-
-#define MOTOR_MASK_A         (1u << MOTOR_CH_A)
-#define MOTOR_MASK_B         (1u << MOTOR_CH_B)
-#define MOTOR_MASK_BOTH      (MOTOR_MASK_A | MOTOR_MASK_B)
-
-// -----------------------------------------------------------------------------
-// MMIO helpers
-// -----------------------------------------------------------------------------
-static inline void mmio_write32(uint32_t base, uint32_t offset, uint32_t value)
+static inline uintptr_t reg_addr(uint32_t word_off)
 {
-    *(volatile uint32_t *)(base + offset) = value;
+    return (uintptr_t)(I2C_BASE_ADDR + (word_off << 2));
 }
 
-static inline uint32_t mmio_read32(uint32_t base, uint32_t offset)
+static inline void mmio_write(uint32_t word_off, uint32_t value)
 {
-    return *(volatile uint32_t *)(base + offset);
+    *(volatile uint32_t *)reg_addr(word_off) = value;
 }
 
-static inline void pwm_write_duty(uint32_t base, uint32_t ch, uint32_t duty)
+static inline uint32_t mmio_read(uint32_t word_off)
 {
-    mmio_write32(base, REG_DUTY_BASE + (4u * ch), duty);
+    return *(volatile uint32_t *)reg_addr(word_off);
 }
 
-static inline void pwm_apply(uint32_t base)
+static void clear_i2c_errors(void)
 {
-    mmio_write32(base, REG_APPLY, 1u);
+    mmio_write(REG_ISR, ISR_ALL_W1C_ERRORS);
 }
 
-// -----------------------------------------------------------------------------
-// Common init
-// -----------------------------------------------------------------------------
-static void pwm_common_init(uint32_t base, uint32_t period, uint32_t ch_enable_mask)
+static void drain_rx_fifo(void)
 {
-    mmio_write32(base, REG_PERIOD, period);
-    mmio_write32(base, REG_CH_ENABLE, ch_enable_mask);
-    mmio_write32(base, REG_CTRL, CTRL_GLOBAL_EN);
-    pwm_apply(base);
-}
-
-// -----------------------------------------------------------------------------
-// LED test
-// -----------------------------------------------------------------------------
-static void led_test_init(void)
-{
-    uint32_t i;
-    uint32_t ch_enable_mask = 0u;
-
-    for (i = 0; i < LED_PWM_CHANNELS; i++) {
-        ch_enable_mask |= (1u << i);
-        pwm_write_duty(LED_PWM_BASE, i, 0u);
-    }
-
-    pwm_common_init(LED_PWM_BASE, LED_PWM_PERIOD, ch_enable_mask);
-}
-
-static uint32_t led_wave_duty(uint32_t phase)
-{
-    uint32_t sample = led_wave_table[phase % LED_WAVE_STEPS];
-    return (sample * LED_PWM_PERIOD) / 1000u;
-}
-
-static void led_test_step(uint32_t step)
-{
-    uint32_t i;
-
-    for (i = 0; i < LED_PWM_CHANNELS; i++) {
-        uint32_t phase_offset = (i * LED_WAVE_STEPS) / LED_PWM_CHANNELS;
-        uint32_t phase = (step + phase_offset) % LED_WAVE_STEPS;
-        uint32_t duty = led_wave_duty(phase);
-        pwm_write_duty(LED_PWM_BASE, i, duty);
-    }
-
-    pwm_apply(LED_PWM_BASE);
-}
-
-// -----------------------------------------------------------------------------
-// Motor test
-// -----------------------------------------------------------------------------
-typedef enum
-{
-    MOTOR_STAGE_RAMP_UP = 0,
-    MOTOR_STAGE_HOLD_TOP,
-    MOTOR_STAGE_RAMP_DOWN,
-    MOTOR_STAGE_BRAKE
-} motor_stage_t;
-
-static uint32_t motor_ramp_up_duty(uint32_t frame)
-{
-    if (frame >= MOTOR_RAMP_FRAMES) {
-        frame = MOTOR_RAMP_FRAMES - 1u;
-    }
-
-    return ((frame + 1u) * MOTOR_MAX_DUTY) / MOTOR_RAMP_FRAMES;
-}
-
-static uint32_t motor_ramp_down_duty(uint32_t frame)
-{
-    if (frame >= MOTOR_RAMP_FRAMES) {
-        frame = MOTOR_RAMP_FRAMES - 1u;
-    }
-
-    return MOTOR_MAX_DUTY - ((frame * MOTOR_MAX_DUTY) / MOTOR_RAMP_FRAMES);
-}
-
-static void motor_write_mode(uint32_t dir_mask, uint32_t brake_mask, uint32_t coast_mask)
-{
-    mmio_write32(MOTOR_PWM_BASE, REG_DIR_MASK, dir_mask);
-    mmio_write32(MOTOR_PWM_BASE, REG_BRAKE_MASK, brake_mask);
-    mmio_write32(MOTOR_PWM_BASE, REG_COAST_MASK, coast_mask);
-}
-
-static void motor_write_both_duty(uint32_t duty_a, uint32_t duty_b)
-{
-    pwm_write_duty(MOTOR_PWM_BASE, MOTOR_CH_A, duty_a);
-    pwm_write_duty(MOTOR_PWM_BASE, MOTOR_CH_B, duty_b);
-}
-
-static void motor_commit(uint32_t dir_mask,
-                         uint32_t brake_mask,
-                         uint32_t coast_mask,
-                         uint32_t duty_a,
-                         uint32_t duty_b)
-{
-    motor_write_mode(dir_mask, brake_mask, coast_mask);
-    motor_write_both_duty(duty_a, duty_b);
-    pwm_apply(MOTOR_PWM_BASE);
-}
-
-static void motor_test_init(void)
-{
-    pwm_common_init(MOTOR_PWM_BASE, MOTOR_PWM_PERIOD, MOTOR_MASK_BOTH);
-
-    // Start at zero duty, forward direction, not braking, not coasting
-    motor_commit(MOTOR_MASK_BOTH, 0u, 0u, 0u, 0u);
-}
-
-static void motor_test_step(motor_stage_t *stage,
-                            uint32_t *frame_count,
-                            uint32_t *dir_mask)
-{
-    uint32_t duty;
-
-    switch (*stage) {
-        case MOTOR_STAGE_RAMP_UP:
-            duty = motor_ramp_up_duty(*frame_count);
-            motor_commit(*dir_mask, 0u, 0u, duty, duty);
-
-            (*frame_count)++;
-            if (*frame_count >= MOTOR_RAMP_FRAMES) {
-                *frame_count = 0u;
-                *stage = MOTOR_STAGE_HOLD_TOP;
-            }
-            break;
-
-        case MOTOR_STAGE_HOLD_TOP:
-            motor_commit(*dir_mask, 0u, 0u, MOTOR_MAX_DUTY, MOTOR_MAX_DUTY);
-
-            (*frame_count)++;
-            if (*frame_count >= MOTOR_HOLD_FRAMES) {
-                *frame_count = 0u;
-                *stage = MOTOR_STAGE_RAMP_DOWN;
-            }
-            break;
-
-        case MOTOR_STAGE_RAMP_DOWN:
-            duty = motor_ramp_down_duty(*frame_count);
-            motor_commit(*dir_mask, 0u, 0u, duty, duty);
-
-            (*frame_count)++;
-            if (*frame_count >= MOTOR_RAMP_FRAMES) {
-                *frame_count = 0u;
-                *stage = MOTOR_STAGE_BRAKE;
-            }
-            break;
-
-        case MOTOR_STAGE_BRAKE:
-        default:
-            motor_commit(*dir_mask, MOTOR_MASK_BOTH, 0u, 0u, 0u);
-
-            (*frame_count)++;
-            if (*frame_count >= MOTOR_BRAKE_FRAMES) {
-                *frame_count = 0u;
-                *stage = MOTOR_STAGE_RAMP_UP;
-                *dir_mask = (*dir_mask == 0u) ? MOTOR_MASK_BOTH : 0u;
-            }
-            break;
+    while (mmio_read(REG_RX_DATA_FIFO_LVL) != 0u) {
+        (void)mmio_read(REG_RX_DATA);
     }
 }
 
-// -----------------------------------------------------------------------------
-// Main
-// -----------------------------------------------------------------------------
+static void dump_i2c_state(const char *tag)
+{
+    uint32_t ctrl   = mmio_read(REG_CTRL);
+    uint32_t iser   = mmio_read(REG_ISER);
+    uint32_t isr    = mmio_read(REG_ISR);
+    uint32_t status = mmio_read(REG_STATUS);
+    uint32_t tfrlvl = mmio_read(REG_TFR_CMD_FIFO_LVL);
+    uint32_t rxlvl  = mmio_read(REG_RX_DATA_FIFO_LVL);
+    uint32_t scll   = mmio_read(REG_SCL_LOW);
+    uint32_t sclh   = mmio_read(REG_SCL_HIGH);
+    uint32_t sdah   = mmio_read(REG_SDA_HOLD);
+
+    printf("\n[%s]\n", tag);
+    printf("CTRL     = 0x%08X  (EN=%u, BUS_SPEED_FAST=%u)\n",
+           ctrl, (ctrl >> 0) & 1u, (ctrl >> 1) & 1u);
+    printf("ISER     = 0x%08X\n", iser);
+    printf("ISR      = 0x%08X  (TX_READY=%u RX_READY=%u NACK=%u ARBLOST=%u RX_OVER=%u)\n",
+           isr,
+           (isr >> 0) & 1u,
+           (isr >> 1) & 1u,
+           (isr >> 2) & 1u,
+           (isr >> 3) & 1u,
+           (isr >> 4) & 1u);
+    printf("STATUS   = 0x%08X  (CORE_BUSY=%u)\n",
+           status, (status >> 0) & 1u);
+    printf("TFR_LVL  = %u\n", tfrlvl);
+    printf("RX_LVL   = %u\n", rxlvl);
+    printf("SCL_LOW  = %u\n", scll);
+    printf("SCL_HIGH = %u\n", sclh);
+    printf("SDA_HOLD = %u\n", sdah);
+}
+
 int main(void)
 {
-    uint32_t led_step = 0u;
-    uint32_t motor_frame_count = 0u;
-    uint32_t motor_dir_mask = MOTOR_MASK_BOTH;
-    motor_stage_t motor_stage = MOTOR_STAGE_RAMP_UP;
+    printf("\n=== Avalon I2C idle/reset debug test ===\n");
+    printf("I2C CSR base = 0x%08X\n", I2C_BASE_ADDR);
+    printf("This test does NOT write TFR_CMD.\n");
+    printf("It only disables/enables the core and prints raw register state.\n");
 
-    printf("\nPWM split demo start\n");
-    printf("MOTOR_PWM_BASE = 0x%08X\n", MOTOR_PWM_BASE);
-    printf("LED_PWM_BASE   = 0x%08X\n", LED_PWM_BASE);
+    dump_i2c_state("power-up raw state");
 
-    led_test_init();
-    motor_test_init();
+    /* Put the core in the quietest possible state first */
+    mmio_write(REG_CTRL, 0u);
+    mmio_write(REG_ISER, 0u);
+    clear_i2c_errors();
+    drain_rx_fifo();
 
-    while (1) {
-        led_test_step(led_step);
-        led_step = (led_step + 1u) % LED_WAVE_STEPS;
+    dump_i2c_state("after forcing CTRL=0 and clearing ISR/RX");
 
-        motor_test_step(&motor_stage, &motor_frame_count, &motor_dir_mask);
+    usleep(20000);
+    dump_i2c_state("20 ms later with CTRL=0");
 
-        usleep(FRAME_DELAY_US);
-    }
+    /*
+     * Program timing while still disabled.
+     * 50 MHz -> 100 kHz bus target:
+     *   250 low + 250 high = 500 clocks total.
+     */
+    mmio_write(REG_SCL_LOW,  250u);
+    mmio_write(REG_SCL_HIGH, 250u);
+    mmio_write(REG_SDA_HOLD, 25u);
+
+    dump_i2c_state("after timing writes, still CTRL=0");
+
+    /* Enable core, but still do not queue any transfer command */
+    mmio_write(REG_CTRL, CTRL_EN);
+    dump_i2c_state("immediately after CTRL.EN=1");
+
+    usleep(1000);
+    dump_i2c_state("1 ms after CTRL.EN=1");
+
+    usleep(10000);
+    dump_i2c_state("10 ms after CTRL.EN=1");
+
+    usleep(100000);
+    dump_i2c_state("100 ms after CTRL.EN=1");
+
+    /* Disable again */
+    mmio_write(REG_CTRL, 0u);
+    usleep(1000);
+    dump_i2c_state("1 ms after CTRL.EN=0 again");
+
+    printf("\nInterpretation guide:\n");
+    printf(" - If CORE_BUSY=1 even when CTRL=0 and no TFR_CMD was written,\n");
+    printf("   suspect reset/integration/stale-image issues.\n");
+    printf(" - If CORE_BUSY changes only when CTRL.EN changes, the enable path matters.\n");
+    printf(" - With Signal Tap, also watch whether scl/sda drive_low changes at those moments.\n");
 
     return 0;
 }

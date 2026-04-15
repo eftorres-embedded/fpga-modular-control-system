@@ -1,21 +1,29 @@
 	component niosv_modular_control_system is
 		port (
-			clk_clk         : in  std_logic                    := 'X';             -- clk
-			led_pwm_raw     : out std_logic_vector(9 downto 0);                    -- raw
-			motor_pwm_pwm   : in  std_logic_vector(1 downto 0) := (others => 'X'); -- pwm
-			motor_pwm_in1   : in  std_logic_vector(1 downto 0) := (others => 'X'); -- in1
-			motor_pwm_in2   : in  std_logic_vector(1 downto 0) := (others => 'X'); -- in2
-			rst_n_reset_n   : in  std_logic                    := 'X';             -- reset_n
-			spi_master_sclk : out std_logic;                                       -- sclk
-			spi_master_mosi : out std_logic;                                       -- mosi
-			spi_master_miso : in  std_logic                    := 'X';             -- miso
-			spi_master_cs_n : out std_logic                                        -- cs_n
+			clk_clk         : in  std_logic                    := 'X'; -- clk
+			i2c_gyro_sda_in : in  std_logic                    := 'X'; -- sda_in
+			i2c_gyro_scl_in : in  std_logic                    := 'X'; -- scl_in
+			i2c_gyro_sda_oe : out std_logic;                           -- sda_oe
+			i2c_gyro_scl_oe : out std_logic;                           -- scl_oe
+			led_pwm_raw     : out std_logic_vector(9 downto 0);        -- raw
+			motor_pwm_pwm   : out std_logic_vector(1 downto 0);        -- pwm
+			motor_pwm_in1   : out std_logic_vector(1 downto 0);        -- in1
+			motor_pwm_in2   : out std_logic_vector(1 downto 0);        -- in2
+			rst_n_reset_n   : in  std_logic                    := 'X'; -- reset_n
+			spi_master_sclk : out std_logic;                           -- sclk
+			spi_master_mosi : out std_logic;                           -- mosi
+			spi_master_miso : in  std_logic                    := 'X'; -- miso
+			spi_master_cs_n : out std_logic                            -- cs_n
 		);
 	end component niosv_modular_control_system;
 
 	u0 : component niosv_modular_control_system
 		port map (
 			clk_clk         => CONNECTED_TO_clk_clk,         --        clk.clk
+			i2c_gyro_sda_in => CONNECTED_TO_i2c_gyro_sda_in, --   i2c_gyro.sda_in
+			i2c_gyro_scl_in => CONNECTED_TO_i2c_gyro_scl_in, --           .scl_in
+			i2c_gyro_sda_oe => CONNECTED_TO_i2c_gyro_sda_oe, --           .sda_oe
+			i2c_gyro_scl_oe => CONNECTED_TO_i2c_gyro_scl_oe, --           .scl_oe
 			led_pwm_raw     => CONNECTED_TO_led_pwm_raw,     --    led_pwm.raw
 			motor_pwm_pwm   => CONNECTED_TO_motor_pwm_pwm,   --  motor_pwm.pwm
 			motor_pwm_in1   => CONNECTED_TO_motor_pwm_in1,   --           .in1
