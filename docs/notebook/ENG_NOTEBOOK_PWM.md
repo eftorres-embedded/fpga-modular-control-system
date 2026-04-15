@@ -822,5 +822,460 @@ Both `pwm_regs.sv` operating modes are now verified in simulation:
 - immediate apply mode (`APPLY_ON_PERIOD_END = 0`)
 - deferred apply mode (`APPLY_ON_PERIOD_END = 1`)
 
-This is a strong checkpoint before moving on to V2 integration work in `pwm_core_ip.sv` and `pwm_subsystem.sv`.
+## 2026-04-15 — PWM Family Refactor: split into RAW PWM and H-Bridge motor flavors (V3)
+
+### Objective
+Refactor the PWM subsystem so the shared PWM engine remains generic, while output semantics are moved into flavor-specific adapters and subsystem wrappers.
+
+The immediate goal was to support:
+- a **raw PWM flavor** for LEDs and generic PWM outputs
+- an **H-bridge motor flavor** for TB6612-style motor control
+
+The next planned version is:
+
+- **V4:** servo support and PWM inversion support
+
+This refactor was done to keep the PWM core reusable while making motor behavior explicit and easier to control from Nios V software.
+
+---
+
+### Why this refactor was needed
+
+The earlier V2 direction reserved placeholders such as `REG_POLARITY` and `REG_MOTOR_CTRL` in the shared PWM map. That was useful as a temporary transition step, but it mixed generic PWM responsibilities with future application-specific behavior. The implemented V3 direction is cleaner:
+
+- keep the **shared PWM engine generic**
+- keep the **common register layer generic**
+- add **small flavor-specific register extensions**
+- add **small flavor-specific output adapters**
+- expose separate subsystem wrappers for each personality
+
+This allows the same PWM core to be reused for:
+- LED brightness control
+- H-bridge motor drive
+- later servo output generation
+
+without turning the PWM core into a large mode-dependent mega-module.
+
+---
+
+### Final V3 architecture
+
+```text
+pwm/
+  core/
+    pwm_compare.sv
+    pwm_core_ip.sv
+    pwm_timebase.sv
+
+  regs/
+    pwm_regs_common.sv
+    pwm_regs_hbridge_ext.sv
+
+  adapters/
+    pwm_raw_adapter.sv
+    pwm_hbridge_adapter.sv
+
+  subsystems/
+    pwm_subsystem_raw.sv
+    pwm_subsystem_motor.sv
+
+  axi_lite_pwm_raw.sv
+  axi_lite_pwm_motor.sv
+```
+
+#### Design rule
+- `pwm_timebase.sv`, `pwm_compare.sv`, and `pwm_core_ip.sv` remain **generic**
+- `pwm_regs_common.sv` owns the **common PWM-family register map**
+- `pwm_regs_hbridge_ext.sv` owns the **motor-specific mask registers**
+- `pwm_raw_adapter.sv` and `pwm_hbridge_adapter.sv` define the output semantics
+- `pwm_subsystem_raw.sv` and `pwm_subsystem_motor.sv` tie the pieces together
+- AXI4-Lite wrappers remain flavor-specific because the **external conduit ports differ**
+
+---
+
+### Implemented V3 register split
+
+#### Common register map (`pwm_regs_common.sv`)
+The common block now owns only the shared PWM-family registers:
+
+| Offset | Name | Description |
+|---|---|---|
+| `0x00` | `REG_CTRL` | global control (`bit[0] = enable`) |
+| `0x04` | `REG_PERIOD` | shared PWM period |
+| `0x08` | `REG_APPLY` | write-one apply/commit |
+| `0x0C` | `REG_CH_ENABLE` | per-channel enable mask |
+| `0x10` | `REG_STATUS` | period/apply status |
+| `0x14` | `REG_CNT` | live counter readback |
+| `0x20 + 4*i` | `REG_DUTY[i]` | banked duty registers |
+
+Notes:
+- `0x18` and `0x1C` are intentionally left unused in the common map
+- this preserved the V2 duty-bank base at `0x20`
+- the common block still uses the **shadow/active + APPLY** model
+- `apply_commit_o` was added so extension slices can commit on the **same exact APPLY event**
+
+#### H-bridge extension register map (`pwm_regs_hbridge_ext.sv`)
+The motor flavor adds:
+
+| Offset | Name | Description |
+|---|---|---|
+| `0x40` | `DIR_MASK` | bit `i` sets direction for channel `i` |
+| `0x44` | `BRAKE_MASK` | bit `i` enables brake for channel `i` |
+| `0x48` | `COAST_MASK` | bit `i` enables coast for channel `i` |
+
+These are stored as shadow registers and commit to active registers only when `apply_commit_i` asserts.
+
+This preserves the same atomic update behavior as the common PWM registers.
+
+---
+
+### Common PWM core stayed generic
+
+`pwm_core_ip.sv` remained a generic multichannel PWM engine:
+- one shared timebase
+- one shared period
+- one bank of duty comparators
+- output changed to a unified name: `pwm_o[CHANNELS-1:0]`
+
+This output is still **raw PWM**, with no motor semantics inside the core.
+
+That was an important design decision:
+- the PWM core answers **"how much on-time?"**
+- the adapter layer answers **"what does on-time mean for this device?"**
+
+---
+
+### RAW flavor implementation
+
+#### Files
+- `pwm_regs_common.sv`
+- `pwm_core_ip.sv`
+- `pwm_raw_adapter.sv`
+- `pwm_subsystem_raw.sv`
+- `axi_lite_pwm_raw.sv`
+
+#### Behavior
+The raw adapter is intentionally simple:
+
+```text
+pwm_raw_adapter:
+    pwm_i -> pwm_o
+```
+
+At this stage, inversion was deferred to V4.
+For V3 bring-up, the raw flavor was used mainly for:
+- LED PWM test
+- proving that the common register layer and shared PWM engine still worked after the refactor
+
+---
+
+### H-bridge motor flavor implementation
+
+#### Files
+- `pwm_regs_common.sv`
+- `pwm_regs_hbridge_ext.sv`
+- `pwm_core_ip.sv`
+- `pwm_hbridge_adapter.sv`
+- `pwm_subsystem_motor.sv`
+- `axi_lite_pwm_motor.sv`
+
+#### H-bridge adapter behavior
+The motor adapter takes:
+- `direction_i`
+- `brake_i`
+- `coast_i`
+- `pwm_i`
+
+and outputs:
+- `pwm_o`
+- `in1_o`
+- `in2_o`
+
+Priority is:
+
+```text
+brake > coast > normal PWM drive
+```
+
+Behavior:
+
+```text
+normal mode:
+  pwm_o = pwm_i
+  in1_o = direction_i
+  in2_o = ~direction_i
+
+coast:
+  pwm_o = 1
+  in1_o = 0
+  in2_o = 0
+
+brake:
+  pwm_o = 1
+  in1_o = 1
+  in2_o = 1
+```
+
+This matched the intended TB6612-style control abstraction.
+
+---
+
+### Atomic update behavior preserved
+
+A key part of the refactor was preserving the synchronized software model:
+
+```text
+1. Write common shadow registers
+2. Write motor extension shadow registers
+3. Write REG_APPLY = 1
+4. All active registers commit together
+```
+
+That means duty, direction, brake, and coast can change together at one APPLY point instead of producing partial transient states from multiple bus writes.
+
+This was the main reason to keep `apply_commit_o` in the common block and have the extension slice commit from that same signal.
+
+---
+
+### AXI-Lite wrapper split
+
+Two AXI-Lite wrappers were created:
+
+- `axi_lite_pwm_raw.sv`
+- `axi_lite_pwm_motor.sv`
+
+The AXI-Lite FSM structure remained the same:
+- decoupled AW/W/AR capture
+- one serialized internal MMIO request channel
+- one MMIO response channel
+- Moore FSM for write/read handling
+
+The wrappers differ mainly in:
+- which subsystem they instantiate
+- which conduit outputs they expose
+
+#### Raw wrapper conduit
+- `pwm_o[CHANNELS-1:0]`
+
+#### Motor wrapper conduit
+- `pwm_o[CHANNELS-1:0]`
+- `in1_o[CHANNELS-1:0]`
+- `in2_o[CHANNELS-1:0]`
+
+This split was necessary because Platform Designer components need a stable port list, and raw vs motor flavors do not have the same external conduit shape.
+
+---
+
+### Platform Designer integration
+
+Two PWM components were created in Platform Designer:
+
+- `led_pwm` -> raw multichannel PWM
+- `motor_pwm` -> H-bridge multichannel PWM
+
+Final address map:
+
+| Peripheral | Base Address | Range |
+|---|---:|---:|
+| `motor_pwm.s_axil` | `0x0003_0000` | `0x0003_0000 - 0x0003_0FFF` |
+| `spi_master_0.s_axil` | `0x0003_1000` | `0x0003_1000 - 0x0003_1FFF` |
+| `led_pwm.s_axil` | `0x0003_2000` | `0x0003_2000 - 0x0003_2FFF` |
+
+This produced a clean software model:
+- motor PWM block at `0x00030000`
+- SPI block at `0x00031000`
+- LED/raw PWM block at `0x00032000`
+
+---
+
+### Top-level integration notes
+
+In the DE10-Lite top-level:
+- raw PWM was wired to LED outputs
+- motor PWM was wired into the `self_balancing_io` path
+
+A temporary issue existed where motor signals were still being manually assigned from `SW[]`, which created a multiple-driver conflict once the Platform Designer motor block was connected. Those manual assignments were removed.
+
+After that, the motor outputs were owned only by the motor PWM peripheral.
+
+---
+
+### Software bring-up
+
+Two software paths were established:
+
+#### 1. Raw LED PWM test
+A 10-channel LED fade test was run against:
+- `LED_PWM_BASE = 0x00032000`
+
+This verified:
+- AXI4-Lite access
+- common register block operation
+- duty bank programming
+- APPLY behavior
+- raw PWM conduit export
+
+The LED PWM test worked, confirming the raw flavor and common core path were good.
+
+#### 2. Motor PWM smoke test
+A motor-only smoke test was created using:
+- `MOTOR_PWM_BASE = 0x00030000`
+
+It programmed:
+- `REG_PERIOD`
+- `REG_CH_ENABLE`
+- `REG_CTRL`
+- `DIR_MASK`
+- `BRAKE_MASK`
+- `COAST_MASK`
+- `REG_DUTY[i]`
+- `REG_APPLY`
+
+Register dump examples showed:
+- correct enable state
+- correct period
+- correct channel enable mask
+- correct duty writeback
+- correct direction/brake/coast mask writeback
+
+This proved the **software/MMIO path** for the motor flavor was functioning.
+
+---
+
+### Main debug issue discovered during motor bring-up
+
+#### Symptom
+- LED PWM worked
+- motor register readback looked correct
+- motors did not move from Nios V control
+- motors did move correctly when driven manually from `SW[]`
+
+#### Root cause
+In Platform Designer, the motor conduit signals were declared with the wrong direction.
+The PWM motor outputs had effectively been treated as **inputs** instead of **outputs**.
+
+That meant:
+- register writes were correct
+- the internal peripheral state updated correctly
+- but the motor control signals never actually left the motor PWM component
+
+#### Fix
+- correct the motor conduit direction in Platform Designer so the motor control signals are outputs
+- regenerate the Platform Designer system
+- rebuild Quartus
+
+#### Result
+After fixing the conduit direction, the motor PWM block worked.
+
+This confirmed the full digital chain:
+
+```text
+Nios V
+-> AXI4-Lite motor wrapper
+-> pwm_subsystem_motor
+-> pwm_regs_common + pwm_regs_hbridge_ext
+-> pwm_core_ip
+-> pwm_hbridge_adapter
+-> Platform Designer conduit
+-> top-level wiring
+-> TB6612 interface
+-> motors
+```
+
+---
+
+### Final V3 conclusion
+
+V3 was successfully implemented as a **family split** instead of a single monolithic PWM peripheral.
+
+#### RAW flavor now supports
+- shared-period multichannel PWM
+- banked duty registers
+- per-channel enable
+- shadow/active + APPLY
+- AXI4-Lite integration
+- Platform Designer componentization
+
+#### MOTOR flavor now supports
+- shared-period 2-channel H-bridge control
+- banked duty registers
+- direction mask
+- brake mask
+- coast mask
+- atomic APPLY across common and motor extension registers
+- AXI4-Lite integration
+- Platform Designer componentization
+- successful hardware motor bring-up on the DE10-Lite robot wiring path
+
+---
+
+### V4 plan
+
+V4 is now planned to add:
+- **servo motor flavor**
+- **PWM inversion support**
+
+Current intent for V4:
+- keep the shared generic PWM-family architecture
+- add a servo-specific register extension and adapter
+- add inversion support in the raw flavor and other places where needed
+
+Planned family direction:
+
+```text
+RAW PWM   -> implemented in V3
+H-BRIDGE  -> implemented in V3
+SERVO     -> planned for V4
+INVERSION -> planned for V4
+```
+
+---
+
+### Files added/refactored during this V3 work
+
+#### Common/core
+- `pwm_compare.sv`
+- `pwm_timebase.sv`
+- `pwm_core_ip.sv`
+- `pwm_regs_common.sv`
+
+#### Adapters
+- `pwm_raw_adapter.sv`
+- `pwm_hbridge_adapter.sv`
+
+#### Extension registers
+- `pwm_regs_hbridge_ext.sv`
+
+#### Subsystems
+- `pwm_subsystem_raw.sv`
+- `pwm_subsystem_motor.sv`
+
+#### AXI wrappers
+- `axi_lite_pwm_raw.sv`
+- `axi_lite_pwm_motor.sv`
+
+---
+
+### Key lessons learned
+
+- keep the PWM core generic
+- move application semantics into adapters
+- keep the common register layer focused on shared behavior
+- use extension slices for personality-specific control
+- preserve a single APPLY commit point across all related registers
+- separate Platform Designer components by flavor when conduit shapes differ
+- when MMIO readback is correct but hardware does nothing, always verify conduit directions and ownership in Platform Designer
+
+---
+
+### Next steps
+
+- [ ] Create reusable C helper files for raw and motor PWM register access
+- [ ] Add a cleaner motor bring-up program with explicit staged motion tests
+- [ ] Add notebook screenshots for the new Platform Designer PWM family integration
+- [ ] Add notebook screenshots for successful motor bring-up
+- [ ] Implement V4 servo flavor
+- [ ] Add PWM inversion support in V4
+
+
 

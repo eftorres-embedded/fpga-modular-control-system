@@ -5,11 +5,11 @@
  version="1.0"
  fabric="QSYS">
  <!-- Format version 25.1 1129 (Future versions may contain additional information.) -->
- <!-- 2026.04.14.22:52:51 -->
+ <!-- 2026.04.14.23:56:02 -->
  <!-- A collection of modules and connections -->
  <parameter name="AUTO_GENERATION_ID">
   <type>java.lang.Integer</type>
-  <value>1776225171</value>
+  <value>1776228962</value>
   <derived>false</derived>
   <enabled>true</enabled>
   <visible>false</visible>
@@ -3717,19 +3717,19 @@ parameters are a RESULT of the module parameters. -->
    <isStart>false</isStart>
    <port>
     <name>pwm_o</name>
-    <direction>Input</direction>
+    <direction>Output</direction>
     <width>2</width>
     <role>pwm</role>
    </port>
    <port>
     <name>in1_o</name>
-    <direction>Input</direction>
+    <direction>Output</direction>
     <width>2</width>
     <role>in1</role>
    </port>
    <port>
     <name>in2_o</name>
-    <direction>Input</direction>
+    <direction>Output</direction>
     <width>2</width>
     <role>in2</role>
    </port>
@@ -3764,11 +3764,11 @@ the requested settings for a module instance. -->
   </assignment>
   <assignment>
    <name>embeddedsw.CMacro.INIT_CONTENTS_FILE</name>
-   <value>ram</value>
+   <value>niosv_modular_control_system_onchip_memory</value>
   </assignment>
   <assignment>
    <name>embeddedsw.CMacro.INIT_MEM_CONTENT</name>
-   <value>1</value>
+   <value>0</value>
   </assignment>
   <assignment>
    <name>embeddedsw.CMacro.INSTANCE_ID</name>
@@ -3776,7 +3776,7 @@ the requested settings for a module instance. -->
   </assignment>
   <assignment>
    <name>embeddedsw.CMacro.NON_DEFAULT_INIT_FILE_ENABLED</name>
-   <value>1</value>
+   <value>0</value>
   </assignment>
   <assignment>
    <name>embeddedsw.CMacro.RAM_BLOCK_TYPE</name>
@@ -3828,7 +3828,7 @@ the requested settings for a module instance. -->
   </assignment>
   <assignment>
    <name>embeddedsw.memoryInfo.MEM_INIT_FILENAME</name>
-   <value>ram</value>
+   <value>niosv_modular_control_system_onchip_memory</value>
   </assignment>
   <assignment>
    <name>postgeneration.simulation.init_file.param_name</name>
@@ -3896,7 +3896,7 @@ the requested settings for a module instance. -->
   </parameter>
   <parameter name="initMemContent">
    <type>boolean</type>
-   <value>true</value>
+   <value>false</value>
    <derived>false</derived>
    <enabled>true</enabled>
    <visible>true</visible>
@@ -3906,7 +3906,7 @@ the requested settings for a module instance. -->
    <type>java.lang.String</type>
    <value>D:/fpga_projects/fpga-modular-control-system/ram.hex</value>
    <derived>false</derived>
-   <enabled>true</enabled>
+   <enabled>false</enabled>
    <visible>true</visible>
    <valid>true</valid>
   </parameter>
@@ -3914,7 +3914,7 @@ the requested settings for a module instance. -->
    <type>boolean</type>
    <value>false</value>
    <derived>false</derived>
-   <enabled>true</enabled>
+   <enabled>false</enabled>
    <visible>true</visible>
    <valid>true</valid>
   </parameter>
@@ -3992,9 +3992,9 @@ the requested settings for a module instance. -->
   </parameter>
   <parameter name="useNonDefaultInitFile">
    <type>boolean</type>
-   <value>true</value>
+   <value>false</value>
    <derived>false</derived>
-   <enabled>true</enabled>
+   <enabled>false</enabled>
    <visible>true</visible>
    <valid>true</valid>
   </parameter>
@@ -4002,7 +4002,7 @@ the requested settings for a module instance. -->
    <type>boolean</type>
    <value>false</value>
    <derived>false</derived>
-   <enabled>true</enabled>
+   <enabled>false</enabled>
    <visible>false</visible>
    <valid>true</valid>
   </parameter>
@@ -4115,7 +4115,7 @@ the requested settings for a module instance. -->
   </parameter>
   <parameter name="derived_init_file_name">
    <type>java.lang.String</type>
-   <value>D:/fpga_projects/fpga-modular-control-system/ram.hex</value>
+   <value>niosv_modular_control_system_onchip_memory.hex</value>
    <derived>true</derived>
    <enabled>true</enabled>
    <visible>false</visible>

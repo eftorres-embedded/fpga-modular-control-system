@@ -371,6 +371,14 @@ assign sb_status_led_o          = pwm_out[0];
 assign mpu_i2c_scl_drive_low    = 1'b0;
 assign mpu_i2c_sda_drive_low    = 1'b0;
 
+//assign motor_a_pwm_o            = SW[0];
+//assign motor_a_in1_o            = SW[1];
+//assign motor_a_in2_o            = SW[2];
+//
+//assign motor_b_pwm_o            = SW[3];
+//assign motor_b_in1_o            = SW[4];
+//assign motor_b_in2_o            = SW[5];
+
 assign usonic_trig_o            = 1'b0;
 
 
@@ -405,6 +413,7 @@ self_balancing_io u_self_balancing_io (
 //PWM out
 logic		[9:0]					pwm_out;
 assign	LEDR[9:0]		=	pwm_out;
+
 
 niosv_modular_control_system u_niosv (
 		.clk_clk				(MAX10_CLK1_50),	//clk.clk
