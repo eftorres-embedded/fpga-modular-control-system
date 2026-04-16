@@ -124,8 +124,26 @@ always_ff   (posedge clk or negedge rst_n)
 begin
     if(!rst_n)
     begin
-        state_reg   <=  S_IDLE;
-        div_cnt_reg <=  '0;
+        state_reg       <=  S_IDLE;
+        tick_cnt_reg    <=  '0;
+        bit_idx_reg     <=  '0;
+        cmd_reg         <=  START_CMD;
+        tx_reg          <=  '0;
+        rx_reg          <=  '0;
+    end
+    else
+    begin
+        state_reg       <=  state_next;
+        tick_cnt_reg    <=  tick_cnt_reg;
+        bit_idx_reg     <=  bit_idx_next;
+        cmd_reg         <=  cmd_next;
+        tx_reg          <=  tx_next;
+        rx_reg          <=  rx_next;
+    end
+
+    
+
+
 
 
 
