@@ -1,236 +1,197 @@
-# ENG NOTEBOOK - I2C
+# ENG NOTEBOOK - I2C Custom Core Bring-Up
 
+**Project:** fpga-modular-control-system  
+**Date:** 2026-04-16  
+**Workstream:** I2C / MPU-6500 bring-up foundation  
+**Stage:** Custom byte-engine verification complete; wrapper integration next
 
-## Goal
-Integrate an I2C master peripheral into the modular control system using the project's standard peripheral structure:
+---
 
-- vendor/core isolation
-- local register file
-- AXI4-Lite wrapper
-- top-level subsystem integration
-- Nios V software-driven testing
+## 1. Objective
 
-Primary near-term target device:
+Develop and verify a project-owned I2C master byte engine that is easier to inspect, modify, and integrate than the earlier vendor/IP-centered path, while preserving the repository’s modular peripheral philosophy.
+
+Near-term hardware target:
 - MPU-6500 on the self-balancing kit
 
----
-
-## Design Decision
-Instead of continuing with the Intel Avalon I2C Host IP for this project branch, the design will pivot to an open-source Verilog I2C master core and keep the project-owned software-visible interface local to this repository.
-
-Reasoning:
-
-- the board-level electrical path was debugged and validated:
-  - open-drain behavior worked
-  - SDA/SCL pull-ups were added
-  - manual line forcing and line readback behaved correctly
-- the previous Avalon I2C Host path still reported a non-idle state before any transfer command was queued
-- a custom register/MMIO layer fits this repository's architecture better and matches the SPI and PWM workstreams
-- isolating the low-level bus engine from the software-visible interface keeps the project modular and makes future replacement easier
-
-The project goal is not to claim authorship of the low-level protocol engine. The goal is to show clean SoC integration, register design, wrapper design, and system bring-up.
+Immediate milestone:
+- complete protocol-level simulation of the custom core before building the software-visible register/MMIO layer
 
 ---
 
-## Third-Party Core Credit
-This I2C workstream is based on the open-source **verilog-i2c** project by **Alex Forencich**.
+## 2. Background and Design Pivot
 
-Planned source attribution approach:
-- keep the original vendor RTL isolated in a dedicated vendor directory
-- preserve original file names where practical
-- keep project-owned wrapper/register logic outside the vendor tree
-- document clearly which files are vendor-origin and which files are project-authored
+This workstream changed direction.
 
-Planned vendor isolation path:
-`rtl/peripherals/i2c/vendor/verilog-i2c-master/`
+The earlier plan centered on integrating a third-party or vendor-origin I2C solution, then wrapping it with project-owned register and AXI4-Lite logic. That approach no longer reflects the current implementation branch.
 
-Files that are *not* the preferred base for this repository's final peripheral contract:
-- `i2c_master_axil.v`
-- `i2c_master_wbs_8.v`
-- `i2c_master_wbs_16.v`
+The active branch now uses a **project-owned custom I2C master core** written specifically for this repository.
 
-Reason:
-the project intends to maintain its own MMIO/register contract and AXI4-Lite wrapper so the peripheral matches the rest of the repository structure.
+### Why the direction changed
+The custom-core route provides several practical advantages for this phase of the project:
 
----
+- simpler waveform-level inspection
+- easier protocol debugging during bring-up
+- cleaner ownership of the software-visible contract
+- easier explanation in an FPGA/embedded portfolio context
+- fewer integration unknowns while validating bus behavior
 
-## Project-Owned Integration Strategy
-Project-owned integration logic will remain separate from the vendor core.
-
-Planned project-owned files:
-- `rtl/peripherals/i2c/axi_lite_i2c.sv`
-- `rtl/peripherals/i2c/regs/i2c_regs.sv`
-
-This separation is intentional to:
-
-- preserve attribution and licensing clarity
-- avoid mixing vendor code with project code
-- make future core replacement easier
-- keep the software-visible contract under project control
+This change does **not** mean the previous exploration was wasted. The earlier work helped validate the board-level open-drain path and reduced uncertainty around the external electrical interface.
 
 ---
 
-## Planned Integration Layers
-1. Vendor I2C master core
-2. Project-owned register/MMIO layer
-3. Project-owned AXI4-Lite wrapper
-4. Top-level subsystem integration
-5. Software test through Nios V
-6. MPU-6500 register-level bring-up
+## 3. Current Design Summary
+
+The current RTL block is a **byte-oriented, single-master I2C engine**.
+
+Current file focus:
+- `rtl/peripherals/i2c/core/i2c_master_core.sv`
+
+Current verification focus:
+- `tb/unit/i2c/tb_i2c_master_core.sv`
+
+### Implemented command set
+The custom core currently supports the following byte-engine commands:
+
+- `START`
+- `WR`
+- `RD`
+- `STOP`
+- `RESTART`
+
+This is intentionally a **protocol engine**, not yet a complete MMIO-visible peripheral.
+
+### Current command interface
+The core uses an explicit command handshake:
+
+- `cmd`
+- `cmd_valid_i`
+- `cmd_ready_o`
+
+Accepted command rules:
+- `S_IDLE` accepts only `START_CMD`
+- `S_HOLD` accepts:
+  - `WR_CMD`
+  - `RD_CMD`
+  - `STOP_CMD`
+  - `RESTART_CMD`
+
+### Current status/result outputs
+The core exposes:
+
+- `done_tick_o`
+- `ack_o`
+- `ack_valid_o`
+- `rd_data_valid_o`
+- `bus_idle_o`
+- `master_receiving_o`
+- `cmd_illegal_o`
+
+These signals were added to make later wrapper integration cleaner and to remove ambiguity during simulation.
 
 ---
 
-## Early System Debug Summary
-Before moving to the new I2C path, the previous hardware path was debugged far enough to establish several useful facts:
+## 4. Open-Drain Integration Convention
 
-### Verified board/path behavior
-- SDA and SCL use open-drain style drive at top level
-- external pull-ups were added to SDA and SCL
-- AD0 was tied low for MPU-6500 address `0x68`
-- manual forcing of SDA/SCL low from FPGA logic worked
-- readback of SDA/SCL through the top-level path also worked
-- Signal Tap visibility was established for:
-  - `mpu_i2c_scl_drive_low`
-  - `mpu_i2c_scl_i`
-  - `mpu_i2c_sda_drive_low`
-  - `mpu_i2c_sda_i`
-
-### Key conclusion from previous debug
-The external pad path and board wiring were not the main blocker. The remaining issue appeared to be inside the previous I2C core/integration/reset path rather than the basic electrical interface.
-
-This is useful because it reduces uncertainty for the next implementation pass:
-- top-level open-drain hookup style is already validated
-- GPIO pin choice is already validated
-- MPU-6500 target address choice is already validated
-
----
-
-## Top-Level I2C Pad Convention
-The top-level I2C hookup will continue using the already-debugged open-drain convention:
-
-```systemverilog
-assign GPIO[PIN_MPU_I2C_SCL] = mpu_i2c_scl_drive_low ? 1'b0 : 1'bz;
-assign GPIO[PIN_MPU_I2C_SDA] = mpu_i2c_sda_drive_low ? 1'b0 : 1'bz;
-
-assign mpu_i2c_scl_i = GPIO[PIN_MPU_I2C_SCL];
-assign mpu_i2c_sda_i = GPIO[PIN_MPU_I2C_SDA];
-```
+The design continues to use the already-debugged open-drain top-level convention.
 
 Conceptually:
 
-- `*_drive_low = 1` -> line driven low
-- `*_drive_low = 0` -> line released
-- `*_i` -> sampled line level
+```systemverilog
+assign GPIO[PIN_MPU_I2C_SCL] = scl_drive_low ? 1'b0 : 1'bz;
+assign GPIO[PIN_MPU_I2C_SDA] = sda_drive_low ? 1'b0 : 1'bz;
 
-This convention is already aligned with the physical behavior seen during manual debug.
-
----
-
-## Planned Software-Visible Register Direction
-A final register map is still to be defined, but the intended style is consistent with other repository peripherals.
-
-Candidate register set:
-
-```text
-0x00 CTRL
-0x04 STATUS
-0x08 CLK_DIV
-0x0C SLAVE_ADDR
-0x10 REG_ADDR
-0x14 TX_DATA
-0x18 RX_DATA
-0x1C CMD
-0x20 IRQ_EN
-0x24 IRQ_STATUS
+assign scl_i = GPIO[PIN_MPU_I2C_SCL];
+assign sda_i = GPIO[PIN_MPU_I2C_SDA];
 ```
 
-Initial intent:
-- keep bring-up simple
-- support single-byte register write
-- support repeated-start register read
-- add interrupt support only after baseline polling flow works cleanly
+For the custom core, the wrapper-side SDA behavior is intentionally explicit:
 
----
-
-## Planned Bring-Up Strategy
-The first functional goal is a minimal MPU-6500 smoke test, not feature completeness.
-
-Recommended bring-up order:
-
-1. confirm idle bus levels in software-visible status
-2. issue a simple register read to `WHO_AM_I`
-3. confirm response at slave address `0x68`
-4. read `PWR_MGMT_1`
-5. clear sleep mode
-6. read back `PWR_MGMT_1`
-7. add accel/gyro register reads
-
----
-
-## Initial Tasks
-- isolate vendor RTL in a dedicated I2C vendor directory
-- review `i2c_master.v` interface and handshake behavior
-- define software-visible register map
-- define command sequencing for:
-  - write transaction
-  - repeated-start read transaction
-- connect register layer to vendor core
-- add status reporting
-- create basic smoke test
-- verify `WHO_AM_I` read from MPU-6500
-
----
-
-## Notes
-The first objective is functional bring-up, not feature completeness.
-
-Advanced items such as:
-- FIFOs
-- interrupt refinements
-- burst support
-- generalized transaction queueing
-
-can be added after baseline MPU-6500 communication works.
-
-This notebook entry is mainly to establish:
-- attribution to the original I2C vendor core
-- project ownership boundaries
-- the integration direction for the I2C workstream
-- lessons already learned from the previous debug path
-
----
-
-## Directory Structure
-```text
-rtl/
-└── peripherals/
-    └── i2c/
-        ├── vendor/
-        │   └── verilog-i2c-master/
-        │       └── rtl
-        |           └──i2c_master.v
-        ├── regs/
-        │   └── i2c_regs.sv
-        ├── axi_lite_i2c.sv
-        │  
-        └── README.md (optional, later)
-
-tb/
-└── unit/
-    └── i2c/
-        └── <planned testbenches>
+```systemverilog
+assign sda = (master_receiving_o || sda_out) ? 1'bz : 1'b0;
+assign scl = (scl_out) ? 1'bz : 1'b0;
 ```
 
+### Interpretation
+- `sda_out = 0` -> master drives SDA low
+- `sda_out = 1` -> master releases SDA
+- `scl_out = 0` -> master drives SCL low
+- `scl_out = 1` -> master releases SCL
+- `master_receiving_o = 1` -> wrapper must release SDA because the slave owns that phase
+
+This keeps bus ownership clear during both read and write transactions.
+
 ---
 
-## Current Direction Summary
-The I2C workstream will follow the same overall architectural philosophy as SPI:
+## 5. Divider / Timing Behavior
 
-- reusable vendor bus engine
-- project-owned register contract
-- project-owned AXI4-Lite wrapper
-- explicit top-level integration
-- software-driven bring-up from Nios V
+The current core clamps the requested divider to a minimum safe value and latches the transaction timing at the start of a new transaction.
 
-The low-level protocol engine is vendor-origin.
-The software-visible peripheral and SoC integration remain project-owned.
+Current design intent:
+- divider is captured at `START_CMD`
+- the entire transaction uses that latched divider
+- mid-transaction software changes do not alter bus timing unexpectedly
+
+This is a deliberate choice to keep protocol timing stable.
+
+### Current limitation
+Clock stretching is **not** implemented yet.
+`scl_in` is reserved for that future extension.
+
+---
+
+## 6. Verification Strategy
+
+A self-checking unit testbench was written to validate the protocol engine before any MMIO or AXI4-Lite wrapper work.
+
+The testbench models:
+- open-drain SDA/SCL behavior
+- pull-up / released-bus behavior through tri-state resolution
+- a simple slave that can:
+  - ACK or NACK write transactions
+  - source read data bits onto SDA
+- legal and illegal command launches
+
+This provides a focused protocol-level verification stage before system integration.
+
+---
+
+## 7. Verification Results
+
+### Passing self-checking tests
+The current simulation pass covers the following scenarios:
+
+1. illegal `WR_CMD` in `S_IDLE`
+2. illegal `START_CMD` in `S_HOLD`
+3. `START -> WR(ACK) -> STOP`
+4. `START -> WR(NACK) -> STOP`
+5. `START -> WR(ACK) -> RESTART -> RD(last/NACK) -> STOP`
+
+Result:
+- **all tests passed**
+
+### Waveform evidence
+```markdown
+![I2C custom core waveform](img/2026-04-16-tb_i2c_coreV1_wave.png)
+```
+
+Repo path:
+- `docs/notebook/img/2026-04-16-tb_i2c_coreV1_wave.png`
+
+### Transcript / pass evidence
+```markdown
+![I2C custom core simulation pass](img/2026-04-16-tb_i2c_coreV1_pass.png)
+```
+
+Repo path:
+- `docs/notebook/img/2026-04-16-tb_i2c_coreV1_pass.png`
+
+
+The I2C workstream has now moved from a vendor-core integration plan to a custom project-owned byte-engine implementation.
+
+Current status:
+- custom core implemented
+- open-drain convention preserved
+- self-checking simulation completed
+- representative command sequences verified
+- ready for wrapper/register integration
