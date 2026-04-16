@@ -22,12 +22,12 @@ module i2c_master   #(
     input   logic                   rst_n,
 
     input   logic   [DIVISOR_W-1:0] divisor,
-    output  logic                   rx_ready,
+    output  logic                   ready,
     output  logic                   ack,
     output  logic                   done_tick,
 
-    output  logic   [7:0]           rx_data_o,
-    input   logic   [7:0]           tx_data_i,
+    output  logic   [DATA_W-2:0]    rx_data_o,
+    input   logic   [DATA_W-2:0]    tx_data_i,
 
     input   logic                   sda_in,
     output  logic                   sda_out,
@@ -74,9 +74,11 @@ logic   [DATA_W-1:0]    tx_reg,         tx_next;
 logic   [DATA_W-1:0]    rx_reg,         rx_next;
 logic   [CMD_W-1:0]     cmd_reg,        cmd_next;
 logic   [DATA_W-2:0]    bit_idx_reg,    bit_idx_next;   //keeps track of the number of data bits processed. bit_reg in book
-logic                   sda_out_reg,    scl_out_next;
 
-logic   done_tick_int,    rx_ready_int;
+logic                   sda_out_reg,    sda_out_next;
+logic                   scl_out_reg,    scl_out_next;
+
+logic   done_tick_int,    ready_int;
 logic   receiving_f;
 logic   nack;
 logic   data_phase;
@@ -269,6 +271,7 @@ begin
         if((cmd==RD_CMD)||(cmd==WR_CMD))
             bit_idx_next    =   '0;
     end
+
     if(state_reg==S_DATA_4)
     begin
         if(tick_cnt_reg==quarter_cnt)
@@ -283,37 +286,95 @@ end
 //update tx_next
 always_comb
 begin
+    tx_next =   tx_reg;
 
+    if(state_reg==S_HOLD)
+    begin
+        if((cmd==RD_CMD)||(cmd==WR_CMD))
+            tx_next    =   {tx_data_i,nack};
+    end
+
+    if(state_reg==S_DATA_4)
+    begin
+        if(tick_cnt_reg==quarter_cnt)
+        begin
+            if(bit_idx_reg < 8)
+                tx_next    =   {tx_reg[7:0],1'b0};
+        end
+
+    end
 end
 
 //update rx_next
 always_comb
 begin
-    
+    rx_next =   rx_reg;
+    begin
+        if(state_reg==S_DATA_2)
+        begin
+            if(tick_cnt_reg==quarter_cnt)
+                rx_next =   {rx_reg[7:0],sda_in};
+        end
+    end
 end
 
 //update cmd_next
 always_comb
 begin
+    cmd_next    =   cmd_reg;
 
+    if(state_reg==S_HOLD)
+    begin
+        if(wr_i2c)
+            cmd_next    =   cmd;
+    end
 end
 
 //update sda_out_next
 always_comb
 begin
+    sda_out_next    =   1'b1;
+    
+    if((state_reg==S_START_1)||(state_reg==S_START_2)||(state_reg==S_HOLD)||(state_reg==S_DATA_END)||(state_reg==S_STOP_1))
+        sda_out_next    =   1'b0;
+
+    if((state_reg==S_DATA_1)||(state_reg==S_DATA_2)||(state_reg==S_DATA_3)||(state_reg==S_DATA_4))
+        sda_out_next    =   tx_reg[8];
 
 end
 
 //update scl_out_next
+always_comb
 begin
+    scl_out_next    =   1'b1;
 
+    if((state_reg==S_START_2)||(state_reg==S_HOLD)||(state_reg==S_DATA_1)||(state_reg==S_DATA_4)||(state_reg==S_DATA_END))
+        scl_out_next    =   1'b0;
+
+end
+
+//update ready_int
+assign ready_int    =   (state_reg==S_HOLD) ?   1'b1    :   1'b0;
+
+//update done_tick_int
+always_comb
+begin
+    done_tick_int   =   1'b0;
+    if(state_reg==S_DATA_4)
+    begin
+        if(tick_cnt_reg==quarter_cnt)
+        begin
+           if(bit_idx_reg==8)
+                done_tick_int   =   1'b1; 
+        end      
+    end
 end
 
 //defining when it's data phase
 assign  data_phase  =   (state_reg==S_DATA_1)||(state_reg==S_DATA_2)||(state_reg==S_DATA_3)||(state_reg==S_DATA_4);
 
-//defining rx_ready
-assign  rx_ready    =   rx_ready_int;
+//defining ready
+assign  ready    =   ready_int;
 
 //defining done_tick
 assign  done_tick   =   done_tick_int;
