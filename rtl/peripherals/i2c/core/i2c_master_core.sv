@@ -36,7 +36,8 @@ module i2c_master   #(
     input   logic                   scl_in,
     output  logic                   scl_out,
     
-    input   logic   [CMD_W-1:0]     cmd);
+    input   logic   [CMD_W-1:0]     cmd,
+    input   logic                   master_receiving);  //top-level should: sda =   (master_receiving   ||  sda_reg)    ?   1'bz    :   1'b0;)
 
 
 //Symbolic constant
@@ -64,21 +65,22 @@ typedef enum    logic   [3:0]
 }state_t;
 
 //state registers
-state_t current_state;
-state_t next_state;
+state_t state_reg;
+state_t state_next;
 
-logic   [DIVISOR_W-1:0] div_cnt_reg,    div_cnt_next;
+logic   [DIVISOR_W-1:0] tick_cnt_reg,   tick_cnt_next;
 logic   [DIVISOR_W-1:0] quarter_cnt,    half_cnt;
 logic   [DATA_W-1:0]    tx_reg,         tx_next;
 logic   [DATA_W-1:0]    rx_reg,         rx_next;
 logic   [CMD_W-1:0]     cmd_reg,        cmd_next;
-logic   [DATA_W-2:0]    bit_cnt_reg,    bit_cnt_next;
+logic   [DATA_W-2:0]    bit_idx_reg,    bit_idx_next;
 
 logic   sda_out_r, scl_out_r;
 
 logic   done_tick_r,    ready_r;
-logic   into;
+logic   receiving_f;
 logic   nack;
+logic   data_phase
 
 //----------------------------------------------------------
 //output control logic
@@ -97,8 +99,34 @@ begin
         sda_out =   sda_out_r;
         scl_out =   scl_out_r;
     end
-
 end
+
+//set receiving flag if data is being transmitted and current cmd is read, and the current bit being dealt with is 0-7 OR
+//in data phase and current cmd is write, and the current bit is bit 8 (9th bit is acknoledge bit, master will be receiving it.
+assign receiving_f   =  ((data_phase)   &&  (cmd_reg==RD_CMD)   &&  (bit_idx_reg<8))    ||  
+                        ((data_phase)   &&  (cmd_reg==WR_CMD)   &&  (bit_idx_reg==8));
+
+//wrapper might need this information
+assign  master_receiving    =   receiving_f;
+
+
+//output
+assign  rx_data_o   =   rx_reg[8:1];
+assign  ack         =   rx_reg[9];      //obtained from slave in write
+assign  nack        =   tx_data_i[0];
+
+//------------------------------------------------------------
+//fsmd for transmitting three bytes
+//------------------------------------------------------------
+
+//registers
+always_ff   (posedge clk or negedge rst_n)
+begin
+    if(!rst_n)
+    begin
+        state_reg   <=  S_IDLE;
+        div_cnt_reg <=  '0;
+
 
 
 
