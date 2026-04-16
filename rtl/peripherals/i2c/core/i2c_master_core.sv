@@ -12,45 +12,98 @@
 //In this design, the start, restart and stop condidtion phases are half  of an I2C clock period. 
 //for for these phases, the number of clock cycles are: (main-clock-frequency)/(2)*(i2c-clock-frequency)
 
-module i2c_master(
-    input   logic           clk,
-    input   logic           rst_n,
+module i2c_master   #(
+    parameter   int unsigned    DIVISOR_W   =   16,
+    parameter   int unsigned    DATA_W      =   9,  //8 data bits + 1 acknowledge bit
+    parameter   int unsigned    CMD_W       =   3)
 
-    input   logic   [15:0]  prescaler,
-    output  logic           busy,
-    output  logic           ready,
-    output  logic           ack,
-    output  logic           done_tick,
+    (
+    input   logic                   clk,
+    input   logic                   rst_n,
 
-    output  logic   [7:0]   rx_data_o,
-    input   logic   [7:0]   tx_data_i,
+    input   logic   [DIVISOR_W-1:0] divisor,
+    output  logic                   busy,
+    output  logic                   ready,
+    output  logic                   ack,
+    output  logic                   done_tick,
 
-    input   logic           sda_in,
-    output  logic           sda_out,
+    output  logic   [7:0]           rx_data_o,
+    input   logic   [7:0]           tx_data_i,
 
-    input   logic           scl_in,
-    output  logic           scl_out);
+    input   logic                   sda_in,
+    output  logic                   sda_out,
 
-    typedef enum    logic   [3:0]
-    {
-        S_IDLE      =   4'h0,
-        S_START_1   =   4'h1,
-        S_START_2   =   4'h2,
-        S_HOLD      =   4'h3,
-        S_RESTART   =   4'h4,
-        S_STOP_1    =   4'h5,
-        S_STOP_2    =   4'h6,
-        S_DATA_1    =   4'h7,
-        S_DATA_2    =   4'h8,
-        S_DATA_3    =   4'h9,
-        S_DATA_4    =   4'hA,
-        S_DATA_END  =   4'hB
-    }state_t;
-
-    state_t current_state;
-    state_t next_state;
-
+    input   logic                   scl_in,
+    output  logic                   scl_out,
     
+    input   logic   [CMD_W-1:0]     cmd);
+
+
+//Symbolic constant
+localparam  logic   [CMD_W-1:0] START_CMD   =   'h0;
+localparam  logic   [CMD_W-1:0] WR_CMD      =   'h1;
+localparam  logic   [CMD_W-1:0] RD_CMD      =   'h2;
+localparam  logic   [CMD_W-1:0] STOP_CMD    =   'h3;
+localparam  logic   [CMD_W-1:0] RESTART_CMD =   'h4;
+
+//FSM state type
+typedef enum    logic   [3:0]
+{
+    S_IDLE      =   4'h0,
+    S_START_1   =   4'h1,
+    S_START_2   =   4'h2,
+    S_HOLD      =   4'h3,
+    S_RESTART   =   4'h4,
+    S_STOP_1    =   4'h5,
+    S_STOP_2    =   4'h6,
+    S_DATA_1    =   4'h7,
+    S_DATA_2    =   4'h8,
+    S_DATA_3    =   4'h9,
+    S_DATA_4    =   4'hA,
+    S_DATA_END  =   4'hB
+}state_t;
+
+//state registers
+state_t current_state;
+state_t next_state;
+
+logic   [DIVISOR_W-1:0] div_cnt_reg,    div_cnt_next;
+logic   [DIVISOR_W-1:0] quarter_cnt,    half_cnt;
+logic   [DATA_W-1:0]    tx_reg,         tx_next;
+logic   [DATA_W-1:0]    rx_reg,         rx_next;
+logic   [CMD_W-1:0]     cmd_reg,        cmd_next;
+logic   [DATA_W-2:0]    bit_cnt_reg,    bit_cnt_next;
+
+logic   sda_out_r, scl_out_r;
+
+logic   done_tick_r,    ready_r;
+logic   into;
+logic   nack;
+
+//----------------------------------------------------------
+//output control logic
+//----------------------------------------------------------
+
+//buffer for sda and scl lines
+always @(posedge clk or negedge rst_n)
+begin
+    if(!rst_n)
+    begin
+        sda_out =   1'b1;
+        scl_out =   1'b1;
+    end
+    else
+    begin
+        sda_out =   sda_out_r;
+        scl_out =   scl_out_r;
+    end
+
+end
+
+
+
+
+
 
 
 
