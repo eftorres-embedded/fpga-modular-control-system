@@ -52,7 +52,7 @@ module i2c_master   #(
 
     output  logic                   bus_idle_o,         //bus fully idle
 
-    output  logic                   master_receiving);  //top-level should: sda =   (master_receiving   ||  sda_out)    ?   1'bz    :   1'b0;)
+    output  logic                   master_receiving_o);  //top-level should: sda =   (master_receiving_o   ||  sda_out)    ?   1'bz    :   1'b0;)
     
 
 
@@ -91,18 +91,17 @@ logic   [DIVISOR_W-1:0] divisor_reg,    divisor_next;
 logic   [DIVISOR_W-1:0] divisor_clamped;
 logic   [DIVISOR_W-1:0] quarter_cnt,    half_cnt;
 
-logic   [BYTE_W:0]    tx_reg,         tx_next;
-logic   [BYTE_W:0]    rx_reg,         rx_next;
+logic   [BYTE_W:0]      tx_reg,         tx_next;
+logic   [BYTE_W:0]      rx_reg,         rx_next;
 logic   [CMD_W-1:0]     cmd_reg,        cmd_next;
 
-logic   [3:0]           bit_idx_reg,    bit_idx_next;   //keeps track of the number of data bits processed. bit_reg in book
+logic   [$clog2(BYTE_W+1)-1:0]  bit_idx_reg,    bit_idx_next;   //keeps track of the number of data bits processed. bit_reg in book
 
 logic                   sda_out_reg,    sda_out_next;
 logic                   scl_out_reg,    scl_out_next;
 
 logic   done_tick_int;
 logic   receiving_f;
-logic   nack; //remove
 logic   data_phase;
 
 //----------------------------------------------------------
@@ -373,7 +372,7 @@ begin
 
     //fire read command: upper bits don't matter, bit[0] becomes ack/NACK phase
     if(hold_rd_fire)
-        tx_next =   {8'h00, rd_last_i};
+        tx_next =   {{BYTE_W{1'b0}}, rd_last_i};
 
     if((state_reg==S_DATA_4) && (tick_cnt_reg==quarter_cnt))
     begin
@@ -471,12 +470,12 @@ assign  sda_out         =   sda_out_reg;
 assign  scl_out         =   scl_out_reg;
 
 //wrapper might need this information
-assign  master_receiving    =   receiving_f;
+assign  master_receiving_o    =   receiving_f;
 
 //for future clock-stretch support
 //and avoid unused warning
 logic   unused_scl_in;
-assign  unused_scl_in   =   slc_in;
+assign  unused_scl_in   =   scl_in;
 
 
 endmodule
