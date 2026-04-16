@@ -16,6 +16,7 @@
 //a counter can be used to track the number of elapsed clock cycles
 //In this design, the start, restart and stop condidtion phases are half  of an I2C clock period. 
 //for for these phases, the number of clock cycles are: (main-clock-frequency)/(2)*(i2c-clock-frequency)
+//Clock stretching will be for V2
 
 
 module i2c_master   #(
@@ -387,13 +388,12 @@ end
 always_comb
 begin
     rx_next =   rx_reg;
-    begin
+
         if(hold_wr_fire||hold_rd_fire)
             rx_next =   '0;
 
         if((state_reg==S_DATA_2)  && (tick_cnt_reg==quarter_cnt))
             rx_next =   {rx_reg[BYTE_W-1:0],sda_in};
-    end
 end
 
 
