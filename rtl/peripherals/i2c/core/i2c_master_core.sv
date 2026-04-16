@@ -30,9 +30,9 @@ module i2c_master   #(
 
     input   logic   [DIVISOR_W-1:0] divisor,
 
-    output  logic   [BYTE_W:0]      rx_data_o,
-    input   logic   [BYTE_W:0]      tx_data_i,
-    input   logic                   rd_last_i,  //Master ack/NACK after reading
+    output  logic   [BYTE_W-1:0]    rx_data_o,
+    input   logic   [BYTE_W-1:0]    tx_data_i,
+    input   logic                   rd_last_i,  //if this is the last byte: send NACK else send ACK
 
     input   logic                   sda_in,
     output  logic                   sda_out,
@@ -48,11 +48,11 @@ module i2c_master   #(
     output  logic                   done_tick_o,        //byte-level command completed
     output  logic                   ack_o,              
     output  logic                   ack_valid_o,        //valid after WR_CMD
-    output  logic                   rd_data_valid_o     //valid after RD_CMD
+    output  logic                   rd_data_valid_o  ,   //valid after RD_CMD
 
     output  logic                   bus_idle_o,         //bus fully idle
 
-    output  logic                   master_receiving);  //top-level should: sda =   (master_receiving   ||  sda_reg)    ?   1'bz    :   1'b0;)
+    output  logic                   master_receiving);  //top-level should: sda =   (master_receiving   ||  sda_out)    ?   1'bz    :   1'b0;)
     
 
 
@@ -87,7 +87,7 @@ state_t state_reg;
 state_t state_next;
 
 logic   [DIVISOR_W-1:0] tick_cnt_reg,   tick_cnt_next;  //register counts continuously and is cleared to zero whe the FSM exits the previous state. c_reg in book
-logic   [DIVISOR_W-1:0] divisor_reg,    divisor_next
+logic   [DIVISOR_W-1:0] divisor_reg,    divisor_next;
 logic   [DIVISOR_W-1:0] divisor_clamped;
 logic   [DIVISOR_W-1:0] quarter_cnt,    half_cnt;
 
@@ -195,8 +195,8 @@ begin
         tx_reg          <=  tx_next;
         rx_reg          <=  rx_next;
         divisor_reg     <=  divisor_next;
-        sda_out_reg     <=  sda_out_reg;
-        scl_out_reg     <=  scl_out_reg;
+        sda_out_reg     <=  sda_out_next;
+        scl_out_reg     <=  scl_out_next;
     end
 end
 
@@ -301,7 +301,7 @@ always_comb
 begin
     tick_cnt_next   =   tick_cnt_reg    +   1'b1;
 
-    if(any_legal_fire)
+    if(cmd_fire)
             tick_cnt_next   =   '0;
 
     if  ((state_reg==S_START_1) ||(state_reg==S_RESTART)||
@@ -329,6 +329,7 @@ begin
     
     if(idle_start_fire)
         divisor_next    =   divisor_clamped;
+end
 
 //----------------------------------------------------------------
 //Latch command only when launch a legal command
@@ -337,8 +338,9 @@ always_comb
 begin
     cmd_next    =   cmd_reg;
 
-    if(any_legal_fire)
+    if(cmd_fire)
         cmd_next    =   cmd;
+end
 
 //---------------------------------------------------------------
 //update bit_idx
@@ -371,7 +373,7 @@ begin
 
     //fire read command: upper bits don't matter, bit[0] becomes ack/NACK phase
     if(hold_rd_fire)
-        tx_next =   {8'h00, rd_last_i}
+        tx_next =   {8'h00, rd_last_i};
 
     if((state_reg==S_DATA_4) && (tick_cnt_reg==quarter_cnt))
     begin
@@ -473,7 +475,7 @@ assign  master_receiving    =   receiving_f;
 
 //for future clock-stretch support
 //and avoid unused warning
-logic   unsued_scl_in;
+logic   unused_scl_in;
 assign  unused_scl_in   =   slc_in;
 
 
