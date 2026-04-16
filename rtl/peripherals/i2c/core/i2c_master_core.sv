@@ -108,7 +108,7 @@ end
 //------------------------------------------------------------
 
 //registers
-always_ff   (posedge clk or negedge rst_n)
+always_ff   @(posedge clk or negedge rst_n)
 begin
     if(!rst_n)
     begin
@@ -354,7 +354,7 @@ begin
 end
 
 //update ready_int
-assign ready_int    =   (state_reg==S_HOLD) ?   1'b1    :   1'b0;
+assign ready_int    =   ((state_reg==S_HOLD)||(state_reg==S_IDLE)) ?   1'b1    :   1'b0;
 
 //update done_tick_int
 always_comb
