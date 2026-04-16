@@ -36,6 +36,7 @@ module i2c_master   #(
     output  logic                   scl_out,
     
     input   logic   [CMD_W-1:0]     cmd,
+    output  logic                   cmd_err_o,
     input   logic                   wr_i2c,             //Register wrapper needs to assert this signal in order to write
     output  logic                   master_receiving);  //top-level should: sda =   (master_receiving   ||  sda_reg)    ?   1'bz    :   1'b0;)
 
@@ -137,6 +138,7 @@ assign  half_cnt    =   {quarter_cnt[DIVISOR_W-2:0], 1'b0}; //half = 2* quarter_
 always_comb
 begin
     state_next      =   state_reg;
+    cmd_err_o   =   1'b0;
     
     unique  case    (state_reg)
     S_IDLE:
@@ -162,12 +164,17 @@ begin
             if(wr_i2c)
             begin
                 case(cmd)
-                    RESTART_CMD,    START_CMD:
+                    RESTART_CMD:
                         state_next  =   S_RESTART;
                     STOP_CMD:
                         state_next  =   S_STOP_1;
-                    default:
+                    RD_CMD:
                         state_next  =   S_DATA_1;
+                    WR_CMD:
+                        state_next  =   S_DATA_1;
+                    default:
+                        state_next  =   S_HOLD;
+                        cmd_err_o   =   1'b1;
                 endcase
             end
         end
@@ -212,8 +219,8 @@ begin
         begin
             if(tick_cnt_reg==quarter_cnt)
             begin
-                if(bit_idx_reg==8)
-                    state_next  =  S_DATA_END;
+                if(bit_idx_reg==DATA_W-1)
+                    state_next  =   S_DATA_END;
                 else
                     state_next  =   S_DATA_1;   
             end
