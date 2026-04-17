@@ -17,27 +17,6 @@
          type = "int";
       }
    }
-   element i2c_gyro
-   {
-      datum _sortIndex
-      {
-         value = "8";
-         type = "int";
-      }
-   }
-   element i2c_gyro.csr
-   {
-      datum _lockedAddress
-      {
-         value = "1";
-         type = "boolean";
-      }
-      datum baseAddress
-      {
-         value = "208896";
-         type = "String";
-      }
-   }
    element intel_niosv
    {
       datum _sortIndex
@@ -275,11 +254,6 @@
  <parameter name="useTestBenchNamingPattern" value="false" />
  <instanceScript></instanceScript>
  <interface name="clk" internal="clock_bridge.in_clk" type="clock" dir="end" />
- <interface
-   name="i2c_gyro"
-   internal="i2c_gyro.i2c_serial"
-   type="conduit"
-   dir="end" />
  <interface name="led_pwm" internal="led_pwm.pwm_o" type="conduit" dir="end" />
  <interface
    name="motor_pwm"
@@ -301,19 +275,14 @@
   <parameter name="EXPLICIT_CLOCK_RATE" value="50000000" />
   <parameter name="NUM_CLOCK_OUTPUTS" value="1" />
  </module>
- <module name="i2c_gyro" kind="altera_avalon_i2c" version="25.1" enabled="1">
-  <parameter name="FIFO_DEPTH" value="4" />
-  <parameter name="USE_AV_ST" value="0" />
-  <parameter name="clockRate" value="50000000" />
- </module>
  <module name="intel_niosv" kind="intel_niosv_m" version="26.0.0" enabled="1">
   <parameter name="AUTO_CLK_CLOCK_DOMAIN" value="1" />
   <parameter name="AUTO_CLK_RESET_DOMAIN" value="1" />
   <parameter name="AUTO_DEVICE" value="10M50DAF484C6GES" />
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="6" />
-  <parameter name="AUTO_PLATFORM_IRQ_RX_INTERRUPTS_USED" value="7" />
+  <parameter name="AUTO_PLATFORM_IRQ_RX_INTERRUPTS_USED" value="3" />
   <parameter name="clockFrequency" value="50000000" />
-  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /><slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /><slave name='motor_pwm.s_axil' start='0x30000' end='0x31000' type='pwm_hbridge_axi4lite.s_axil' /><slave name='spi_master_0.s_axil' start='0x31000' end='0x32000' type='spi_master.s_axil' /><slave name='led_pwm.s_axil' start='0x32000' end='0x33000' type='AXI_Lite_PWM_Raw.s_axil' /><slave name='i2c_gyro.csr' start='0x33000' end='0x33040' type='altera_avalon_i2c.csr' /><slave name='intel_niosv.timer_sw_agent' start='0x33040' end='0x33080' type='intel_niosv_m.timer_sw_agent' /><slave name='jtag_uart.avalon_jtag_slave' start='0x33080' end='0x33088' type='altera_avalon_jtag_uart.avalon_jtag_slave' /></address-map>]]></parameter>
+  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /><slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /><slave name='motor_pwm.s_axil' start='0x30000' end='0x31000' type='pwm_hbridge_axi4lite.s_axil' /><slave name='spi_master_0.s_axil' start='0x31000' end='0x32000' type='spi_master.s_axil' /><slave name='led_pwm.s_axil' start='0x32000' end='0x33000' type='AXI_Lite_PWM_Raw.s_axil' /><slave name='intel_niosv.timer_sw_agent' start='0x33040' end='0x33080' type='intel_niosv_m.timer_sw_agent' /><slave name='jtag_uart.avalon_jtag_slave' start='0x33080' end='0x33088' type='altera_avalon_jtag_uart.avalon_jtag_slave' /></address-map>]]></parameter>
   <parameter name="deviceFamily" value="MAX 10" />
   <parameter name="enableAvalonInterface" value="false" />
   <parameter name="enableDebug" value="true" />
@@ -421,15 +390,6 @@
    end="jtag_uart.avalon_jtag_slave">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x00033080" />
-  <parameter name="defaultConnection" value="false" />
- </connection>
- <connection
-   kind="avalon"
-   version="25.1"
-   start="intel_niosv.data_manager"
-   end="i2c_gyro.csr">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00033000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -545,23 +505,11 @@
    start="clock_bridge.out_clk"
    end="motor_pwm.clock" />
  <connection
-   kind="clock"
-   version="25.1"
-   start="clock_bridge.out_clk"
-   end="i2c_gyro.clock" />
- <connection
    kind="interrupt"
    version="25.1"
    start="intel_niosv.platform_irq_rx"
    end="spi_master_0.SPI_Interrupt">
   <parameter name="irqNumber" value="1" />
- </connection>
- <connection
-   kind="interrupt"
-   version="25.1"
-   start="intel_niosv.platform_irq_rx"
-   end="i2c_gyro.interrupt_sender">
-  <parameter name="irqNumber" value="2" />
  </connection>
  <connection
    kind="interrupt"
@@ -605,11 +553,6 @@
    version="25.1"
    start="reset_bridge.out_reset"
    end="onchip_memory.reset2" />
- <connection
-   kind="reset"
-   version="25.1"
-   start="reset_bridge.out_reset"
-   end="i2c_gyro.reset_sink" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
  <interconnectRequirement for="$system" name="qsys_mm.enableEccProtection" value="FALSE" />
  <interconnectRequirement for="$system" name="qsys_mm.insertDefaultSlave" value="FALSE" />

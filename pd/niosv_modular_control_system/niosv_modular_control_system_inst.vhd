@@ -1,10 +1,6 @@
 	component niosv_modular_control_system is
 		port (
 			clk_clk         : in  std_logic                    := 'X'; -- clk
-			i2c_gyro_sda_in : in  std_logic                    := 'X'; -- sda_in
-			i2c_gyro_scl_in : in  std_logic                    := 'X'; -- scl_in
-			i2c_gyro_sda_oe : out std_logic;                           -- sda_oe
-			i2c_gyro_scl_oe : out std_logic;                           -- scl_oe
 			led_pwm_raw     : out std_logic_vector(9 downto 0);        -- raw
 			motor_pwm_pwm   : out std_logic_vector(1 downto 0);        -- pwm
 			motor_pwm_in1   : out std_logic_vector(1 downto 0);        -- in1
@@ -20,10 +16,6 @@
 	u0 : component niosv_modular_control_system
 		port map (
 			clk_clk         => CONNECTED_TO_clk_clk,         --        clk.clk
-			i2c_gyro_sda_in => CONNECTED_TO_i2c_gyro_sda_in, --   i2c_gyro.sda_in
-			i2c_gyro_scl_in => CONNECTED_TO_i2c_gyro_scl_in, --           .scl_in
-			i2c_gyro_sda_oe => CONNECTED_TO_i2c_gyro_sda_oe, --           .sda_oe
-			i2c_gyro_scl_oe => CONNECTED_TO_i2c_gyro_scl_oe, --           .scl_oe
 			led_pwm_raw     => CONNECTED_TO_led_pwm_raw,     --    led_pwm.raw
 			motor_pwm_pwm   => CONNECTED_TO_motor_pwm_pwm,   --  motor_pwm.pwm
 			motor_pwm_in1   => CONNECTED_TO_motor_pwm_in1,   --           .in1

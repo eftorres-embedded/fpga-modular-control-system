@@ -512,6 +512,9 @@ set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[1] -t
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[3] -to "self_balancing_io:u_self_balancing_io|mpu_i2c_sda_drive_low" -section_id auto_signaltap_0
 set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[12] -to auto_signaltap_0|vcc -section_id auto_signaltap_0
 set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[13] -to auto_signaltap_0|vcc -section_id auto_signaltap_0
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/i2c/axi_lite_i2c.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/i2c/regs/i2c_regs.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/i2c/core/i2c_master_core.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/axi_lite_pwm_raw.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/axi_lite_pwm_motor.sv
@@ -545,4 +548,3 @@ set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/subsyst
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/adapters/pwm_hbridge_adapter.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/regs/pwm_regs_hbridge_ext.sv
 set_global_assignment -name SLD_FILE db/debug_spi_adx1345_auto_stripped.stp
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
