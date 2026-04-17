@@ -1,4 +1,4 @@
-//i2c_reg.sv
+//core_reg.sv
 //---------------------------------------------------------------------------
 //Register map
 //
@@ -30,7 +30,7 @@
 //- REG_CMD is an action register, not retained state.
 //- No internal command queue: software must only launch when cmd_ready=1.
 //---------------------------------------------------------------------------
-module  i2c_regs    #(
+module  core_regs    #(
     parameter   int ADDR_W  =   12,
     parameter   int DATA_W  =   32,
     parameter   int BYTE_W  =   8,
@@ -63,6 +63,21 @@ module  i2c_regs    #(
     output  logic                   scl_out,
     output  logic                   master_receiving_o);
 
+//--------------------------------------------------------------
+//I2C core status/interface_signals
+//--------------------------------------------------------------
+logic   [BYTE_W-1:0]    core_rx_data;
+logic                   core_cmd_ready;
+logic                   core_cmd_valid;
+logic                   core_cmd_illegal;
+logic                   core_done_tick;
+logic                   core_ack;
+logic                   core_ack_valid;
+logic                   core_rd_data_valid;
+logic                   core_bus_idle;
+logic                   core_master_receiving;
+logic                   core_rd_last;
+
 //-------------------------------------------------------------
 //Regsiter offsets
 //-------------------------------------------------------------
@@ -80,6 +95,7 @@ localparam  logic   [CMD_W-1:0] WR_CMD      =   'h1;
 localparam  logic   [CMD_W-1:0] RD_CMD      =   'h2;
 localparam  logic   [CMD_W-1:0] STOP_CMD    =   'h3;
 localparam  logic   [CMD_W-1:0] RESTART_CMD =   'h4;
+localparam  logic   [CMD_W-1:0] RD_LAST_CMD =   'h5;
 
 //----------------------------------------------------------------
 //STATUS bits
@@ -133,7 +149,7 @@ logic   wr_cmd_fire;
 logic   wr_txdata_fire;
 logic   wr_divisor_fire;
 
-assign  wr_cmd_fire     =   wr_fire &&  (req_addr   ==  REG_CMD);
+assign  wr_cmd_fire     =   wr_fire && core_cmd_ready && (req_addr   ==  REG_CMD);
 assign  wr_txdata_fire  =   wr_fire &&  (req_addr   ==  REG_TXDATA);
 assign  wr_divisor_fire =   wr_fire &&  (req_addr   ==  REG_DIVISOR);
 
@@ -145,9 +161,134 @@ logic   write_tx_cmd_fire;
 logic   read_cmd_fire;
 logic   stop_cmd_fire;
 logic   restart_cmd_fire;
+logic   read_last_cmd_fire;
 
 assign  start_cmd_fire      =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  START_CMD);
 assign  write_tx_cmd_fire   =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  WR_CMD);
 assign  read_cmd_fire       =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  RD_CMD);
 assign  stop_cmd_fire       =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  STOP_CMD);
 assign  restart_cmd_fire    =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  RESTART_CMD);
+assign  read_last_cmd_fire  =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  RD_LAST_CMD);
+
+//----------------------------------------------------------------------
+//Stored cmd and data registers
+//----------------------------------------------------------------------
+logic   [BYTE_W-1:0]    txdata_reg;
+logic                   tx_read_last_reg;
+logic   [DIVISOR_W-1:0] divisor_reg;
+logic                   cmd_reg;
+
+
+//----------------------------------------------------------------------
+//CMD, TXDATA, DIVISOR, tx_read_last storage (all req writes), 
+//----------------------------------------------------------------------
+always_ff(posedge   clk or  negedge rst_n)
+begin
+    if(!rst_n)
+    begin
+        txdata_reg          <=  '0;
+        tx_read_last_reg    <=  1'b1;   //master acknoldges last read default
+        divisor_reg         <=  '0;
+        cmd_reg             <=  '0;
+    end
+
+    else
+    begin
+        if(wr_cmd_fire  &&  req_wstrb[0])
+        begin
+            cmd_reg <=  req_wdata[CMD_W-1:0];
+
+            if(read_last_cmd_fire)
+                tx_read_last_reg    =   1'b0;
+        end
+
+        if(wr_txdata_fire   &&  req_wstrb[0])
+        begin
+            txdata_reg  <=  req_wdata[BYTE_W-1:0]);
+        end
+
+        if(wr_divisor_fire  &&  req_wstrb[1:0])
+        begin
+            divisor_reg <=  req_wdata[DIVISOR_W-1:0];
+        end
+
+    end
+end
+
+assign  core_cmd_valid  =   wr_cmd_fire;
+
+assign  core_tx_data    =   txdata_reg;
+assign  core_rd_last    =   tx_read_last_reg; 
+
+assign  core_cmd        =   cmd_reg;
+
+//----------------------------------------------------------------------------
+//Transfer-launch acceptance policy
+//-----------------------------------------------------------------------------
+//start_cmd_fire means software asked to start (from idle)
+//start_fire means the wrapper accepted the request
+logic   start_pending;
+logic   start_fire;
+
+assign  start_fire  =   start_pending   &&  core_idle   &&  core_wready;    //to actually exit the IDLE state in core;
+
+always_ff   @(posedge   clk or  negedge rst_n)
+begin
+    if(!rst_n)
+    begin
+        start_pending   <=  1'b0;
+    end
+    else
+    begin
+        if(start_cmd_fire   &&  core_idle)
+        begin
+            start_pending   <=  1'b1;
+        end
+
+        if()
+        begin
+            
+        end
+
+
+
+//-----------------------------------------------------------------------------
+//Response Channel
+//-----------------------------------------------------------------------------
+//One response per accepted request
+//Response is held until rsp_ready
+logic   [BYTE_W-1:0]    rsp_rdata_reg;
+logic                   rsp_err_r;
+
+always_ff   @(posedge   clk or  negedge rst_n)
+begin
+    if(!rst_n_
+    begin
+        rsp_valid       <=  1'b0;
+        rsp_rdata_reg   <=  '0;
+        rsp_err_r       <=  1'b0;
+    end
+
+    else
+    begin
+        //Existing response accepted by upstream
+        if(rsp_valid    &&  rsp_ready)
+            rsp_valid   <=  1'b0;
+
+        //New request accepted only if no response is currently outstanding
+        if(!rsp_valid   &&  req_fire)
+        begin
+            rsp_valid   <=  1'b1;
+            rsp_rdata_reg   <=  rdata_next;
+            rsp_err_r       <=  err_next;
+        end
+
+    end
+end
+
+assign  rsp_rdat    =   rsp_rdata_reg;
+assign  rsp_err     =   rsp_err_r;
+
+
+
+
