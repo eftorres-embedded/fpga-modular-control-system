@@ -122,4 +122,118 @@ assign  txdata_merged   =   merge_wstrb({{(DATA_W-BYTE_W){1'b0}},   txdata_reg},
 assign  divisor_merged  =   merge_wstrb({{(DATA_W-DIVISOR_W){1'b0}},    divisor_reg},   req_wdta,   req_wstrb);
 
 //REG_CMD is action-oriented, the whole command needs to be written not merged or masked
-//Byte 0 must be present for a valid launch because cmd livs in bits [2:0]
+//Byte 0 (wstrb[0] must be present for a valid launch because cmd livs in bits [2:0]
+assign  launch_cmd_fire =   wr_cmd_fire &&  i3c_cmd_ready;
+
+//----------------------------------------------------------------------------
+//Live Status assembly
+//----------------------------------------------------------------------------
+status_rdata    =   '0; //clear status_rdata
+status_rdata[STATUS_CMD_READY]          =   i2c_cmd_ready;
+status_rdata[STATUS_BUS_IDLE]           =   i2c_bus_idle;
+status_rdata[STATUS_DONE_TICKE]         =   i2c_done_tick;
+status_rdata[STATUS_ACK_VALID]          =   i2c_ack_valid;
+status_rdata[STATUS_ACK]                =   i2c_ack;
+status_rdata[STATUS_RD_DATA_VALID]      =   i2c_rd_data_valid;
+status_rdata[STATUS_CMD_ILLEGAL]        =   i2c_cmd_illegal;
+status_rdata[STATUS_MASTER_RECEIVING]   =   i2c_master_receiving;
+
+//----------------------------------------------------------------------------
+//Read mux /response decode
+//----------------------------------------------------------------------------
+logic   [DATA_W-1:0]    rdata_next;
+logic                   err_next;
+
+always_comb
+begin
+    rdata_next  =   '0;
+    err_next    =   1'b0;
+
+    unique  case    (req_addr)
+        REG_STATUS:
+        begin
+            if(req_write)
+            begin
+                err_next    =   1'b1;
+            end
+            else
+            begin
+                rdata_next  =   status_rdata;
+            end
+        end
+
+        REG_DIVISOR:
+        begin
+            rdata_next  =   {{DATA_W-DIVISOR_W){1'b0}}, divisor_reg};
+        end
+
+        REG_TXDATA:
+        begin
+            rdata_next  =   {{(DATA_W-BYTE_W){1'b0}}, txdata_reg};
+        end
+
+        REG_RXDATA:
+        begin
+            if(req_write)
+            begin
+                err_next    =   1'b1;
+            end
+            else
+            begin
+                rdata_next  =   {{(DATA_W-BYTE_W){1'B0}}, rxdata_reg};
+            end
+        end
+
+        REG_CMD:
+        begin
+            //Action register: reads are invalid, writea are valid only if
+            //the core is ready in the same cycle
+            if(!req_write)
+            begin
+                err_next    =   1'b1;
+            end
+            else
+            if(!2c_cmd_ready)
+            begin
+                err_next    =   1'b1;
+            end
+        end
+
+        default:
+        begin
+            err_next    =   1'b1;
+        end
+    endcase
+end
+
+//----------------------------------------------------------
+//Stored register updates
+//----------------------------------------------------------
+always_ff   @(posedge clk or negedge rst_n)
+begin
+    if(!rst_n)
+    begin
+        txdata_reg  <=  '0;
+        rxdata_reg  <=  '0;
+        divisor_reg <=  '0;
+    end
+    else
+    begin
+        //Hold most recent RXbyte for software
+        if(i2c_rd_data_valid)
+        begin
+            rxdata_reg  <=  i2c_rx_data;
+        end
+
+        if(wr_txdata_fire)
+        begin
+            txdata_reg  <=  txdata_merged[BYTE_W-1:0];
+        end
+
+        if(wr_divisor_fire)
+        begin
+            divisor_reg <=  divisor_merged[DIVISOR_W-1:0];
+        end
+    end
+end
+
