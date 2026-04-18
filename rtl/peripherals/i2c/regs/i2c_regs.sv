@@ -215,7 +215,7 @@ begin
     begin
         txdata_reg  <=  '0;
         rxdata_reg  <=  '0;
-        divisor_reg <=  '0;
+        divisor_reg <=  MIN_DIVISOR;
     end
     else
     begin
@@ -237,3 +237,68 @@ begin
     end
 end
 
+//------------------------------------------------------------
+//Response channel
+//------------------------------------------------------------
+//One response per accepted request
+//Response is held until rsp_ready
+always_ff   @(posedge   clk or  negedge rst_n)
+begin
+    if(!rst_n)
+    begin
+        rsp_valid   <=  1'b0;
+        rsp_rdata   <=  '0;
+        rsp_err     <=  1'b0;
+    end
+    else
+    begin
+        if(rsp_fire)
+            rsp_valid   <=  1'b0;
+
+        if(req_fire)
+        begin
+            rsp_valid   <=  1'b1;
+            rsp_rdata   <=  rdata_next;
+            rsp_err     <=  err_next;
+        end
+    end
+end
+
+    // -------------------------------------------------------------------------
+    // I2C core instance
+    // -------------------------------------------------------------------------
+    i2c_master #(
+        .DIVISOR_W (DIVISOR_W),
+        .BYTE_W    (BYTE_W),
+        .CMD_W     (CMD_W),
+        .MIN_DIVISOR(MIN_DIVISOR)
+    ) u_i2c_master (
+        .clk                (clk),
+        .rst_n              (rst_n),
+        .divisor            (divisor_reg),
+
+        .rx_data_o          (i2c_rx_data),
+        .tx_data_i          (txdata_reg),
+        .rd_last_i          (launch_rd_last),
+
+        .sda_in             (sda_in),
+        .sda_out            (sda_out),
+        .scl_in             (scl_in),
+        .scl_out            (scl_out),
+
+        .cmd                (launch_cmd),
+        .cmd_illegal_o      (i2c_cmd_illegal),
+        .cmd_valid_i        (launch_cmd_fire),
+        .cmd_ready_o        (i2c_cmd_ready),
+
+        .done_tick_o        (i2c_done_tick),
+        .ack_o              (i2c_ack),
+        .ack_valid_o        (i2c_ack_valid),
+        .rd_data_valid_o    (i2c_rd_data_valid),
+        .bus_idle_o         (i2c_bus_idle),
+        .master_receiving_o (i2c_master_receiving)
+    );
+
+    assign master_receiving_o = i2c_master_receiving;
+
+endmodule
