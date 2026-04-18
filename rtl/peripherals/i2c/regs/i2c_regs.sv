@@ -66,229 +66,60 @@ module  core_regs    #(
 //--------------------------------------------------------------
 //I2C core status/interface_signals
 //--------------------------------------------------------------
-logic   [BYTE_W-1:0]    core_rx_data;
-logic                   core_cmd_ready;
-logic                   core_cmd_valid;
-logic                   core_cmd_illegal;
-logic                   core_done_tick;
-logic                   core_ack;
-logic                   core_ack_valid;
-logic                   core_rd_data_valid;
-logic                   core_bus_idle;
-logic                   core_master_receiving;
-logic                   core_rd_last;
-
-//-------------------------------------------------------------
-//Regsiter offsets
-//-------------------------------------------------------------
-localparam  logic   [ADDR_W-1:0]    REG_STATUS  =   'h000;
-localparam  logic   [ADDR_W-1:0]    REG_DIVISOR =   'h004;
-localparam  logic   [ADDR_W-1:0]    REG_TXDATA  =   'h008;
-localparam  logic   [ADDR_W-1:0]    REG_RXDATA  =   'h00C;
-localparam  logic   [ADDR_W-1:0]    REG_CMD     =   'h010;
-
-//----------------------------------------------------------------
-//Symbolic constant for CMDs
-//----------------------------------------------------------------
-localparam  logic   [CMD_W-1:0] START_CMD   =   'h0;
-localparam  logic   [CMD_W-1:0] WR_CMD      =   'h1;
-localparam  logic   [CMD_W-1:0] RD_CMD      =   'h2;
-localparam  logic   [CMD_W-1:0] STOP_CMD    =   'h3;
-localparam  logic   [CMD_W-1:0] RESTART_CMD =   'h4;
-localparam  logic   [CMD_W-1:0] RD_LAST_CMD =   'h5;
-
-//----------------------------------------------------------------
-//STATUS bits
-//----------------------------------------------------------------
-localparam  unsigned    int STATUS_CMD_READY        =   0;
-localparam  unsigned    int STATUS_BUS_IDLE         =   1;
-localparam  unsigned    int STATUS_DONE_TICK        =   2;
-localparam  unsigned    int STATUS_ACK_VALID        =   3;
-localparam  unsigned    int STATUS_ACK              =   4;
-localparam  unsigned    int STATUS_RD_DATA_VALID    =   5;
-localparam  unsigned    int STATUS_CMD_ILLEGAL      =   6;
-localparam  unsigned    int STATUS_MASTER_RECEIVING =   7;
-
+logic   [BYTE_W-1:0]    i2c_rx_data;
+logic                   i2c_cmd_ready;
+logic                   i2c_cmd_illegal;
+logic                   i2_done_tick;
+logic                   i2c_ack;
+logic                   i2c_ack_valid;
+logic                   i2c_rd_data_valid;
+logic                   i2c_bus_idle;
+logic                   i2c_master_receiving;
 
 //--------------------------------------------------------------
-//Helper function:  byte-write merge for 32-bit regs
+//stored software-visible registers
+//---------------------------------------------------------------
+logic   [BYTE_W-1:0]    txdata_reg;
+logic   [BYTE_W-1:0]    rxdtat_reg;
+logic   [DIVISOR_W-1:0] divisor_reg;
+
 //--------------------------------------------------------------
-function    automatic   logic   [DATA_W-1:0]    merge_wstrb(
-    input   logic   [DATA_W-1:0]        old_val,
-    input   logic   [DATA_W-1:0]        new_val,
-    input   logic   [(DATA_W/8)-1:0]    strb);
-
-    logic   [DATA_W-1:0]    write_mask;
-    begin
-        write_mask  =   {
-            {8{strb[3]}},
-            {8{strb[2]}},
-            {8{strb[1]}},
-            {8{strb[0]}}
-        };
-        return  (old_val    &   ~write_mask)    |   (new_val    &   write_mask);
-    end
-endfunction
-
-
-//-----------------------------------------------------------------
-//Generic MMIO accpetance
-//-----------------------------------------------------------------
-assign  req_ready   =   !rsp_valid;
-
+//Generic MMIO acceptance
+//--------------------------------------------------------------
 logic   req_fire;
 logic   wr_fire;
+logic   rsp_fire;
 
-assign  req_fire    =   req_valid   &&  req_ready;
-assign  wr_fire     =   req_fire    &&  req_write;
+assign  rsp_fire    =   rsp_valid       &&  rsp_ready;
+assign  req_ready   =   (!rsp_valid)    ||  rsp_fire;
+assign  req_fire    =   req_valid       &&  req_ready;
+assign  wr_fire     =   req_fire        &&  req_write;
 
-//------------------------------------------------------------------
+//---------------------------------------------------------------
 //Write decode helpers
-//------------------------------------------------------------------
+//---------------------------------------------------------------
 logic   wr_cmd_fire;
 logic   wr_txdata_fire;
 logic   wr_divisor_fire;
 
-assign  wr_cmd_fire     =   wr_fire && core_cmd_ready && (req_addr   ==  REG_CMD);
+assign  wr_cmd_fire     =   wr_fire &&  (req_addr   ==  REG_CMD);
 assign  wr_txdata_fire  =   wr_fire &&  (req_addr   ==  REG_TXDATA);
 assign  wr_divisor_fire =   wr_fire &&  (req_addr   ==  REG_DIVISOR);
 
-//--------------------------------------------------------------------
-//Pulse commands generated from CMD Writes
-//--------------------------------------------------------------------
-logic   start_cmd_fire;
-logic   write_tx_cmd_fire;
-logic   read_cmd_fire;
-logic   stop_cmd_fire;
-logic   restart_cmd_fire;
-logic   read_last_cmd_fire;
+//----------------------------------------------------------------
+//Temporary merged values and command launch payload
+//---------------------------------------------------------------
+logic   [DATA_W-1:0]    status_rdata;
+logic   [DATA_W-1:0]    txdata_merged;
+logic   [DATA_W-1:0]    divisor_merged;
+logic   [DATA_W-1:0]    cmd_merged;
 
-assign  start_cmd_fire      =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  START_CMD);
-assign  write_tx_cmd_fire   =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  WR_CMD);
-assign  read_cmd_fire       =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  RD_CMD);
-assign  stop_cmd_fire       =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  STOP_CMD);
-assign  restart_cmd_fire    =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  RESTART_CMD);
-assign  read_last_cmd_fire  =   wr_cmd_fire &&  req_wstrb[0]    &&  (req_wdata[CMD_W-1:0]   ==  RD_LAST_CMD);
+logic   [CMD_W-1:0]     launch_cmd;
+logic                   launch_rd_last;
+logic                   launch_cmd_fire;
 
-//----------------------------------------------------------------------
-//Stored cmd and data registers
-//----------------------------------------------------------------------
-logic   [BYTE_W-1:0]    txdata_reg;
-logic                   tx_read_last_reg;
-logic   [DIVISOR_W-1:0] divisor_reg;
-logic                   cmd_reg;
+assign  txdata_merged   =   merge_wstrb({{(DATA_W-BYTE_W){1'b0}},   txdata_reg}, req_wdata, req_wstrb);
+assign  divisor_merged  =   merge_wstrb({{(DATA_W-DIVISOR_W){1'b0}},    divisor_reg},   req_wdta,   req_wstrb);
 
-
-//----------------------------------------------------------------------
-//CMD, TXDATA, DIVISOR, tx_read_last storage (all req writes), 
-//----------------------------------------------------------------------
-always_ff(posedge   clk or  negedge rst_n)
-begin
-    if(!rst_n)
-    begin
-        txdata_reg          <=  '0;
-        tx_read_last_reg    <=  1'b1;   //master acknoldges last read default
-        divisor_reg         <=  '0;
-        cmd_reg             <=  '0;
-    end
-
-    else
-    begin
-        if(wr_cmd_fire  &&  req_wstrb[0])
-        begin
-            cmd_reg <=  req_wdata[CMD_W-1:0];
-
-            if(read_last_cmd_fire)
-                tx_read_last_reg    =   1'b0;
-        end
-
-        if(wr_txdata_fire   &&  req_wstrb[0])
-        begin
-            txdata_reg  <=  req_wdata[BYTE_W-1:0]);
-        end
-
-        if(wr_divisor_fire  &&  req_wstrb[1:0])
-        begin
-            divisor_reg <=  req_wdata[DIVISOR_W-1:0];
-        end
-
-    end
-end
-
-assign  core_cmd_valid  =   wr_cmd_fire;
-
-assign  core_tx_data    =   txdata_reg;
-assign  core_rd_last    =   tx_read_last_reg; 
-
-assign  core_cmd        =   cmd_reg;
-
-//----------------------------------------------------------------------------
-//Transfer-launch acceptance policy
-//-----------------------------------------------------------------------------
-//start_cmd_fire means software asked to start (from idle)
-//start_fire means the wrapper accepted the request
-logic   start_pending;
-logic   start_fire;
-
-assign  start_fire  =   start_pending   &&  core_idle   &&  core_wready;    //to actually exit the IDLE state in core;
-
-always_ff   @(posedge   clk or  negedge rst_n)
-begin
-    if(!rst_n)
-    begin
-        start_pending   <=  1'b0;
-    end
-    else
-    begin
-        if(start_cmd_fire   &&  core_idle)
-        begin
-            start_pending   <=  1'b1;
-        end
-
-        if()
-        begin
-            
-        end
-
-
-
-//-----------------------------------------------------------------------------
-//Response Channel
-//-----------------------------------------------------------------------------
-//One response per accepted request
-//Response is held until rsp_ready
-logic   [BYTE_W-1:0]    rsp_rdata_reg;
-logic                   rsp_err_r;
-
-always_ff   @(posedge   clk or  negedge rst_n)
-begin
-    if(!rst_n_
-    begin
-        rsp_valid       <=  1'b0;
-        rsp_rdata_reg   <=  '0;
-        rsp_err_r       <=  1'b0;
-    end
-
-    else
-    begin
-        //Existing response accepted by upstream
-        if(rsp_valid    &&  rsp_ready)
-            rsp_valid   <=  1'b0;
-
-        //New request accepted only if no response is currently outstanding
-        if(!rsp_valid   &&  req_fire)
-        begin
-            rsp_valid   <=  1'b1;
-            rsp_rdata_reg   <=  rdata_next;
-            rsp_err_r       <=  err_next;
-        end
-
-    end
-end
-
-assign  rsp_rdat    =   rsp_rdata_reg;
-assign  rsp_err     =   rsp_err_r;
-
-
-
-
+//REG_CMD is action-oriented, the whole command needs to be written not merged or masked
+//Byte 0 must be present for a valid launch because cmd livs in bits [2:0]
