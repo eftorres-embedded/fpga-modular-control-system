@@ -110,7 +110,7 @@ on the Quartus Prime software download page.
 		(text "mosi" (rect 133 275 290 560)(font "Arial" (color 0 0 0)))
 		(text "miso" (rect 133 291 290 592)(font "Arial" (color 0 0 0)))
 		(text "cs_n" (rect 133 307 290 624)(font "Arial" (color 0 0 0)))
-		(text " niosv_modular_control_system " (rect 181 328 542 666)(font "Arial" ))
+		(text " system " (rect 285 328 618 666)(font "Arial" ))
 		(line (pt 128 32)(pt 192 32)(line_width 1))
 		(line (pt 192 32)(pt 192 328)(line_width 1))
 		(line (pt 128 328)(pt 192 328)(line_width 1))
