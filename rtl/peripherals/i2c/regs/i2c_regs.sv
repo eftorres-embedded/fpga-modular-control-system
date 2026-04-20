@@ -191,7 +191,7 @@ assign  cmd_merged      =   merge_wstrb('0, req_wdata,  req_wstrb);
 //REG_CMD is action-oriented, so it is built from zero rather than merged into previous stored state
 //Byte 0 (wstrb[0] must be present for a valid launch because cmd livs in bits [2:0]
 assign  launch_cmd_fire =   wr_cmd_fire &&  i2c_cmd_ready && req_wstrb[0];
-assign  launch_cmd      =   cmd_merged[CMD_W:0];
+assign  launch_cmd      =   cmd_merged[CMD_W-1:0];
 assign  launch_rd_last  =   cmd_merged[8];
 
 //----------------------------------------------------------------------------
