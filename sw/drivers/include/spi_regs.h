@@ -9,14 +9,14 @@
  * SPI peripheral base address
  * ------------------------------------------------------------------------- */
 #ifndef SPI_BASE_ADDR
-#define SPI_BASE_ADDR SPI_0_BASE
+#define SPI_BASE_ADDR SPI_MASTER_0_BASE
 #endif
 
 /* -------------------------------------------------------------------------
  * SPI interrupt number
  * ------------------------------------------------------------------------- */
 #ifndef SPI_IRQ_NUM
-#define SPI_IRQ_NUM SPI_0_IRQ
+#define SPI_IRQ_NUM SPI_MASTER_0_IRQ
 #endif
 
 /* -------------------------------------------------------------------------
