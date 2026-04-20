@@ -154,10 +154,11 @@ logic [1:0] motor_a_hall_i;
 logic [1:0] motor_b_hall_i;
 
 //MPU-6500 I2C
-logic       mpu_i2c_scl_drive_low;
-logic       mpu_i2c_scl_i;
-logic       mpu_i2c_sda_drive_low;
-logic       mpu_i2c_sda_i;
+logic       mpu_scl_out;
+logic       mpu_scl_in;
+logic       mpu_sda_out;
+logic       mpu_sda_in;
+logic       mpu_master_receiving;
 
 //TB6612 control
 logic       motor_a_pwm_o;
@@ -383,56 +384,58 @@ assign usonic_trig_o            = 1'b0;
 
 
 self_balancing_io u_self_balancing_io (
-    .GPIO                  (GPIO),
+    .GPIO                    (GPIO),
 
-    .beeper_o              (sb_beeper_o),
-    .ir_i                  (sb_ir_i),
-    .status_led_o          (sb_status_led_o),
+    .beeper_i                (sb_beeper_o),
+    .ir_o                    (sb_ir_i),
+    .status_led_i            (sb_status_led_o),
 
-    .motor_a_hall_i        (motor_a_hall_i),
-    .motor_b_hall_i        (motor_b_hall_i),
+    .motor_a_hall_o          (motor_a_hall_i),
+    .motor_b_hall_o          (motor_b_hall_i),
 
-    .mpu_i2c_scl_drive_low (mpu_i2c_scl_drive_low),
-    .mpu_i2c_scl_i         (mpu_i2c_scl_i),
-    .mpu_i2c_sda_drive_low (mpu_i2c_sda_drive_low),
-    .mpu_i2c_sda_i         (mpu_i2c_sda_i),
+    .mpu_scl_out_i           (mpu_scl_out),
+    .mpu_sda_out_i           (mpu_sda_out),
+    .mpu_master_receiving_i  (mpu_master_receiving),
+    .mpu_scl_in_o            (mpu_scl_in),
+    .mpu_sda_in_o            (mpu_sda_in),
 
-    .motor_a_pwm_o         (motor_a_pwm_o),
-    .motor_a_in1_o         (motor_a_in1_o),
-    .motor_a_in2_o         (motor_a_in2_o),
+    .motor_a_pwm_i           (motor_a_pwm_o),
+    .motor_a_in1_i           (motor_a_in1_o),
+    .motor_a_in2_i           (motor_a_in2_o),
 
-    .motor_b_pwm_o         (motor_b_pwm_o),
-    .motor_b_in1_o         (motor_b_in1_o),
-    .motor_b_in2_o         (motor_b_in2_o),
+    .motor_b_pwm_i           (motor_b_pwm_o),
+    .motor_b_in1_i           (motor_b_in1_o),
+    .motor_b_in2_i           (motor_b_in2_o),
 
-    .usonic_echo_i         (usonic_echo_i),
-    .usonic_trig_o         (usonic_trig_o)
+    .usonic_echo_o           (usonic_echo_i),
+    .usonic_trig_i           (usonic_trig_o)
 );
 
 
 //PWM out
 logic		[9:0]					pwm_out;
-//assign	LEDR[9:0]		=	pwm_out;
+assign	LEDR[9:0]		=	pwm_out;
 
 
 niosv_modular_control_system u_niosv (
-		.clk_clk				(MAX10_CLK1_50),	//clk.clk
-		.led_pwm_raw		(pwm_out[9:0]),	//pwm_out.conduit
-		.rst_n_reset_n		(rst_n),				//rst_n.reset_n
-		.spi_master_sclk	(GSENSOR_SCLK),	//spi_master.sclk
-		.spi_master_mosi	(GSENSOR_SDI),		//mosi
-		.spi_master_miso	(GSENSOR_SDO),		//miso
-		.spi_master_cs_n	(GSENSOR_CS_N),
-		.motor_pwm_pwm		({motor_a_pwm_o,motor_b_pwm_o}),
-		.motor_pwm_in1		({motor_a_in1_o,motor_b_in1_o}),
-		.motor_pwm_in2		({motor_a_in2_o,motor_b_in2_o}),
-		.i2c_gyro_sda_in (mpu_i2c_sda_i), //   i2c_gyro.sda_in
-		.i2c_gyro_scl_in (mpu_i2c_scl_i), //   scl_in
-		.i2c_gyro_sda_oe (mpu_i2c_sda_drive_low), //   sda_oe
-		.i2c_gyro_scl_oe (mpu_i2c_scl_drive_low)); //   scl_oe
+    .clk_clk                                (MAX10_CLK1_50),
+    .led_pwm_raw                            (pwm_out[9:0]),
+    .rst_n_reset_n                          (rst_n),
+    .spi_master_sclk                        (GSENSOR_SCLK),
+    .spi_master_mosi                        (GSENSOR_SDI),
+    .spi_master_miso                        (GSENSOR_SDO),
+    .spi_master_cs_n                        (GSENSOR_CS_N),
+    .motor_pwm_pwm                          ({motor_a_pwm_o, motor_b_pwm_o}),
+    .motor_pwm_in1                          ({motor_a_in1_o, motor_b_in1_o}),
+    .motor_pwm_in2                          ({motor_a_in2_o, motor_b_in2_o}),
+    .i2c_master_sda_in                      (mpu_sda_in),
+    .i2c_master_sda_out                     (mpu_sda_out),
+    .i2c_master_scl_in                      (mpu_scl_in),
+    .i2c_master_scl_out                     (mpu_scl_out),
+    .i2c_master_master_receiving_o          (mpu_master_receiving));
 		
-assign LEDR[1]	=	mpu_i2c_scl_drive_low;
-assign LEDR[2]	=	mpu_i2c_sda_drive_low;
+//assign LEDR[1]	=	mpu_i2c_scl_drive_low;
+//assign LEDR[2]	=	mpu_i2c_sda_drive_low;
 		
 endmodule
 

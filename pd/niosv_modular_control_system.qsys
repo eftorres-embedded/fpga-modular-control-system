@@ -17,6 +17,27 @@
          type = "int";
       }
    }
+   element i2c_master_0
+   {
+      datum _sortIndex
+      {
+         value = "8";
+         type = "int";
+      }
+   }
+   element i2c_master_0.s_axil
+   {
+      datum _lockedAddress
+      {
+         value = "1";
+         type = "boolean";
+      }
+      datum baseAddress
+      {
+         value = "212992";
+         type = "String";
+      }
+   }
    element intel_niosv
    {
       datum _sortIndex
@@ -279,6 +300,11 @@
  <parameter name="useTestBenchNamingPattern" value="false" />
  <instanceScript></instanceScript>
  <interface name="clk" internal="clock_bridge.in_clk" type="clock" dir="end" />
+ <interface
+   name="i2c_master"
+   internal="i2c_master_0.I2C_Master"
+   type="conduit"
+   dir="end" />
  <interface name="led_pwm" internal="led_pwm.pwm_o" type="conduit" dir="end" />
  <interface
    name="motor_pwm"
@@ -300,6 +326,14 @@
   <parameter name="EXPLICIT_CLOCK_RATE" value="50000000" />
   <parameter name="NUM_CLOCK_OUTPUTS" value="1" />
  </module>
+ <module name="i2c_master_0" kind="i2c_master" version="1.0" enabled="1">
+  <parameter name="ADDR_W" value="12" />
+  <parameter name="BYTE_W" value="8" />
+  <parameter name="CMD_W" value="3" />
+  <parameter name="DATA_W" value="32" />
+  <parameter name="DIVISOR_W" value="16" />
+  <parameter name="MIN_DIVISOR" value="1" />
+ </module>
  <module name="intel_niosv" kind="intel_niosv_m" version="26.0.0" enabled="1">
   <parameter name="AUTO_CLK_CLOCK_DOMAIN" value="1" />
   <parameter name="AUTO_CLK_RESET_DOMAIN" value="1" />
@@ -307,7 +341,7 @@
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="6" />
   <parameter name="AUTO_PLATFORM_IRQ_RX_INTERRUPTS_USED" value="3" />
   <parameter name="clockFrequency" value="50000000" />
-  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /><slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /><slave name='motor_pwm.s_axil' start='0x30000' end='0x31000' type='pwm_hbridge_axi4lite.s_axil' /><slave name='spi_master_0.s_axil' start='0x31000' end='0x32000' type='spi_master.s_axil' /><slave name='led_pwm.s_axil' start='0x32000' end='0x33000' type='AXI_Lite_PWM_Raw.s_axil' /><slave name='intel_niosv.timer_sw_agent' start='0x33040' end='0x33080' type='intel_niosv_m.timer_sw_agent' /><slave name='jtag_uart.avalon_jtag_slave' start='0x33080' end='0x33088' type='altera_avalon_jtag_uart.avalon_jtag_slave' /></address-map>]]></parameter>
+  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /><slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /><slave name='motor_pwm.s_axil' start='0x30000' end='0x31000' type='pwm_hbridge_axi4lite.s_axil' /><slave name='spi_master_0.s_axil' start='0x31000' end='0x32000' type='spi_master.s_axil' /><slave name='led_pwm.s_axil' start='0x32000' end='0x33000' type='AXI_Lite_PWM_Raw.s_axil' /><slave name='intel_niosv.timer_sw_agent' start='0x33040' end='0x33080' type='intel_niosv_m.timer_sw_agent' /><slave name='jtag_uart.avalon_jtag_slave' start='0x33080' end='0x33088' type='altera_avalon_jtag_uart.avalon_jtag_slave' /><slave name='i2c_master_0.s_axil' start='0x34000' end='0x35000' type='i2c_master.s_axil' /></address-map>]]></parameter>
   <parameter name="deviceFamily" value="MAX 10" />
   <parameter name="enableAvalonInterface" value="false" />
   <parameter name="enableDebug" value="true" />
@@ -466,6 +500,15 @@
    kind="avalon"
    version="25.1"
    start="intel_niosv.data_manager"
+   end="i2c_master_0.s_axil">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x00034000" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="25.1"
+   start="intel_niosv.data_manager"
    end="intel_niosv.timer_sw_agent">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x00033040" />
@@ -530,6 +573,11 @@
    start="clock_bridge.out_clk"
    end="motor_pwm.clock" />
  <connection
+   kind="clock"
+   version="25.1"
+   start="clock_bridge.out_clk"
+   end="i2c_master_0.clock" />
+ <connection
    kind="interrupt"
    version="25.1"
    start="intel_niosv.platform_irq_rx"
@@ -568,6 +616,11 @@
    version="25.1"
    start="reset_bridge.out_reset"
    end="motor_pwm.reset" />
+ <connection
+   kind="reset"
+   version="25.1"
+   start="reset_bridge.out_reset"
+   end="i2c_master_0.reset" />
  <connection
    kind="reset"
    version="25.1"

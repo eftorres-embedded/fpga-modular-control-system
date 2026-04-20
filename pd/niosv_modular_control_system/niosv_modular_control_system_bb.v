@@ -9,7 +9,12 @@ module niosv_modular_control_system (
 	spi_master_sclk,
 	spi_master_mosi,
 	spi_master_miso,
-	spi_master_cs_n);	
+	spi_master_cs_n,
+	i2c_master_sda_in,
+	i2c_master_sda_out,
+	i2c_master_scl_in,
+	i2c_master_scl_out,
+	i2c_master_master_receiving_o);	
 
 	input		clk_clk;
 	output	[9:0]	led_pwm_raw;
@@ -21,4 +26,9 @@ module niosv_modular_control_system (
 	output		spi_master_mosi;
 	input		spi_master_miso;
 	output		spi_master_cs_n;
+	input		i2c_master_sda_in;
+	output		i2c_master_sda_out;
+	input		i2c_master_scl_in;
+	output		i2c_master_scl_out;
+	output		i2c_master_master_receiving_o;
 endmodule
