@@ -1,4 +1,4 @@
-//core_reg.sv
+//i2c_reg.sv
 //---------------------------------------------------------------------------
 //Register map
 //
@@ -30,23 +30,24 @@
 //- REG_CMD is an action register, not retained state.
 //- No internal command queue: software must only launch when cmd_ready=1.
 //---------------------------------------------------------------------------
-module  core_regs    #(
-    parameter   int ADDR_W  =   12,
-    parameter   int DATA_W  =   32,
-    parameter   int BYTE_W  =   8,
-    parameter   int CMD_W   =   3,
-    parameter   int DIVISOR =   16)
+module  i2c_regs    #(
+    parameter   int                     ADDR_W      =   12,
+    parameter   int                     DATA_W      =   32,
+    parameter   int                     BYTE_W      =   8,
+    parameter   int                     CMD_W       =   3,
+    parameter   int                     DIVISOR_W   =   16,
+    parameter   logic   [DIVISOR_W-1:0] MIN_DIVISOR =   'd1)
     (
     input   logic               clk,
     input   logic               rst_n,
 
     //Generic   project MMIO request channel
-    input   logic                   req_valid,
-    output  logic                   req_ready,
-    input   logic                   req_write,
-    input   logic   [ADDR_W-1:0]    req_addr,
-    input   logic   [DATA_W-1:0]    req_wdata,
-    input   logic   [(DATA/8)-1:0]  req_wstrb,
+    input   logic                       req_valid,
+    output  logic                       req_ready,
+    input   logic                       req_write,
+    input   logic   [ADDR_W-1:0]        req_addr,
+    input   logic   [DATA_W-1:0]        req_wdata,
+    input   logic   [(DATA_W/8)-1:0]    req_wstrb,
 
     //Generic project MMIO response channel
     output  logic                   rsp_valid,
@@ -63,13 +64,57 @@ module  core_regs    #(
     output  logic                   scl_out,
     output  logic                   master_receiving_o);
 
+// -------------------------------------------------------------
+// Register map
+//
+// 0x00 REG_STATUS   (R)
+//      [0] cmd_ready
+//      [1] bus_idle
+//      [2] done_tick
+//      [3] ack_valid
+//      [4] ack
+//      [5] rd_data_valid
+//      [6] cmd_illegal
+//      [7] master_receiving
+//
+// 0x04 REG_DIVISOR  (R/W)
+//      [DIVISOR_W-1:0] divisor
+//
+// 0x08 REG_TXDATA   (R/W)
+//      [7:0] tx byte staging register
+//
+// 0x0C REG_RXDATA   (R)
+//      [7:0] last captured RX byte
+//
+// 0x10 REG_CMD      (W)
+//      [2:0] cmd
+//      [8]   rd_last
+//--------------------------------------------------------------
+localparam  logic   [ADDR_W-1:0]    REG_STATUS  =   12'h000;
+localparam  logic   [ADDR_W-1:0]    REG_DIVISOR =   12'h004;
+localparam  logic   [ADDR_W-1:0]    REG_TXDATA  =   12'h008;
+localparam  logic   [ADDR_W-1:0]    REG_RXDATA  =   12'h00C;
+localparam  logic   [ADDR_W-1:0]    REG_CMD     =   12'h010;
+
+//--------------------------------------------------------------
+//STATUS bit-poisition constants
+//--------------------------------------------------------------
+localparam  int unsigned    STATUS_CMD_READY        =   0;
+localparam  int unsigned    STATUS_BUS_IDLE         =   1;
+localparam  int unsigned    STATUS_DONE_TICK        =   2;
+localparam  int unsigned    STATUS_ACK_VALID        =   3;
+localparam  int unsigned    STATUS_ACK              =   4;
+localparam  int unsigned    STATUS_RD_DATA_VALID    =   5;
+localparam  int unsigned    STATUS_CMD_ILLEGAL      =   6;
+localparam  int unsigned    STATUS_MASTER_RECEIVING =   7;
+
 //--------------------------------------------------------------
 //I2C core status/interface_signals
 //--------------------------------------------------------------
 logic   [BYTE_W-1:0]    i2c_rx_data;
 logic                   i2c_cmd_ready;
 logic                   i2c_cmd_illegal;
-logic                   i2_done_tick;
+logic                   i2c_done_tick;
 logic                   i2c_ack;
 logic                   i2c_ack_valid;
 logic                   i2c_rd_data_valid;
@@ -80,7 +125,7 @@ logic                   i2c_master_receiving;
 //stored software-visible registers
 //---------------------------------------------------------------
 logic   [BYTE_W-1:0]    txdata_reg;
-logic   [BYTE_W-1:0]    rxdtat_reg;
+logic   [BYTE_W-1:0]    rxdata_reg;
 logic   [DIVISOR_W-1:0] divisor_reg;
 
 //--------------------------------------------------------------
@@ -106,6 +151,28 @@ assign  wr_cmd_fire     =   wr_fire &&  (req_addr   ==  REG_CMD);
 assign  wr_txdata_fire  =   wr_fire &&  (req_addr   ==  REG_TXDATA);
 assign  wr_divisor_fire =   wr_fire &&  (req_addr   ==  REG_DIVISOR);
 
+//---------------------------------------------------------------
+//Helper function: byte-write merge for 32-bit regs
+//--------------------------------------------------------------
+function    automatic   logic   [DATA_W-1:0]   merge_wstrb(
+    input   logic   [DATA_W-1:0]        old_val,
+    input   logic   [DATA_W-1:0]        new_val,
+    input   logic   [(DATA_W/8)-1:0]    strb);
+
+    logic   [DATA_W-1:0]    write_mask;
+    begin
+        write_mask  =   {
+            {8{strb[3]}},
+            {8{strb[2]}},
+            {8{strb[1]}},
+            {8{strb[0]}}
+        };
+        
+        return  (old_val    &   ~write_mask)    |   (new_val & write_mask);
+    end
+endfunction
+
+
 //----------------------------------------------------------------
 //Temporary merged values and command launch payload
 //---------------------------------------------------------------
@@ -119,24 +186,29 @@ logic                   launch_rd_last;
 logic                   launch_cmd_fire;
 
 assign  txdata_merged   =   merge_wstrb({{(DATA_W-BYTE_W){1'b0}},   txdata_reg}, req_wdata, req_wstrb);
-assign  divisor_merged  =   merge_wstrb({{(DATA_W-DIVISOR_W){1'b0}},    divisor_reg},   req_wdta,   req_wstrb);
-
-//REG_CMD is action-oriented, the whole command needs to be written not merged or masked
+assign  divisor_merged  =   merge_wstrb({{(DATA_W-DIVISOR_W){1'b0}},    divisor_reg},   req_wdata,   req_wstrb);
+assign  cmd_merged      =   merge_wstrb('0, req_wdata,  req_wstrb);
+//REG_CMD is action-oriented, so it is built from zero rather than merged into previous stored state
 //Byte 0 (wstrb[0] must be present for a valid launch because cmd livs in bits [2:0]
-assign  launch_cmd_fire =   wr_cmd_fire &&  i3c_cmd_ready;
+assign  launch_cmd_fire =   wr_cmd_fire &&  i2c_cmd_ready && req_wstrb[0];
+assign  launch_cmd      =   cmd_merged[CMD_W:0];
+assign  launch_rd_last  =   cmd_merged[8];
 
 //----------------------------------------------------------------------------
 //Live Status assembly
 //----------------------------------------------------------------------------
-status_rdata    =   '0; //clear status_rdata
+always_comb
+begin
+status_rdata                            =   '0; //clear status_rdata
 status_rdata[STATUS_CMD_READY]          =   i2c_cmd_ready;
 status_rdata[STATUS_BUS_IDLE]           =   i2c_bus_idle;
-status_rdata[STATUS_DONE_TICKE]         =   i2c_done_tick;
+status_rdata[STATUS_DONE_TICK]          =   i2c_done_tick;
 status_rdata[STATUS_ACK_VALID]          =   i2c_ack_valid;
 status_rdata[STATUS_ACK]                =   i2c_ack;
 status_rdata[STATUS_RD_DATA_VALID]      =   i2c_rd_data_valid;
 status_rdata[STATUS_CMD_ILLEGAL]        =   i2c_cmd_illegal;
 status_rdata[STATUS_MASTER_RECEIVING]   =   i2c_master_receiving;
+end
 
 //----------------------------------------------------------------------------
 //Read mux /response decode
@@ -164,7 +236,7 @@ begin
 
         REG_DIVISOR:
         begin
-            rdata_next  =   {{DATA_W-DIVISOR_W){1'b0}}, divisor_reg};
+            rdata_next  =   {{(DATA_W-DIVISOR_W){1'b0}}, divisor_reg};
         end
 
         REG_TXDATA:
@@ -180,7 +252,7 @@ begin
             end
             else
             begin
-                rdata_next  =   {{(DATA_W-BYTE_W){1'B0}}, rxdata_reg};
+                rdata_next  =   {{(DATA_W-BYTE_W){1'b0}}, rxdata_reg};
             end
         end
 
@@ -192,8 +264,12 @@ begin
             begin
                 err_next    =   1'b1;
             end
+            else if(!req_wstrb[0])
+            begin
+                err_next    =   1'b1;
+            end
             else
-            if(!2c_cmd_ready)
+            if(!i2c_cmd_ready)
             begin
                 err_next    =   1'b1;
             end
@@ -271,8 +347,8 @@ end
         .DIVISOR_W (DIVISOR_W),
         .BYTE_W    (BYTE_W),
         .CMD_W     (CMD_W),
-        .MIN_DIVISOR(MIN_DIVISOR)
-    ) u_i2c_master (
+        .MIN_DIVISOR(MIN_DIVISOR)) 
+        u_i2c_master (
         .clk                (clk),
         .rst_n              (rst_n),
         .divisor            (divisor_reg),
