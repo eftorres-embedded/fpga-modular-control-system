@@ -7,10 +7,6 @@
 
 /*----------------------------------------------------------------------------
  * PWM instance base addresses
- *
- * User-selected local addresses for the two PWM instances in this project.
- * - MOTOR_PWM_BASE : PWM subsystem with H-bridge extension window
- * - LED_PWM_BASE   : common PWM-only instance for LEDs / generic outputs
  *----------------------------------------------------------------------------*/
 #ifndef MOTOR_PWM_BASE
 #define MOTOR_PWM_BASE   0x00030000u
@@ -33,8 +29,6 @@
 
 /*----------------------------------------------------------------------------
  * Register offsets - H-bridge extension
- *
- * These are meaningful only for the motor-control PWM instance.
  *----------------------------------------------------------------------------*/
 #define PWM_REG_DIR_MASK_OFFSET      0x40u
 #define PWM_REG_BRAKE_MASK_OFFSET    0x44u
@@ -63,7 +57,7 @@
 #define PWM_MAX_CHANNELS             32u
 
 /*----------------------------------------------------------------------------
- * Simple status / error codes for pwm_regs.c helper functions
+ * Shared helper status codes
  *----------------------------------------------------------------------------*/
 typedef enum
 {
@@ -104,12 +98,7 @@ static inline uint32_t pwm_ch_enable_read(uint32_t base)     { return PWM_REG_CH
 static inline void pwm_ctrl_write(uint32_t base, uint32_t value)   { PWM_REG_CTRL(base) = value; }
 static inline void pwm_write_period(uint32_t base, uint32_t value) { PWM_REG_PERIOD(base) = value; }
 static inline void pwm_write_ch_enable(uint32_t base, uint32_t m)  { PWM_REG_CH_ENABLE(base) = m; }
-
-/*
- * REG_APPLY is a write-one pulse action register.
- * Writing bit 0 = 1 requests shadow -> active commit.
- */
-static inline void pwm_apply(uint32_t base)                  { PWM_REG_APPLY(base) = 1u; }
+static inline void pwm_apply(uint32_t base)                        { PWM_REG_APPLY(base) = 1u; }
 
 /*----------------------------------------------------------------------------
  * Duty-bank helpers
@@ -157,10 +146,6 @@ static inline void pwm_disable_shadow(uint32_t base)
 
 /*----------------------------------------------------------------------------
  * H-bridge extension helpers
- *
- * Use these only with MOTOR_PWM_BASE.
- * They are shadow registers, so write them first and then call pwm_apply() so
- * they commit atomically with period/duty/channel-enable updates.
  *----------------------------------------------------------------------------*/
 static inline uint32_t pwm_dir_mask_read(uint32_t base)      { return PWM_REG_DIR_MASK(base); }
 static inline uint32_t pwm_brake_mask_read(uint32_t base)    { return PWM_REG_BRAKE_MASK(base); }
@@ -171,19 +156,7 @@ static inline void pwm_write_brake_mask(uint32_t base, uint32_t m) { PWM_REG_BRA
 static inline void pwm_write_coast_mask(uint32_t base, uint32_t m) { PWM_REG_COAST_MASK(base) = m; }
 
 /*----------------------------------------------------------------------------
- * pwm_regs.c API
- *
- * These helper functions implement the COMMON PWM programming flow that is
- * shared by both LED and motor-control instances.
- *
- * - Use pwm_common_prepare_frame() when you want to stage common PWM shadow
- *   state first, then optionally write motor dir/brake/coast masks, then call
- *   pwm_apply(base) yourself for one atomic commit.
- *
- * - Use pwm_common_apply_frame() when you only need the common PWM registers
- *   and want the helper to commit immediately.
- *
- * - Use pwm_common_all_off() for a safe fully-disabled state.
+ * Shared common-PWM helper API implemented in pwm_regs.c
  *----------------------------------------------------------------------------*/
 pwm_status_t pwm_common_prepare_frame(
     uint32_t        base,

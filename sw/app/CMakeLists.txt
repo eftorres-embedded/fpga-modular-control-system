@@ -16,6 +16,7 @@ target_sources(app.elf
     PRIVATE
         src/main.c
         ../drivers/src/adxl345.c
+        ../drivers/src/motor_pwm.c
         ../drivers/src/pwm_regs.c
         ../drivers/src/spi_regs.c
 )

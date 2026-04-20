@@ -4,22 +4,27 @@
 
 #include "spi_regs.h"
 #include "adxl345.h"
+#include "pwm_regs.h"
+#include "motor_pwm.h"
 
 /*
- * Small ADXL345 bring-up test for the current polling-mode SPI stack.
- *
- * What this test does:
- * 1) Initializes the SPI peripheral
- * 2) Runs the conservative ADXL345 bring-up sequence
- * 3) Reads back DATA_FORMAT, DEVID, BW_RATE, and POWER_CTL
- * 4) Continuously prints raw X/Y/Z samples
+ * Combined bring-up test:
+ * 1) Initializes SPI + ADXL345
+ * 2) Initializes LED PWM instance at LED_PWM_BASE
+ * 3) Initializes motor PWM wrapper at MOTOR_PWM_BASE
+ * 4) Leaves motors in a safe OFF state
+ * 5) Continuously prints raw X/Y/Z and updates LED brightness pattern
  *
  * Expected baseline after adxl345_init_default():
- *   DATA_FORMAT = 0x00  (4-wire SPI, +/-2 g, right-justified, no self-test)
+ *   DATA_FORMAT = 0x00
  *   DEVID       = 0xE5
- *   BW_RATE     = 0x0A  (100 Hz)
- *   POWER_CTL   = 0x08  (MEASURE = 1)
+ *   BW_RATE     = 0x0A
+ *   POWER_CTL   = 0x08
  */
+
+#define LED_CHANNELS            4u
+#define LED_PWM_PERIOD_DEFAULT  25000u
+#define MOTOR_PWM_PERIOD_DEFAULT 25000u
 
 static void print_reg_u8(const char *name, uint8_t reg)
 {
@@ -33,13 +38,55 @@ static void print_reg_u8(const char *name, uint8_t reg)
     }
 }
 
+static void led_pwm_set_step(uint32_t step)
+{
+    uint32_t duty[LED_CHANNELS];
+    uint32_t base;
+
+    /* Simple moving-brightness pattern for LED PWM testing. */
+    base    = (step % 5u) * 4000u;
+    duty[0] = base;
+    duty[1] = (base + 4000u) % LED_PWM_PERIOD_DEFAULT;
+    duty[2] = (base + 8000u) % LED_PWM_PERIOD_DEFAULT;
+    duty[3] = (base + 12000u) % LED_PWM_PERIOD_DEFAULT;
+
+    (void)pwm_common_apply_frame(LED_PWM_BASE,
+                                 LED_PWM_PERIOD_DEFAULT,
+                                 duty,
+                                 LED_CHANNELS,
+                                 0x0Fu,
+                                 true);
+}
+
+static void motor_safe_startup(void)
+{
+    motor_pwm_status_t mst;
+
+    mst = motor_pwm_init(2u, MOTOR_PWM_PERIOD_DEFAULT);
+    if (mst != MOTOR_PWM_OK) {
+        printf("motor_pwm_init failed, status = %d\n", (int)mst);
+        return;
+    }
+
+    /* Leave motors fully off at startup. */
+    mst = motor_pwm_all_off();
+    if (mst != MOTOR_PWM_OK) {
+        printf("motor_pwm_all_off failed, status = %d\n", (int)mst);
+    }
+}
+
 int main(void)
 {
     adxl345_status_t st;
     adxl345_raw_xyz_t xyz;
     uint8_t devid = 0u;
+    uint32_t led_step = 0u;
 
-    printf("\nADXL345 SPI bring-up test\n");
+    printf("\nADXL345 + MOTOR PWM + LED PWM bring-up test\n");
+
+    /* ---------------------------------------------------------------------
+     * SPI + ADXL345
+     * ------------------------------------------------------------------ */
     printf("Initializing SPI...\n");
     spi_init();
 
@@ -60,7 +107,7 @@ int main(void)
         }
     }
 
-    printf("\nInitial register readback:\n");
+    printf("\nInitial ADXL345 register readback:\n");
     print_reg_u8("DATA_FORMAT", ADXL345_REG_DATA_FORMAT);
     print_reg_u8("DEVID",       ADXL345_REG_DEVID);
     print_reg_u8("BW_RATE",     ADXL345_REG_BW_RATE);
@@ -74,8 +121,25 @@ int main(void)
         }
     }
 
-    printf("\nStreaming raw X/Y/Z values...\n");
+    /* ---------------------------------------------------------------------
+     * LED PWM instance
+     * ------------------------------------------------------------------ */
+    printf("\nInitializing LED PWM at 0x%08X...\n", (unsigned)LED_PWM_BASE);
+    led_pwm_set_step(0u);
+
+    /* ---------------------------------------------------------------------
+     * Motor PWM instance
+     * ------------------------------------------------------------------ */
+    printf("Initializing MOTOR PWM at 0x%08X...\n", (unsigned)MOTOR_PWM_BASE);
+    motor_safe_startup();
+
+    printf("Motors are left OFF for safe startup.\n");
+    printf("\nStreaming raw X/Y/Z values and stepping LED PWM...\n");
     printf("(Ctrl+C / stop from debugger when done)\n\n");
+
+    motor_pwm_set_signed(MOTOR_PWM_LEFT_CHANNEL,  2000);
+    motor_pwm_set_signed(MOTOR_PWM_RIGHT_CHANNEL, 2000);
+    motor_pwm_apply();
 
     while (1) {
         st = adxl345_read_xyz_raw(&xyz);
@@ -88,7 +152,9 @@ int main(void)
                    (int)xyz.z);
         }
 
-        /* 10 Hz print rate is easy to read in the JTAG UART console. */
+        led_pwm_set_step(led_step++);
+
+        /* 10 Hz console update rate. */
         usleep(100000);
     }
 
