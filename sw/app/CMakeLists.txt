@@ -15,6 +15,7 @@ add_executable(app.elf)
 target_sources(app.elf
     PRIVATE
         src/main.c
+        ../drivers/src/adx1345.c
         ../drivers/src/pwm_regs.c
         ../drivers/src/spi_regs.c
 )
