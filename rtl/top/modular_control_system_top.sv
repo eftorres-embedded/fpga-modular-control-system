@@ -369,9 +369,6 @@ hex_to_sseg			count2(.hex({1'b0,1'b0,lcd_fifo_count[9:8]}), 	.dp_in(dp), 		.sseg
 assign sb_beeper_o              = 1'b0;
 assign sb_status_led_o          = pwm_out[0];
 
-//assign mpu_i2c_scl_drive_low    = 1'b0;
-//assign mpu_i2c_sda_drive_low    = 1'b0;
-
 //assign motor_a_pwm_o            = SW[0];
 //assign motor_a_in1_o            = SW[1];
 //assign motor_a_in2_o            = SW[2];

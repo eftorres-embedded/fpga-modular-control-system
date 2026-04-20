@@ -5,11 +5,11 @@
  version="1.0"
  fabric="QSYS">
  <!-- Format version 25.1 1129 (Future versions may contain additional information.) -->
- <!-- 2026.04.20.02:00:35 -->
+ <!-- 2026.04.20.02:48:57 -->
  <!-- A collection of modules and connections -->
  <parameter name="AUTO_GENERATION_ID">
   <type>java.lang.Integer</type>
-  <value>1776668435</value>
+  <value>1776671337</value>
   <derived>false</derived>
   <enabled>true</enabled>
   <visible>false</visible>
@@ -754,31 +754,31 @@ parameters are a RESULT of the module parameters. -->
    <type>conduit</type>
    <isStart>false</isStart>
    <port>
-    <name>i2c_sda_in</name>
+    <name>sda_in</name>
     <direction>Input</direction>
     <width>1</width>
     <role>sda_in</role>
    </port>
    <port>
-    <name>i2c_sda_out</name>
+    <name>sda_out</name>
     <direction>Output</direction>
     <width>1</width>
     <role>sda_out</role>
    </port>
    <port>
-    <name>i2c_scl_in</name>
+    <name>scl_in</name>
     <direction>Input</direction>
     <width>1</width>
     <role>scl_in</role>
    </port>
    <port>
-    <name>i2c_scl_out</name>
+    <name>scl_out</name>
     <direction>Output</direction>
     <width>1</width>
     <role>scl_out</role>
    </port>
    <port>
-    <name>i2c_master_receiving</name>
+    <name>master_receiving_o</name>
     <direction>Output</direction>
     <width>1</width>
     <role>master_receiving_o</role>

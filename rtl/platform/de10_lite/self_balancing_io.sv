@@ -10,8 +10,8 @@ module self_balancing_io #(
     parameter int PIN_HALL_B0           = 30,
     parameter int PIN_HALL_B1           = 31,
 
-    parameter int PIN_MPU_SCL       = 20,
-    parameter int PIN_MPU_SDA       = 21,
+    parameter int PIN_MPU_SCL       	= 20,
+    parameter int PIN_MPU_SDA       	= 21,
 
     parameter int PIN_MOTOR_A_PWM       = 22,
     parameter int PIN_MOTOR_A_IN1       = 23,
@@ -22,8 +22,8 @@ module self_balancing_io #(
     parameter int PIN_MOTOR_B_PWM       = 27,
 
     parameter int PIN_USONIC_ECHO       = 4,
-    parameter int PIN_USONIC_TRIG       = 28
-) (
+    parameter int PIN_USONIC_TRIG       = 28)
+	 (
     //-------------------------------------------------
     // Physical DE10-Lite GPIO header
     //-------------------------------------------------
