@@ -1,281 +1,437 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <unistd.h>
 
-// -----------------------------------------------------------------------------
-// Platform Designer base addresses
-// -----------------------------------------------------------------------------
-#define MOTOR_PWM_BASE   0x00030000u
-#define LED_PWM_BASE     0x00032000u
+#include "spi_regs.h"
+#include "adxl345.h"
+#include "i2c_regs.h"
+#include "mpu6500.h"
+#include "pwm_regs.h"
+#include "motor_pwm.h"
 
-// -----------------------------------------------------------------------------
-// Common PWM-family register map
-// -----------------------------------------------------------------------------
-#define REG_CTRL         0x00u
-#define REG_PERIOD       0x04u
-#define REG_APPLY        0x08u
-#define REG_CH_ENABLE    0x0Cu
-#define REG_STATUS       0x10u
-#define REG_CNT          0x14u
-#define REG_DUTY_BASE    0x20u
+/*
+ * Combined bring-up / comparison test:
+ * 1) Initializes SPI + ADXL345
+ * 2) Initializes I2C + MPU-6500
+ * 3) Initializes LED PWM at LED_PWM_BASE
+ * 4) Initializes motor PWM at MOTOR_PWM_BASE
+ * 5) Starts both motors at a small duty cycle
+ * 6) Continuously prints both IMUs so their values can be compared live
+ *
+ * Updates in this revision:
+ * - ADXL345 and MPU-6500 accelerometer data are printed in g units.
+ * - MPU-6500 temperature is printed in degrees Fahrenheit.
+ * - LED animation now drives 10 PWM channels with a smoother "comet + breathe"
+ *   effect that looks nicer on the DE10-Lite LED bank.
+ *
+ * Notes:
+ * - Float printf support is intentionally avoided. Everything is printed with
+ *   fixed-point integer formatting so this stays lightweight and linker-safe.
+ * - Accel scaling is derived from the sensor configuration registers, so if you
+ *   change range settings later, the printed g values still track correctly.
+ */
 
-// -----------------------------------------------------------------------------
-// Motor flavor extension registers
-// -----------------------------------------------------------------------------
-#define REG_DIR_MASK     0x40u
-#define REG_BRAKE_MASK   0x44u
-#define REG_COAST_MASK   0x48u
+#define LED_CHANNELS                10u
+#define LED_PWM_PERIOD_DEFAULT      25000u
+#define LED_PWM_ENABLE_MASK         ((1u << LED_CHANNELS) - 1u)
+#define MOTOR_PWM_PERIOD_DEFAULT    25000u
+#define I2C_DIVISOR_DEFAULT         250u
+#define MOTOR_SMALL_DUTY            2000
+#define STREAM_PERIOD_US            100000u
 
-#define CTRL_GLOBAL_EN   (1u << 0)
-
-// -----------------------------------------------------------------------------
-// LED raw-PWM config
-// -----------------------------------------------------------------------------
-#define LED_PWM_CHANNELS    10u
-#define LED_PWM_PERIOD      10000u
-#define FRAME_DELAY_US      8000u
-
-// 32-sample sine-like lookup, normalized to 0..1000
-#define LED_WAVE_STEPS      32u
-static const uint16_t led_wave_table[LED_WAVE_STEPS] = {
-    500, 598, 691, 778, 854, 916, 962, 990,
-    1000, 990, 962, 916, 854, 778, 691, 598,
-    500, 402, 309, 222, 146, 84, 38, 10,
-    0, 10, 38, 84, 146, 222, 309, 402
-};
-
-// -----------------------------------------------------------------------------
-// Motor PWM config
-// 50 MHz / 2500 = 20 kHz PWM
-// Timing based on FRAME_DELAY_US = 8000 us
-//   5.0 s  / 0.008 s = 625 frames
-//   2.0 s  / 0.008 s = 250 frames
-//   0.5 s  / 0.008 s = 62.5 -> 63 frames
-// -----------------------------------------------------------------------------
-#define MOTOR_PWM_PERIOD     2500u
-#define MOTOR_MAX_DUTY       ((MOTOR_PWM_PERIOD * 80u) / 100u)  // 80%
-
-#define MOTOR_RAMP_FRAMES    625u
-#define MOTOR_HOLD_FRAMES    250u
-#define MOTOR_BRAKE_FRAMES   63u
-
-// Based on your top-level concatenation:
-//   {motor_a_*, motor_b_*} -> bit1 = motor A, bit0 = motor B
-#define MOTOR_CH_B           0u
-#define MOTOR_CH_A           1u
-
-#define MOTOR_MASK_A         (1u << MOTOR_CH_A)
-#define MOTOR_MASK_B         (1u << MOTOR_CH_B)
-#define MOTOR_MASK_BOTH      (MOTOR_MASK_A | MOTOR_MASK_B)
-
-// -----------------------------------------------------------------------------
-// MMIO helpers
-// -----------------------------------------------------------------------------
-static inline void mmio_write32(uint32_t base, uint32_t offset, uint32_t value)
+static void print_adxl_reg_u8(const char *name, uint8_t reg)
 {
-    *(volatile uint32_t *)(base + offset) = value;
+    uint8_t value = 0u;
+    adxl345_status_t st = adxl345_read_reg(reg, &value);
+
+    if (st == ADXL345_OK) {
+        printf("ADXL %-12s = 0x%02X\n", name, value);
+    } else {
+        printf("ADXL %-12s read failed, status = %d\n", name, (int)st);
+    }
 }
 
-static inline uint32_t mmio_read32(uint32_t base, uint32_t offset)
+static void print_mpu_reg_u8(const char *name, uint8_t reg)
 {
-    return *(volatile uint32_t *)(base + offset);
+    uint8_t value = 0u;
+    mpu6500_status_t st = mpu6500_read_reg(reg, &value);
+
+    if (st == MPU6500_OK) {
+        printf("MPU  %-12s = 0x%02X\n", name, value);
+    } else {
+        printf("MPU  %-12s read failed, status = %d\n", name, (int)st);
+    }
 }
 
-static inline void pwm_write_duty(uint32_t base, uint32_t ch, uint32_t duty)
+static int32_t div_round_nearest_s32(int32_t numer, int32_t denom)
 {
-    mmio_write32(base, REG_DUTY_BASE + (4u * ch), duty);
+    if (denom <= 0) {
+        return 0;
+    }
+
+    if (numer >= 0) {
+        return (numer + (denom / 2)) / denom;
+    }
+
+    return -(((-numer) + (denom / 2)) / denom);
 }
 
-static inline void pwm_apply(uint32_t base)
+static int32_t adxl345_lsb_per_g_from_data_format(uint8_t data_format)
 {
-    mmio_write32(base, REG_APPLY, 1u);
+    const bool full_res = ((data_format >> 3) & 0x1u) != 0u;
+    const uint8_t range = data_format & 0x3u;
+
+    if (full_res) {
+        return 256;   /* 3.9 mg/LSB nominal for all ranges */
+    }
+
+    switch (range) {
+    case 0u: return 256; /* +/-2 g */
+    case 1u: return 128; /* +/-4 g */
+    case 2u: return 64;  /* +/-8 g */
+    default: return 32;  /* +/-16 g */
+    }
 }
 
-// -----------------------------------------------------------------------------
-// Common init
-// -----------------------------------------------------------------------------
-static void pwm_common_init(uint32_t base, uint32_t period, uint32_t ch_enable_mask)
+static int32_t mpu6500_lsb_per_g_from_accel_config(uint8_t accel_config)
 {
-    mmio_write32(base, REG_PERIOD, period);
-    mmio_write32(base, REG_CH_ENABLE, ch_enable_mask);
-    mmio_write32(base, REG_CTRL, CTRL_GLOBAL_EN);
-    pwm_apply(base);
+    switch ((accel_config >> 3) & 0x3u) {
+    case 0u: return 16384; /* +/-2 g */
+    case 1u: return 8192;  /* +/-4 g */
+    case 2u: return 4096;  /* +/-8 g */
+    default: return 2048;  /* +/-16 g */
+    }
 }
 
-// -----------------------------------------------------------------------------
-// LED test
-// -----------------------------------------------------------------------------
-static void led_test_init(void)
+static int32_t raw_to_milli_g(int16_t raw, int32_t lsb_per_g)
 {
+    return div_round_nearest_s32((int32_t)raw * 1000, lsb_per_g);
+}
+
+static int32_t mpu6500_temp_raw_to_centi_f(int16_t raw_temp)
+{
+    /*
+     * MPU-6500 temperature conversion:
+     *   Temp_C = 21 + raw / 333.87
+     *   Temp_F = Temp_C * 9/5 + 32
+     *
+     * Fixed-point implementation in centi-degrees Fahrenheit.
+     */
+    const int32_t temp_c_centi = 2100 + div_round_nearest_s32((int32_t)raw_temp * 100, 33387);
+    return 3200 + div_round_nearest_s32(temp_c_centi * 9, 5);
+}
+
+static void print_signed_milli(const char *prefix, int32_t milli, const char *suffix)
+{
+    int32_t mag = milli;
+
+    if (mag < 0) {
+        mag = -mag;
+        printf("%s-%ld.%03ld%s", prefix, (long)(mag / 1000), (long)(mag % 1000), suffix);
+    } else {
+        printf("%s+%ld.%03ld%s", prefix, (long)(mag / 1000), (long)(mag % 1000), suffix);
+    }
+}
+
+static void print_signed_centi(const char *prefix, int32_t centi, const char *suffix)
+{
+    int32_t mag = centi;
+
+    if (mag < 0) {
+        mag = -mag;
+        printf("%s-%ld.%02ld%s", prefix, (long)(mag / 100), (long)(mag % 100), suffix);
+    } else {
+        printf("%s%ld.%02ld%s", prefix, (long)(mag / 100), (long)(mag % 100), suffix);
+    }
+}
+
+static uint32_t triangle_0_to_1000(uint32_t phase, uint32_t period)
+{
+    uint32_t half;
+    uint32_t x;
+
+    if (period < 2u) {
+        return 0u;
+    }
+
+    x    = phase % period;
+    half = period / 2u;
+
+    if (x < half) {
+        return (1000u * x) / half;
+    }
+
+    return (1000u * (period - 1u - x)) / (period - half);
+}
+
+static uint32_t ping_pong_index(uint32_t step, uint32_t count)
+{
+    uint32_t span;
+    uint32_t x;
+
+    if (count <= 1u) {
+        return 0u;
+    }
+
+    span = 2u * (count - 1u);
+    x    = step % span;
+
+    if (x < count) {
+        return x;
+    }
+
+    return span - x;
+}
+
+static uint32_t led_tail_level(uint32_t dist)
+{
+    switch (dist) {
+    case 0u: return 1000u;
+    case 1u: return 550u;
+    case 2u: return 220u;
+    case 3u: return 80u;
+    case 4u: return 25u;
+    default: return 0u;
+    }
+}
+
+static void led_pwm_set_step(uint32_t step)
+{
+    uint32_t duty[LED_CHANNELS];
+    uint32_t head_a;
+    uint32_t head_b;
+    uint32_t breathe;
     uint32_t i;
-    uint32_t ch_enable_mask = 0u;
 
-    for (i = 0; i < LED_PWM_CHANNELS; i++) {
-        ch_enable_mask |= (1u << i);
-        pwm_write_duty(LED_PWM_BASE, i, 0u);
+    head_a  = ping_pong_index(step, LED_CHANNELS);
+    head_b  = ping_pong_index((step / 2u) + (LED_CHANNELS - 1u), LED_CHANNELS);
+    breathe = triangle_0_to_1000(step, 64u);
+
+    for (i = 0u; i < LED_CHANNELS; ++i) {
+        uint32_t dist_a = (i > head_a) ? (i - head_a) : (head_a - i);
+        uint32_t dist_b = (i > head_b) ? (i - head_b) : (head_b - i);
+        uint32_t ambient = 30u + ((breathe * (25u + (i * 3u))) / 1000u);
+        uint32_t sparkle = triangle_0_to_1000((step * 3u) + (i * 7u), 48u) / 20u;
+        uint32_t level = ambient + led_tail_level(dist_a) + (led_tail_level(dist_b) / 2u) + sparkle;
+
+        if (level > 1000u) {
+            level = 1000u;
+        }
+
+        duty[i] = (level * (LED_PWM_PERIOD_DEFAULT - 1u)) / 1000u;
     }
 
-    pwm_common_init(LED_PWM_BASE, LED_PWM_PERIOD, ch_enable_mask);
+    (void)pwm_common_apply_frame(LED_PWM_BASE,
+                                 LED_PWM_PERIOD_DEFAULT,
+                                 duty,
+                                 LED_CHANNELS,
+                                 LED_PWM_ENABLE_MASK,
+                                 true);
 }
 
-static uint32_t led_wave_duty(uint32_t phase)
+static void motor_start_small_forward(void)
 {
-    uint32_t sample = led_wave_table[phase % LED_WAVE_STEPS];
-    return (sample * LED_PWM_PERIOD) / 1000u;
-}
+    motor_pwm_status_t mst;
 
-static void led_test_step(uint32_t step)
-{
-    uint32_t i;
-
-    for (i = 0; i < LED_PWM_CHANNELS; i++) {
-        uint32_t phase_offset = (i * LED_WAVE_STEPS) / LED_PWM_CHANNELS;
-        uint32_t phase = (step + phase_offset) % LED_WAVE_STEPS;
-        uint32_t duty = led_wave_duty(phase);
-        pwm_write_duty(LED_PWM_BASE, i, duty);
+    mst = motor_pwm_init(2u, MOTOR_PWM_PERIOD_DEFAULT);
+    if (mst != MOTOR_PWM_OK) {
+        printf("motor_pwm_init failed, status = %d\n", (int)mst);
+        return;
     }
 
-    pwm_apply(LED_PWM_BASE);
-}
-
-// -----------------------------------------------------------------------------
-// Motor test
-// -----------------------------------------------------------------------------
-typedef enum
-{
-    MOTOR_STAGE_RAMP_UP = 0,
-    MOTOR_STAGE_HOLD_TOP,
-    MOTOR_STAGE_RAMP_DOWN,
-    MOTOR_STAGE_BRAKE
-} motor_stage_t;
-
-static uint32_t motor_ramp_up_duty(uint32_t frame)
-{
-    if (frame >= MOTOR_RAMP_FRAMES) {
-        frame = MOTOR_RAMP_FRAMES - 1u;
+    mst = motor_pwm_set_signed(MOTOR_PWM_LEFT_CHANNEL, MOTOR_SMALL_DUTY);
+    if (mst != MOTOR_PWM_OK) {
+        printf("left motor set failed, status = %d\n", (int)mst);
+        return;
     }
 
-    return ((frame + 1u) * MOTOR_MAX_DUTY) / MOTOR_RAMP_FRAMES;
-}
-
-static uint32_t motor_ramp_down_duty(uint32_t frame)
-{
-    if (frame >= MOTOR_RAMP_FRAMES) {
-        frame = MOTOR_RAMP_FRAMES - 1u;
+    mst = motor_pwm_set_signed(MOTOR_PWM_RIGHT_CHANNEL, MOTOR_SMALL_DUTY);
+    if (mst != MOTOR_PWM_OK) {
+        printf("right motor set failed, status = %d\n", (int)mst);
+        return;
     }
 
-    return MOTOR_MAX_DUTY - ((frame * MOTOR_MAX_DUTY) / MOTOR_RAMP_FRAMES);
-}
-
-static void motor_write_mode(uint32_t dir_mask, uint32_t brake_mask, uint32_t coast_mask)
-{
-    mmio_write32(MOTOR_PWM_BASE, REG_DIR_MASK, dir_mask);
-    mmio_write32(MOTOR_PWM_BASE, REG_BRAKE_MASK, brake_mask);
-    mmio_write32(MOTOR_PWM_BASE, REG_COAST_MASK, coast_mask);
-}
-
-static void motor_write_both_duty(uint32_t duty_a, uint32_t duty_b)
-{
-    pwm_write_duty(MOTOR_PWM_BASE, MOTOR_CH_A, duty_a);
-    pwm_write_duty(MOTOR_PWM_BASE, MOTOR_CH_B, duty_b);
-}
-
-static void motor_commit(uint32_t dir_mask,
-                         uint32_t brake_mask,
-                         uint32_t coast_mask,
-                         uint32_t duty_a,
-                         uint32_t duty_b)
-{
-    motor_write_mode(dir_mask, brake_mask, coast_mask);
-    motor_write_both_duty(duty_a, duty_b);
-    pwm_apply(MOTOR_PWM_BASE);
-}
-
-static void motor_test_init(void)
-{
-    pwm_common_init(MOTOR_PWM_BASE, MOTOR_PWM_PERIOD, MOTOR_MASK_BOTH);
-
-    // Start at zero duty, forward direction, not braking, not coasting
-    motor_commit(MOTOR_MASK_BOTH, 0u, 0u, 0u, 0u);
-}
-
-static void motor_test_step(motor_stage_t *stage,
-                            uint32_t *frame_count,
-                            uint32_t *dir_mask)
-{
-    uint32_t duty;
-
-    switch (*stage) {
-        case MOTOR_STAGE_RAMP_UP:
-            duty = motor_ramp_up_duty(*frame_count);
-            motor_commit(*dir_mask, 0u, 0u, duty, duty);
-
-            (*frame_count)++;
-            if (*frame_count >= MOTOR_RAMP_FRAMES) {
-                *frame_count = 0u;
-                *stage = MOTOR_STAGE_HOLD_TOP;
-            }
-            break;
-
-        case MOTOR_STAGE_HOLD_TOP:
-            motor_commit(*dir_mask, 0u, 0u, MOTOR_MAX_DUTY, MOTOR_MAX_DUTY);
-
-            (*frame_count)++;
-            if (*frame_count >= MOTOR_HOLD_FRAMES) {
-                *frame_count = 0u;
-                *stage = MOTOR_STAGE_RAMP_DOWN;
-            }
-            break;
-
-        case MOTOR_STAGE_RAMP_DOWN:
-            duty = motor_ramp_down_duty(*frame_count);
-            motor_commit(*dir_mask, 0u, 0u, duty, duty);
-
-            (*frame_count)++;
-            if (*frame_count >= MOTOR_RAMP_FRAMES) {
-                *frame_count = 0u;
-                *stage = MOTOR_STAGE_BRAKE;
-            }
-            break;
-
-        case MOTOR_STAGE_BRAKE:
-        default:
-            motor_commit(*dir_mask, MOTOR_MASK_BOTH, 0u, 0u, 0u);
-
-            (*frame_count)++;
-            if (*frame_count >= MOTOR_BRAKE_FRAMES) {
-                *frame_count = 0u;
-                *stage = MOTOR_STAGE_RAMP_UP;
-                *dir_mask = (*dir_mask == 0u) ? MOTOR_MASK_BOTH : 0u;
-            }
-            break;
+    mst = motor_pwm_apply();
+    if (mst != MOTOR_PWM_OK) {
+        printf("motor_pwm_apply failed, status = %d\n", (int)mst);
     }
 }
 
-// -----------------------------------------------------------------------------
-// Main
-// -----------------------------------------------------------------------------
 int main(void)
 {
+    adxl345_status_t adxl_st;
+    mpu6500_status_t mpu_st;
+    adxl345_raw_xyz_t adxl_xyz;
+    mpu6500_raw_sample_t mpu_sample;
+    uint8_t adxl_devid = 0u;
+    uint8_t adxl_data_format = 0u;
+    uint8_t mpu_whoami = 0u;
+    uint8_t mpu_accel_config = 0u;
+    int32_t adxl_lsb_per_g;
+    int32_t mpu_lsb_per_g;
     uint32_t led_step = 0u;
-    uint32_t motor_frame_count = 0u;
-    uint32_t motor_dir_mask = MOTOR_MASK_BOTH;
-    motor_stage_t motor_stage = MOTOR_STAGE_RAMP_UP;
 
-    printf("\nPWM split demo start\n");
-    printf("MOTOR_PWM_BASE = 0x%08X\n", MOTOR_PWM_BASE);
-    printf("LED_PWM_BASE   = 0x%08X\n", LED_PWM_BASE);
+    printf("\nADXL345 + MPU-6500 + MOTOR PWM + LED PWM bring-up test\n");
 
-    led_test_init();
-    motor_test_init();
+    /* ---------------------------------------------------------------------
+     * SPI + ADXL345
+     * ------------------------------------------------------------------ */
+    printf("Initializing SPI...\n");
+    spi_init();
+
+    printf("Running ADXL345 default init...\n");
+    adxl_st = adxl345_init_default();
+    if (adxl_st != ADXL345_OK) {
+        printf("ADXL345 init failed, status = %d\n", (int)adxl_st);
+        while (1) {
+            usleep(250000);
+        }
+    }
+
+    adxl_st = adxl345_read_device_id(&adxl_devid);
+    if (adxl_st != ADXL345_OK) {
+        printf("ADXL345 DEVID read failed, status = %d\n", (int)adxl_st);
+        while (1) {
+            usleep(250000);
+        }
+    }
+
+    adxl_st = adxl345_read_reg(ADXL345_REG_DATA_FORMAT, &adxl_data_format);
+    if (adxl_st != ADXL345_OK) {
+        printf("ADXL345 DATA_FORMAT read failed, status = %d\n", (int)adxl_st);
+        while (1) {
+            usleep(250000);
+        }
+    }
+
+    /* ---------------------------------------------------------------------
+     * I2C + MPU-6500
+     * ------------------------------------------------------------------ */
+    printf("Initializing I2C...\n");
+    i2c_init(I2C_DIVISOR_DEFAULT);
+
+    printf("Running MPU-6500 default init...\n");
+    mpu_st = mpu6500_init_default();
+    if (mpu_st != MPU6500_OK) {
+        printf("MPU-6500 init failed, status = %d\n", (int)mpu_st);
+        while (1) {
+            usleep(250000);
+        }
+    }
+
+    mpu_st = mpu6500_read_whoami(&mpu_whoami);
+    if (mpu_st != MPU6500_OK) {
+        printf("MPU-6500 WHO_AM_I read failed, status = %d\n", (int)mpu_st);
+        while (1) {
+            usleep(250000);
+        }
+    }
+
+    mpu_st = mpu6500_read_reg(MPU6500_REG_ACCEL_CONFIG, &mpu_accel_config);
+    if (mpu_st != MPU6500_OK) {
+        printf("MPU-6500 ACCEL_CONFIG read failed, status = %d\n", (int)mpu_st);
+        while (1) {
+            usleep(250000);
+        }
+    }
+
+    printf("\nInitial register readback:\n");
+    print_adxl_reg_u8("DATA_FORMAT", ADXL345_REG_DATA_FORMAT);
+    print_adxl_reg_u8("DEVID",       ADXL345_REG_DEVID);
+    print_adxl_reg_u8("BW_RATE",     ADXL345_REG_BW_RATE);
+    print_adxl_reg_u8("POWER_CTL",   ADXL345_REG_POWER_CTL);
+
+    print_mpu_reg_u8("WHO_AM_I",      MPU6500_REG_WHO_AM_I);
+    print_mpu_reg_u8("PWR_MGMT_1",    MPU6500_REG_PWR_MGMT_1);
+    print_mpu_reg_u8("SMPLRT_DIV",    MPU6500_REG_SMPLRT_DIV);
+    print_mpu_reg_u8("CONFIG",        MPU6500_REG_CONFIG);
+    print_mpu_reg_u8("GYRO_CONFIG",   MPU6500_REG_GYRO_CONFIG);
+    print_mpu_reg_u8("ACCEL_CONFIG",  MPU6500_REG_ACCEL_CONFIG);
+    print_mpu_reg_u8("ACCEL_CONFIG2", MPU6500_REG_ACCEL_CONFIG2);
+
+    if (adxl_devid != ADXL345_DEVID_VALUE) {
+        printf("Unexpected ADXL345 DEVID: got 0x%02X, expected 0x%02X\n",
+               adxl_devid, ADXL345_DEVID_VALUE);
+        while (1) {
+            usleep(250000);
+        }
+    }
+
+    if (mpu_whoami != MPU6500_WHO_AM_I_VALUE) {
+        printf("Unexpected MPU-6500 WHO_AM_I: got 0x%02X, expected 0x%02X\n",
+               mpu_whoami, MPU6500_WHO_AM_I_VALUE);
+        while (1) {
+            usleep(250000);
+        }
+    }
+
+    adxl_lsb_per_g = adxl345_lsb_per_g_from_data_format(adxl_data_format);
+    mpu_lsb_per_g  = mpu6500_lsb_per_g_from_accel_config(mpu_accel_config);
+
+    printf("\nComputed accel scaling: ADXL=%ld LSB/g, MPU=%ld LSB/g\n",
+           (long)adxl_lsb_per_g,
+           (long)mpu_lsb_per_g);
+
+    /* ---------------------------------------------------------------------
+     * LED PWM instance
+     * ------------------------------------------------------------------ */
+    printf("\nInitializing LED PWM at 0x%08X...\n", (unsigned)LED_PWM_BASE);
+    led_pwm_set_step(0u);
+
+    /* ---------------------------------------------------------------------
+     * Motor PWM instance
+     * ------------------------------------------------------------------ */
+    printf("Initializing MOTOR PWM at 0x%08X...\n", (unsigned)MOTOR_PWM_BASE);
+    motor_start_small_forward();
+
+    printf("Motors commanded forward at small duty = %d\n", MOTOR_SMALL_DUTY);
+    printf("\nStreaming both IMUs with accel in g and MPU temp in F...\n");
+    printf("(Ctrl+C / stop from debugger when done)\n\n");
 
     while (1) {
-        led_test_step(led_step);
-        led_step = (led_step + 1u) % LED_WAVE_STEPS;
+        adxl_st = adxl345_read_xyz_raw(&adxl_xyz);
+        mpu_st  = mpu6500_read_all_raw(&mpu_sample);
 
-        motor_test_step(&motor_stage, &motor_frame_count, &motor_dir_mask);
+        if (adxl_st != ADXL345_OK) {
+            printf("ADXL345 read failed, status = %d\n", (int)adxl_st);
+        }
 
-        usleep(FRAME_DELAY_US);
+        if (mpu_st != MPU6500_OK) {
+            printf("MPU-6500 read failed, status = %d\n", (int)mpu_st);
+        }
+
+        if ((adxl_st == ADXL345_OK) && (mpu_st == MPU6500_OK)) {
+            const int32_t adxl_x_mg = raw_to_milli_g(adxl_xyz.x, adxl_lsb_per_g);
+            const int32_t adxl_y_mg = raw_to_milli_g(adxl_xyz.y, adxl_lsb_per_g);
+            const int32_t adxl_z_mg = raw_to_milli_g(adxl_xyz.z, adxl_lsb_per_g);
+
+            const int32_t mpu_ax_mg = raw_to_milli_g(mpu_sample.accel.x, mpu_lsb_per_g);
+            const int32_t mpu_ay_mg = raw_to_milli_g(mpu_sample.accel.y, mpu_lsb_per_g);
+            const int32_t mpu_az_mg = raw_to_milli_g(mpu_sample.accel.z, mpu_lsb_per_g);
+
+            const int32_t temp_f_centi = mpu6500_temp_raw_to_centi_f(mpu_sample.temp);
+
+            printf("ADXL[g]");
+            print_signed_milli(" X=", adxl_x_mg, "");
+            print_signed_milli(" Y=", adxl_y_mg, "");
+            print_signed_milli(" Z=", adxl_z_mg, "");
+
+            printf("   MPU_A[g]");
+            print_signed_milli(" X=", mpu_ax_mg, "");
+            print_signed_milli(" Y=", mpu_ay_mg, "");
+            print_signed_milli(" Z=", mpu_az_mg, "");
+
+            print_signed_centi("   MPU_T=", temp_f_centi, "F");
+
+            printf("   MPU_G[raw] X=%6d Y=%6d Z=%6d\n",
+                   (int)mpu_sample.gyro.x,
+                   (int)mpu_sample.gyro.y,
+                   (int)mpu_sample.gyro.z);
+        }
+
+        led_pwm_set_step(led_step++);
+        usleep(STREAM_PERIOD_US);
     }
 
     return 0;
