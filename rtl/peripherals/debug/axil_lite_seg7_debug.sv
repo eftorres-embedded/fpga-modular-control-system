@@ -1,4 +1,5 @@
-module  axi_lite_seg7_debug #(
+//axil_lite_seg7_debug.sv
+module  axil_lite_seg7_debug #(
     parameter int ADDR_W        = 12,
     parameter int DATA_W        = 32,
     parameter int NUM_DIGITS    = 6)
@@ -37,13 +38,14 @@ module  axi_lite_seg7_debug #(
     input   logic   [(NUM_DIGITS*4)-1:0]    live_value_i,
 
     // -------------------------------------------------------------------------
-    // Outputs toward the display core
+    // Outputs toward the 7 segments
     // -------------------------------------------------------------------------
-    output  logic                           enable_o,
-    output  logic   [2:0]                   mode_o,
-    output  logic   [NUM_DIGITS-1:0]        dp_n_o,
-    output  logic   [NUM_DIGITS-1:0]        blank_o,
-    output  logic   [(NUM_DIGITS*4)-1:0]    active_value_o
+    output  logic   [7:0]                   hex5_o,
+    output  logic   [7:0]                   hex4_o,
+    output  logic   [7:0]                   hex3_o,
+    output  logic   [7:0]                   hex2_o,
+    output  logic   [7:0]                   hex1_o,
+    output  logic   [7:0]                   hex0_o
 );
 
     // -------------------------------------------------------------------------
@@ -64,8 +66,8 @@ module  axi_lite_seg7_debug #(
     //    value is returned in a DATA_W-wide read register.
     // -------------------------------------------------------------------------
 
-    localparam  logic   [1:0]   AXI_RESP_OKAY   =   2'b00;
-    localparam  logic   [1:0]   AXI_RESP_SLVERR =   2'b10;
+    localparam  logic   [1:0]   axil_RESP_OKAY   =   2'b00;
+    localparam  logic   [1:0]   axil_RESP_SLVERR =   2'b10;
 
     // -------------------------------------------------------------------------
     // FSM definition
@@ -149,16 +151,26 @@ module  axi_lite_seg7_debug #(
     logic                   mmio_req_fire;
     logic                   mmio_rsp_fire;
 
+    //------------------------------------------------------------------------
+    //internal signals
+    //------------------------------------------------------------------------
+    logic                        seg7_enable;
+    logic [2:0]                  seg7_mode;
+    logic [NUM_DIGITS-1:0]       seg7_dp_n;
+    logic [NUM_DIGITS-1:0]       seg7_blank;
+    logic [(NUM_DIGITS*4)-1:0]   seg7_active_value;
+
     // -------------------------------------------------------------------------
     // Instantiate the generic register block
     // -------------------------------------------------------------------------
     seg7_debug_regs #(
         .ADDR_W     (ADDR_W),
         .DATA_W     (DATA_W),
-        .NUM_DIGITS (NUM_DIGITS))
-        u_seg7_debug_regs (
-        .clk_i          (clk),
-        .rst_ni         (rst_n),
+        .NUM_DIGITS (NUM_DIGITS)
+    ) u_seg7_debug_regs
+    (
+        .clk            (clk),
+        .rst_n          (rst_n),
 
         .req_valid_i    (mmio_req_valid),
         .req_ready_o    (mmio_req_ready),
@@ -174,11 +186,27 @@ module  axi_lite_seg7_debug #(
 
         .live_value_i   (live_value_i),
 
-        .enable_o       (enable_o),
-        .mode_o         (mode_o),
-        .dp_n_o         (dp_n_o),
-        .blank_o        (blank_o),
-        .active_value_o (active_value_o)
+        .enable_o       (seg7_enable),
+        .mode_o         (seg7_mode),
+        .dp_n_o         (seg7_dp_n),
+        .blank_o        (seg7_blank),
+        .active_value_o (seg7_active_value)
+    );
+
+    seg7_debug_core u_seg7_debug_core
+    (
+        .enable_i   (seg7_enable),
+        .value_i    (seg7_active_value),
+        .mode_i     (seg7_mode),
+        .dp_n_i     (seg7_dp_n),
+        .blank_i    (seg7_blank),
+
+        .hex5_o     (hex5_o),
+        .hex4_o     (hex4_o),
+        .hex3_o     (hex3_o),
+        .hex2_o     (hex2_o),
+        .hex1_o     (hex1_o),
+        .hex0_o     (hex0_o)
     );
 
     // -------------------------------------------------------------------------
@@ -186,11 +214,11 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     always_comb 
     begin
-        aw_fire      = s_axi_awvalid && s_axi_awready;
-        w_fire       = s_axi_wvalid  && s_axi_wready;
-        b_fire       = s_axi_bvalid  && s_axi_bready;
-        ar_fire      = s_axi_arvalid && s_axi_arready;
-        r_fire       = s_axi_rvalid  && s_axi_rready;
+        aw_fire      = s_axil_awvalid && s_axil_awready;
+        w_fire       = s_axil_wvalid  && s_axil_wready;
+        b_fire       = s_axil_bvalid  && s_axil_bready;
+        ar_fire      = s_axil_arvalid && s_axil_arready;
+        r_fire       = s_axil_rvalid  && s_axil_rready;
 
         mmio_req_fire = mmio_req_valid && mmio_req_ready;
         mmio_rsp_fire = mmio_rsp_valid && mmio_rsp_ready;
@@ -204,14 +232,14 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     always_comb
     begin
-        s_axi_awready = 1'b0;
-        s_axi_wready  = 1'b0;
-        s_axi_arready = 1'b0;
+        s_axil_awready = 1'b0;
+        s_axil_wready  = 1'b0;
+        s_axil_arready = 1'b0;
 
         if(state_reg == ST_IDLE) begin
-            s_axi_awready = !aw_hold_valid_reg;
-            s_axi_wready  = !w_hold_valid_reg;
-            s_axi_arready = !ar_hold_valid_reg;
+            s_axil_awready = !aw_hold_valid_reg;
+            s_axil_wready  = !w_hold_valid_reg;
+            s_axil_arready = !ar_hold_valid_reg;
         end
     end
 
@@ -220,12 +248,12 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     always_comb
     begin
-        s_axi_bvalid = (state_reg == ST_WRITE_B);
-        s_axi_bresp  = bresp_reg;
+        s_axil_bvalid = (state_reg == ST_WRITE_B);
+        s_axil_bresp  = bresp_reg;
 
-        s_axi_rvalid = (state_reg == ST_READ_R);
-        s_axi_rresp  = rresp_reg;
-        s_axi_rdata  = rdata_reg;
+        s_axil_rvalid = (state_reg == ST_READ_R);
+        s_axil_rresp  = rresp_reg;
+        s_axil_rdata  = rdata_reg;
     end
 
     // -------------------------------------------------------------------------
@@ -299,22 +327,22 @@ module  axi_lite_seg7_debug #(
         if(aw_fire)
         begin
             aw_hold_valid_next = 1'b1;
-            awaddr_hold_next   = s_axi_awaddr;
+            awaddr_hold_next   = s_axil_awaddr;
         end
 
         // Capture AXI write data channel
         if(w_fire)
         begin
             w_hold_valid_next = 1'b1;
-            wdata_hold_next   = s_axi_wdata;
-            wstrb_hold_next   = s_axi_wstrb;
+            wdata_hold_next   = s_axil_wdata;
+            wstrb_hold_next   = s_axil_wstrb;
         end
 
         // Capture AXI read address channel
         if(ar_fire)
         begin
             ar_hold_valid_next = 1'b1;
-            araddr_hold_next   = s_axi_araddr;
+            araddr_hold_next   = s_axil_araddr;
         end
 
         // Once the MMIO write request is accepted, release AW/W holds
@@ -345,14 +373,14 @@ module  axi_lite_seg7_debug #(
         // Write completion: only need BRESP
         if((state_reg == ST_WRITE_WAIT_RSP) && mmio_rsp_fire)
         begin
-            bresp_next = mmio_rsp_err ? AXI_RESP_SLVERR : AXI_RESP_OKAY;
+            bresp_next = mmio_rsp_err ? axil_RESP_SLVERR : axil_RESP_OKAY;
         end
 
         // Read completion: need both RDATA and RRESP
         if((state_reg == ST_READ_WAIT_RSP) && mmio_rsp_fire)
         begin
             rdata_next = mmio_rsp_rdata;
-            rresp_next = mmio_rsp_err ? AXI_RESP_SLVERR : AXI_RESP_OKAY;
+            rresp_next = mmio_rsp_err ? axil_RESP_SLVERR : axil_RESP_OKAY;
         end
     end
 
@@ -512,7 +540,7 @@ module  axi_lite_seg7_debug #(
     begin
         if(!rst_n)
         begin
-            bresp_reg <= AXI_RESP_OKAY;
+            bresp_reg <= axil_RESP_OKAY;
         end
         else
         begin
@@ -528,7 +556,7 @@ module  axi_lite_seg7_debug #(
         if(!rst_n)
         begin
             rdata_reg <= '0;
-            rresp_reg <= AXI_RESP_OKAY;
+            rresp_reg <= axil_RESP_OKAY;
         end
         else
         begin

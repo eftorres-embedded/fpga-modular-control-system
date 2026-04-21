@@ -43,7 +43,7 @@ module  seg7_debug_core(
 
     //active-low convetion:
     //0 in either source turns the decimal point on
-    //final_dp_n    =   default_dp_n    &   dp_n_i;
+    final_dp_n    =   default_dp_n    &   dp_n_i;
     end
 
     hex_to_sseg u_hex5  (.hex(dig5),    .dp_in(final_dp_n[5]),  .sseg(hex5_raw));
