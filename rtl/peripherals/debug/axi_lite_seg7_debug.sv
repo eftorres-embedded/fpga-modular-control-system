@@ -9,27 +9,27 @@ module  axi_lite_seg7_debug #(
     input  logic                        clk,
     input  logic                        rst_n,
 
-    input  logic    [ADDR_W-1:0]        s_axi_awaddr,
-    input  logic                        s_axi_awvalid,
-    output logic                        s_axi_awready,
+    input  logic    [ADDR_W-1:0]        s_axil_awaddr,
+    input  logic                        s_axil_awvalid,
+    output logic                        s_axil_awready,
 
-    input  logic    [DATA_W-1:0]        s_axi_wdata,
-    input  logic    [(DATA_W/8)-1:0]    s_axi_wstrb,
-    input  logic                        s_axi_wvalid,
-    output logic                        s_axi_wready,
+    input  logic    [DATA_W-1:0]        s_axil_wdata,
+    input  logic    [(DATA_W/8)-1:0]    s_axil_wstrb,
+    input  logic                        s_axil_wvalid,
+    output logic                        s_axil_wready,
 
-    output logic    [1:0]               s_axi_bresp,
-    output logic                        s_axi_bvalid,
-    input  logic                        s_axi_bready,
+    output logic    [1:0]               s_axil_bresp,
+    output logic                        s_axil_bvalid,
+    input  logic                        s_axil_bready,
 
-    input  logic    [ADDR_W-1:0]        s_axi_araddr,
-    input  logic                        s_axi_arvalid,
-    output logic                        s_axi_arready,
+    input  logic    [ADDR_W-1:0]        s_axil_araddr,
+    input  logic                        s_axil_arvalid,
+    output logic                        s_axil_arready,
 
-    output logic    [DATA_W-1:0]        s_axi_rdata,
-    output logic    [1:0]               s_axi_rresp,
-    output logic                        s_axi_rvalid,
-    input  logic                        s_axi_rready,
+    output logic    [DATA_W-1:0]        s_axil_rdata,
+    output logic    [1:0]               s_axil_rresp,
+    output logic                        s_axil_rvalid,
+    input  logic                        s_axil_rready,
 
     // -------------------------------------------------------------------------
     // Live debug source from hardware
