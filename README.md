@@ -1,10 +1,10 @@
-# FPGA Modular Control System
+# FPGA Modular Control System (DE10-Lite)
+
+## Overview
 
 I built this project around one main idea: reusable FPGA peripherals with a consistent structure, a predictable software interface, and a clean path from simulation to hardware bring-up.
 
 The board is a DE10-Lite with a MAX 10 FPGA. The processor is Nios V. The point of the project is not just to make one design work on one board. The point is to build modules I can keep reusing, extend without rewriting everything, and integrate the same way each time.
-
-## What I am building
 
 This repo is a modular control platform with:
 - SystemVerilog peripherals
@@ -12,7 +12,7 @@ This repo is a modular control platform with:
 - Nios V software drivers in C
 - board-level integration for sensors, motors, and external IO
 
-## Design rules I follow
+## Architecture
 
 Across peripherals, I try to keep the same structure:
 
@@ -20,19 +20,7 @@ Across peripherals, I try to keep the same structure:
 bus wrapper -> register block -> core engine -> board/device pins
 ```
 
-That gives me:
-- a repeatable integration method
-- standardized register-map style
-- cleaner software drivers
-- easier verification and debug
-
-## How I use vendor IP vs custom RTL
-
-I do both.
-
-I use vendor or third-party IP when the block is already a solved commodity piece and the real work is in wrapping it, controlling it, and integrating it into the system.
-
-I write my own RTL when I want direct control over the protocol behavior, the interface contract, or the internal implementation.
+I use both vendor IP and project-owned RTL.
 
 Current examples in this repo:
 - **SPI:** third-party SPI core behind my own register layer and AXI-Lite wrapper
@@ -40,7 +28,7 @@ Current examples in this repo:
 - **PWM:** project-owned core, register files, adapters, and subsystem variants
 - **Quadrature:** project-owned decoder path and MMIO wrapper structure
 
-## Whole-system block diagram
+### Whole-system block diagram
 
 ```text
 Host PC
