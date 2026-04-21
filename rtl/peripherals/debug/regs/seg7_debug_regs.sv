@@ -372,6 +372,6 @@ module  seg7_debug_regs #(
     //  -SRC_SEL=1  -> software-written 24-bit value
     //  -SRC_SEL=0  & FREEZE=1 -> frozen snapshot of live value
     //  -SRC_SEL=0  & FREEZE=0 -> direct live value
-    assign  active_value_o  =   ctrl_reg[4] ?   sw_value_reg[(NUM_DIGITS*4)-1:0]     :
-                                ctrl_reg[5] ?   frozen_value_reg[(NUM_DIGITS*4)-1:0] :
+    assign  active_value_o  =   ctrl_reg[CTRL_SRC_SEL_BIT]  ?   sw_value_reg[(NUM_DIGITS*4)-1:0]     :
+                                ctrl_reg[CTRL_FREEZE_BIT]   ?   frozen_value_reg[(NUM_DIGITS*4)-1:0] :
                                 live_value_i;
