@@ -3,20 +3,20 @@
 //	Produces baud_x1_tick: can be useful for the TX FSM to move to next bit
 // DEFAULT_DIV_X16 = round (50Mhz/(9600*16)) = 326
 module uart_baudgen #(
-	parameter int unsigned DIV_WIDTH		=	9,//slowest baud requires div_x16 to be 326
-	parameter int unsigned CLK_HZ			=	50_000_000,
+	parameter int unsigned DIV_WIDTH			=	9,//slowest baud requires div_x16 to be 326
+	parameter int unsigned CLK_HZ				=	50_000_000,
 	parameter int unsigned DEFAULT_BAUDRATE		=	9_600
 )
 (
-	input	logic	clk,
-	input	logic	rst_n,
-	input	logic	en,		//enable tick generation
+	input	logic					clk,
+	input	logic					rst_n,
+	input	logic					en,		//enable tick generation
 	
 	//Runtime override baudrate: set to 0 to use default baudrate
-	input		logic	[DIV_WIDTH-1:0]	div_x16,
+	input	logic	[DIV_WIDTH-1:0]	div_x16,
 	
-	output	logic							baud_x16_tick,
-	output	logic							baud_1x_tick
+	output	logic					baud_x16_tick,
+	output	logic					baud_1x_tick
 );
 
 	//compute a rounded divider:

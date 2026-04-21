@@ -9,7 +9,7 @@ module uart_rx_engine(
 	
 	//RX output (interface to FIFO adapter or MMIO)
 	output	logic			rx_out_valid,
-	input		logic			rx_out_ready,
+	input	logic			rx_out_ready,
 	output	logic	[7:0]	rx_out_data,
 	
 	//status bit
