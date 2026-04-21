@@ -1,269 +1,127 @@
-# FPGA Modular Control System (DE10-Lite)
+# FPGA Modular Control System
 
-Modular FPGA-based control system built on the Intel MAX 10 (DE10-Lite), focused on reusable peripheral design, AXI4-Lite integration, and system-level architecture.
+I built this project around one main idea: reusable FPGA peripherals with a consistent structure, a predictable software interface, and a clean path from simulation to hardware bring-up.
 
-This project demonstrates FPGA system design principles including:
+The board is a DE10-Lite with a MAX 10 FPGA. The processor is Nios V. The point of the project is not just to make one design work on one board. The point is to build modules I can keep reusing, extend without rewriting everything, and integrate the same way each time.
 
-* memory-mapped peripheral interfaces
-* protocol engine integration (SPI, UART, PWM)
-* separation between datapath, control, and bus layers
-* scalable RTL organization for SoC-style systems
+## What I am building
 
----
+This repo is a modular control platform with:
+- SystemVerilog peripherals
+- AXI4-Lite / MMIO register interfaces
+- Nios V software drivers in C
+- board-level integration for sensors, motors, and external IO
 
-## Overview
+## Design rules I follow
 
-The system is organized as a collection of modular peripherals integrated through a consistent architecture. Each peripheral is designed to be reusable, independently testable, and software-controllable through a memory-mapped interface.
-
-The current system includes a Nios V soft processor integrated via Platform Designer, with a working C application (`main.c`) executing successfully on hardware.
-
----
-
-## Architecture
-
-Each peripheral follows a layered model:
+Across peripherals, I try to keep the same structure:
 
 ```text
-           +---------------------+
-           |     AXI4-Lite       |
-           | (CPU / Interconnect)|
-           +----------+----------+
-                      |
-                      v
-           +---------------------+
-           |   Register Layer    |
-           |   (MMIO contract)   |
-           +----------+----------+
-                      |
-                      v
-           +---------------------+
-           |     Core Engine     |
-           | (protocol/datapath) |
-           +----------+----------+
-                      |
-                      v
-           +---------------------+
-           | External Interface  |
-           |   (pins / signals)  |
-           +---------------------+
+bus wrapper -> register block -> core engine -> board/device pins
 ```
 
-This structure enables:
+That gives me:
+- a repeatable integration method
+- standardized register-map style
+- cleaner software drivers
+- easier verification and debug
 
-* reuse across projects
-* clear separation of concerns
-* straightforward software-hardware interaction
-* easier debugging and verification
+## How I use vendor IP vs custom RTL
 
----
+I do both.
 
-## System Architecture
+I use vendor or third-party IP when the block is already a solved commodity piece and the real work is in wrapping it, controlling it, and integrating it into the system.
 
-### Current Baseline
+I write my own RTL when I want direct control over the protocol behavior, the interface contract, or the internal implementation.
 
-* Nios V soft processor integrated in Platform Designer
-* On-chip memory and JTAG UART operational
-* C application (`main.c`) runs correctly on hardware
+Current examples in this repo:
+- **SPI:** third-party SPI core behind my own register layer and AXI-Lite wrapper
+- **I2C:** project-owned byte engine, register layer, and wrapper
+- **PWM:** project-owned core, register files, adapters, and subsystem variants
+- **Quadrature:** project-owned decoder path and MMIO wrapper structure
 
-### Immediate Next Steps
-
-* Instantiate PWM in Platform Designer and control it from software
-* Complete SPI register + AXI4-Lite integration and expose it to the CPU
+## Whole-system block diagram
 
 ```text
-                          FPGA Modular Control System
-                     Current baseline + near-term expansion
-
-    +---------------------------------------------------------------+
-    |                       DE10-Lite / MAX 10                      |
-    |                                                               |
-    |   +--------------------+                                      |
-    |   |      Nios V        |                                      |
-    |   |   Soft Processor   |                                      |
-    |   +---------+----------+                                      |
-    |             |                                                 |
-    |             v                                                 |
-    |   +--------------------+                                      |
-    |   | AXI/Avalon Fabric  |                                      |
-    |   | (Platform Designer)|                                      |
-    |   +---+----------+-----+                                      |
-    |       |          |                                            |
-    |       |          |                                            |
-    |       v          v                                            |
-    |  +---------+  +-------------+                                 |
-    |  | On-Chip |  |  JTAG UART  |<------ Host PC / Terminal       |
-    |  | Memory  |  |   Console   |                                 |
-    |  +---------+  +-------------+                                 |
-    |                                                               |
-    |       Planned / In Progress CPU-Controlled Peripherals        |
-    |                                                               |
-    |       +-------------------+    +-------------------+          |
-    |       |   PWM Peripheral  |    |   SPI Peripheral  |          |
-    |       | AXI-Lite Wrapper  |    | AXI-Lite Wrapper  |          |
-    |       | + Regs + Core     |    | + Regs + Vendor   |          |
-    |       +---------+---------+    |   Core            |          |
-    |                 |              +---------+---------+          |
-    |                 |                        |                    |
-    |                 v                        v                    |
-    |            PWM Output Pins          SPI External Pins         |
-    |                                                               |
-    +---------------------------------------------------------------+
+Host PC
+  |
+  +--> Quartus / Programmer
+  +--> JTAG UART Console
+  |
+  v
++======================================================================+
+|                        DE10-Lite / MAX 10                            |
+|                                                                      |
+|  +---------------------------------------------------------------+   |
+|  |                 Platform Designer System                      |   |
+|  |                                                               |   |
+|  |   +-------------------+      +-----------------------------+  |   |
+|  |   | Nios V CPU        |<---->| On-Chip Memory              |  |   |
+|  |   +---------+---------+      +-----------------------------+  |   |
+|  |             |                                                 |   |
+|  |             +-------------> JTAG UART                         |   |
+|  |             |                                                 |   |
+|  |             v   AXI4-Lite / MMIO Interconnect                 |   |
+|  |             +--------------+---------------+-------------+    |   |
+|  |             |              |               |             |    |   |
+|  |             |              |               |             |    |   |
+|  |             v              v               v             |    |   |
+|  |   +--------------+  +--------------+  +--------------+   |    |   |
+|  |   | SPI wrapper  |  | I2C wrapper  |  | PWM raw      |   |    |   |
+|  |   | + regs       |  | + regs       |  | subsystem    |   |    |   |
+|  |   +------+-------+  +------+-------+  | + regs       |   |    |   |
+|  |          |                 |          +------+-------+   |    |   |
+|  |          v                 v                 |           |    |   |
+|  |   Vendor SPI core   Custom I2C engine        v           |    |   |
+|  |          |                 |            LED outputs      |    |   |
+|  |          |                 |                             |    |   |
+|  |          v                 v                             |    |   |
+|  |   ADXL345 on-board   self_balancing_io                   |    |   |
+|  |                            |                             |    |   |
+|  |                            v                             |    |   |
+|  |                        MPU-6500                          |    |   |
+|  |                                                          |    |   |
+|  |                                  +-------------------+   |    |   |
+|  |                                  | PWM motor         |<--+    |   |
+|  |                                  | subsystem         |        |   |
+|  |                                  | + regs            |        |   |
+|  |                                  +---------+---------+        |   |
+|  |                                            |                  |   |
+|  +--------------------------------------------|------------------+   |
+|                                               v                      |
+|                                   self_balancing_io -> TB6612        |
++======================================================================+
 ```
 
-### Current Validation Path
+## What is implemented here
+
+| Area | In this repo | Current state |
+|---|---|---|
+| Nios V system | Platform Designer system, Quartus project, software build | running on hardware |
+| AXI4-Lite / MMIO peripherals | SPI, I2C, PWM, quadrature wrappers and regs | active structure in repo |
+| PWM family | raw, motor, servo-oriented organization | LEDs and motor path used from software |
+| SPI path | wrapper + regs + third-party core + ADXL345 driver | active |
+| I2C path | custom byte engine + regs + MPU-6500 driver | active |
+| Board wrapper | `self_balancing_io.sv` | active external hardware path |
+| Verification | PWM, SPI, I2C unit benches | present under `tb/unit/` |
+
+## Hardware-facing paths in the current app
+
+| Path | Software side | Device / endpoint |
+|---|---|---|
+| SPI | `adxl345.c` | on-board ADXL345 |
+| I2C | `mpu6500.c` | external MPU-6500 |
+| PWM raw | `pwm_regs.c` | DE10-Lite LEDs |
+| PWM motor | `motor_pwm.c` | TB6612 motor path |
+
+## Repo map
 
 ```text
-main.c
-  -> printf / loops / usleep
-  -> Nios V execution confirmed
-  -> JTAG UART console output confirmed
+rtl/           synthesizable HDL
+pd/            Platform Designer systems and component packaging
+quartus/       Quartus project files
+constraints/   SDC constraints
+tb/            simulation sources
+sw/            Nios V application and drivers
+docs/          architecture notes, bring-up docs, notebooks
 ```
-
-### Near-Term Expansion Path
-
-```text
-main.c
-  -> MMIO writes to PWM registers
-  -> MMIO writes/reads to SPI registers
-  -> software-driven peripheral validation
-```
-
----
-
-## Peripherals
-
-### PWM
-
-* Modular PWM subsystem with timebase, compare logic, register interface, and AXI4-Lite wrapper
-* Deterministic timing and configurable behavior
-* Next step: integrate into Platform Designer and control from Nios V software
-
----
-
-### SPI (Integration in Progress)
-
-* Uses a third-party open-source SPI core as the protocol engine
-* Vendor core isolated under `rtl/peripherals/spi/vendor/`
-
-Project-owned logic:
-
-* `axi_lite_spi.sv`
-* `regs/spi_regs.sv`
-
-Current focus:
-
-* finalize register interface
-* complete AXI4-Lite integration
-* expose SPI as a CPU-controlled peripheral
-
----
-
-### UART
-
-* RX/TX engines with configurable baud generation
-* Designed for integration with FIFO and system interfaces
-* System console currently uses JTAG UART via Nios V
-
----
-
-### LCD (HD44780)
-
-* Parallel LCD controller with FIFO adapter
-* Demonstrates bridging between fast logic and slow peripherals
-
----
-
-## Verification
-
-* Unit testbenches for individual modules (PWM, UART)
-* Integration testbench (`tb_top_system.sv`)
-* Waveform-based validation using Questa/ModelSim
-
----
-
-## Tools
-
-* Intel Quartus Prime (Lite)
-* Platform Designer (Qsys)
-* Questa / ModelSim
-* SystemVerilog
-* Nios V (RISC-V soft processor, integrated and running)
-
----
-
-## Repository Structure
-
-```text
-rtl/
-  common/
-  peripherals/
-    pwm/
-    spi/
-    uart/
-    lcd/
-  top/
-
-pd/
-  *.qsys
-  *.sopcinfo
-
-tb/
-  unit/
-  integration/
-
-docs/
-  architecture/
-  notebook/
-  bringup/
-
-sw/
-  app/
-  bsp/
-```
-
----
-
-## Third-Party IP
-
-SPI Verilog Interface
-
-* Source: https://opencores.org/projects/spi_verilog_interface
-* License: LGPL
-* Used as protocol engine only
-* Integrated via custom register and AXI4-Lite wrapper
-
----
-
-## Status
-
-### Implemented
-
-* UART subsystem (RTL)
-* PWM subsystem (core, registers, AXI wrapper)
-* LCD controller and adapter
-* FIFO utilities
-* Nios V system (Platform Designer)
-* BSP + application build flow
-* `main.c` execution verified on hardware
-
-### In Progress
-
-* SPI integration and validation
-* PWM integration into Platform Designer
-* software-driven peripheral control (MMIO)
-
-### Planned
-
-* Additional peripherals (I2C, ADC)
-* extended system integration and testing
-
----
-
-## Purpose
-
-This project serves as a reusable FPGA system framework and a demonstration of:
-
-* modular RTL design
-* SoC-style system architecture
-* hardware/software co-design
-* embedded control of FPGA peripherals
