@@ -2,33 +2,33 @@
 module  seg7_debug_regs #(
     parameter   int ADDR_W      =   12,
     parameter   int DATA_W      =   32,
-    parameter   int SEV_SEG_W   =   6)
+    parameter   int NUM_DIGITS   =   6)
     (
-    input   logic               clk,
-    input   logic               rst_n,
+    input   logic                           clk,
+    input   logic                           rst_n,
 
     //Generic   MMIO request/response
-    input   logic                       req_valid_i,
-    output  logic                       req_ready_o,
-    input   logic                       req_write_i,
-    input   logic   [ADDR_W-1:0]        req_addr_i,
-    input   logic   [DATA_W-1:0]        req_wdata_i,
-    input   logic   [(DATA_W/8)-1:0]    req_wstrb_i,
+    input   logic                           req_valid_i,
+    output  logic                           req_ready_o,
+    input   logic                           req_write_i,
+    input   logic   [ADDR_W-1:0]            req_addr_i,
+    input   logic   [DATA_W-1:0]            req_wdata_i,
+    input   logic   [(DATA_W/8)-1:0]        req_wstrb_i,
 
-    output  logic                       rsp_valid_o,
-    input   logic                       rsp_ready_i,
-    output  logic   [DATA_W-1:0]        rsp_rdata_o,
-    output  logic                       rsp_err_o,
+    output  logic                           rsp_valid_o,
+    input   logic                           rsp_ready_i,
+    output  logic   [DATA_W-1:0]            rsp_rdata_o,
+    output  logic                           rsp_err_o,
 
     //Live debug source from hardware
-    input   logic   [(SEV_SEG_W*4)-1:0]              live_value_i,
+    input   logic   [(NUM_DIGITS*4)-1:0]    live_value_i,
 
     //Outputs to display core
-    output  logic                       enable_o,
-    output  logic   [2:0]               mode_o,
-    output  logic   [5:0]               dp_n_o,
-    output  logic   [5:0]               blank_o,
-    output  logic   [(SEV_SEG_W*4)-1:0]              active_value_o);
+    output  logic                           enable_o,
+    output  logic   [2:0]                   mode_o,
+    output  logic   [NUM_DIGITS-1:0]        dp_n_o,
+    output  logic   [NUM_DIGITS-1:0]        blank_o,
+    output  logic   [(NUM_DIGITS*4)-1:0]    active_value_o);
 
     //----------------------------------------------------------
     //Register map
@@ -153,7 +153,6 @@ module  seg7_debug_regs #(
         status_rdata[CTRL_MODE_MSB:CTRL_MODE_LSB]   =   ctrl_reg[CTRL_MODE_MSB:CTRL_MODE_LSB];
         status_rdata[CTRL_SRC_SEL_BIT]              =   ctrl_reg[CTRL_SRC_SEL_BIT];
         status_rdata[CTRL_FREEZE_BIT]               =   ctrl_reg[CTRL_FREEZE_BIT];
-        status_rdata[CTRL_SNAPSHOT_BIT]             =   ctrl_reg[CTRL_SNAPSHOT_BIT];
     end
 
     //--------------------------------------------------------------------
@@ -163,15 +162,15 @@ module  seg7_debug_regs #(
     begin
         frozen_value_next   =   frozen_value_reg;
 
-        snapshot_pulse  =   req_wstrb_i[0]  &&  req_wdata_i[CTRL_SNAPSHOT_BIT];
+        snapshot_pulse  =   wr_fire &&  req_wstrb_i[0]  &&  (req_addr_i[7:0]    ==  REG_CTRL)  &&  req_wdata_i[CTRL_SNAPSHOT_BIT];
         //Detect FREEZE rising edge so we can capture live_value
-        freeze_rise =   (~ctrl_reg[CTRL_FREEZE_BIT]) &   ctrl_next[CTRL_FREEZE_BIT];
+        freeze_rise     =   wr_fire &&  (req_addr_i[7:0]==REG_CTRL)  &&  (!ctrl_reg[CTRL_FREEZE_BIT]) &&   ctrl_merged[CTRL_FREEZE_BIT];
 
         //Capture the live value either on SNAPSHOT pulse or
         //when FREEZE is newly asserted.
         if(snapshot_pulse   ||  freeze_rise)
         begin
-            frozen_value_next[(SEV_SEG_W*4):0]  =   live_value_i;
+            frozen_value_next[(NUM_DIGITS*4)-1:0]  =   live_value_i;
         end
     end
 
@@ -188,14 +187,13 @@ module  seg7_debug_regs #(
         blank_next          =   blank_reg;
         
 
-        if(req_write_i)
+        if(wr_fire)
         begin
             unique  case    (req_addr_i[7:0])
             REG_CTRL:
                 begin
                     ctrl_next                       =   ctrl_merged;
                     ctrl_next[CTRL_SNAPSHOT_BIT]    =   1'b0;
-
                 end
 
                 REG_SW_VALUE:
@@ -211,13 +209,14 @@ module  seg7_debug_regs #(
                 REG_BLANK:
                 begin
                     blank_next  =   blank_merged;
-
+                end
                 default:
                 begin
-                    rsp_err_next    =   1'b1;
+                    //do nothing
                 end
             endcase
         end
+    end
 
     //--------------------------------------------------------------------
     //rsp_data answer after read request
@@ -242,9 +241,27 @@ module  seg7_debug_regs #(
             rsp_rdata_next  =   '0;
             rsp_err_next    =   1'b0;
 
-            //Read response decode
-            if(!req_write_i)
+            //check for invalid address for write registers, moved out of the previous block so it can only be modified in a single block
+            if(req_write_i)
             begin
+                unique  case    (req_addr_i[7:0])
+                    REG_CTRL,
+                    REG_SW_VALUE,
+                    REG_DP_N,
+                    REG_BLANK:
+                    begin
+                        rsp_err_next    =   1'b0;
+                    end
+                    default:
+                    begin
+                        rsp_err_next    =   1'b1;
+                    end
+                endcase
+            end
+            
+            else
+            begin
+                //Read response decode
                 unique  case    (req_addr_i[7:0])
                     REG_CTRL:
                     begin
@@ -268,7 +285,7 @@ module  seg7_debug_regs #(
 
                     REG_LIVE_VALUE:
                     begin
-                        rsp_rdata_next  =   {{(DATA_W-(SEV_SEG_W*4)){1'b0}},  live_value_i};
+                        rsp_rdata_next  =   {{(DATA_W-(NUM_DIGITS*4)){1'b0}},  live_value_i};
                     end
 
                     REG_FROZEN_VALUE:
@@ -278,7 +295,7 @@ module  seg7_debug_regs #(
 
                     REG_ACTIVE_VALUE:
                     begin
-                        rsp_rdata_next  =   {{(DATA_W-(SEV_SEG_W*4)){1'b0}},  active_value_o};
+                        rsp_rdata_next  =   {{(DATA_W-(NUM_DIGITS*4)){1'b0}},  active_value_o};
                     end
 
                     REG_STATUS:
@@ -312,15 +329,9 @@ module  seg7_debug_regs #(
         end
         else
         begin
-            if(rsp_fire)
-                rsp_valid_reg   <=  1'b0;
-
-            if(req_fire)
-            begin
-                rsp_valid_reg   <=  1'b1;
-                rsp_rdata_reg   <=  rsp_rdata_next;
-                rsp_err_reg     <=  rsp_err_next;
-            end
+            rsp_valid_reg   <=  rsp_valid_next;
+            rsp_rdata_reg   <=  rsp_rdata_next;
+            rsp_err_reg     <=  rsp_err_next;
         end
     end
 
@@ -331,11 +342,12 @@ module  seg7_debug_regs #(
     begin
         if(!rst_n)
         begin
-            ctrl_reg            <=  '0;
-            sw_value_reg        <=  '0;
-            dp_n_reg            <=  32'h3F;
-            blank_reg           <=  '0;
-            frozen_value_reg    <=  '0;
+            ctrl_reg                <=  '0;
+            sw_value_reg            <=  '0;
+            dp_n_reg                <=  '0;
+            dp_n_reg[NUM_DIGITS-1:0] <=  {NUM_DIGITS{1'b1}};
+            blank_reg               <=  '0;
+            frozen_value_reg        <=  '0;
         end
 
         else
@@ -353,13 +365,13 @@ module  seg7_debug_regs #(
     //----------------------------------------------------------------
     assign  enable_o    =   ctrl_reg[CTRL_EN_BIT];
     assign  mode_o      =   ctrl_reg[CTRL_MODE_MSB:CTRL_MODE_LSB];
-    assign  dp_n_o      =   dp_n_reg[5:0];
-    assign  blank_o     =   blank_reg[5:0];
+    assign  dp_n_o      =   dp_n_reg[NUM_DIGITS-1:0];
+    assign  blank_o     =   blank_reg[NUM_DIGITS-1:0];
 
     //Source selection:
     //  -SRC_SEL=1  -> software-written 24-bit value
     //  -SRC_SEL=0  & FREEZE=1 -> frozen snapshot of live value
     //  -SRC_SEL=0  & FREEZE=0 -> direct live value
-    assign  active_value_o  =   ctrl_reg[4] ?   sw_value_reg[(SEV_SEG_W*4)-1:0]     :
-                                ctrl_reg[5] ?   frozen_value_reg[(SEV_SEG_W*4)-1:0] :
+    assign  active_value_o  =   ctrl_reg[4] ?   sw_value_reg[(NUM_DIGITS*4)-1:0]     :
+                                ctrl_reg[5] ?   frozen_value_reg[(NUM_DIGITS*4)-1:0] :
                                 live_value_i;
