@@ -440,9 +440,9 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     // FSM state register
     // -------------------------------------------------------------------------
-    always_ff @(posedge s_axi_aclk or negedge s_axi_aresetn)
+    always_ff @(posedge clk or negedge rst_n)
     begin
-        if(!s_axi_aresetn)
+        if(!rst_n)
         begin
             state_reg <= ST_IDLE;
         end
@@ -455,9 +455,9 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     // AW holding registers
     // -------------------------------------------------------------------------
-    always_ff @(posedge s_axi_aclk or negedge s_axi_aresetn)
+    always_ff @(posedge clk or negedge rst_n)
     begin
-        if(!s_axi_aresetn)
+        if(!rst_n)
         begin
             aw_hold_valid_reg <= 1'b0;
             awaddr_hold_reg   <= '0;
@@ -472,9 +472,9 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     // W holding registers
     // -------------------------------------------------------------------------
-    always_ff @(posedge s_axi_aclk or negedge s_axi_aresetn)
+    always_ff @(posedge clk or negedge rst_n)
     begin
-        if(!s_axi_aresetn)
+        if(!rst_n)
         begin
             w_hold_valid_reg <= 1'b0;
             wdata_hold_reg   <= '0;
@@ -491,9 +491,9 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     // AR holding registers
     // -------------------------------------------------------------------------
-    always_ff @(posedge s_axi_aclk or negedge s_axi_aresetn)
+    always_ff @(posedge clk or negedge rst_n)
     begin
-        if(!s_axi_aresetn)
+        if(!rst_n)
         begin
             ar_hold_valid_reg <= 1'b0;
             araddr_hold_reg   <= '0;
@@ -508,9 +508,9 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     // Write-response registers
     // -------------------------------------------------------------------------
-    always_ff @(posedge s_axi_aclk or negedge s_axi_aresetn)
+    always_ff @(posedge clk or negedge rst_n)
     begin
-        if(!s_axi_aresetn)
+        if(!rst_n)
         begin
             bresp_reg <= AXI_RESP_OKAY;
         end
@@ -523,9 +523,9 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     // Read-response registers
     // -------------------------------------------------------------------------
-    always_ff @(posedge s_axi_aclk or negedge s_axi_aresetn)
+    always_ff @(posedge clk or negedge rst_n)
     begin
-        if(!s_axi_aresetn)
+        if(!rst_n)
         begin
             rdata_reg <= '0;
             rresp_reg <= AXI_RESP_OKAY;
