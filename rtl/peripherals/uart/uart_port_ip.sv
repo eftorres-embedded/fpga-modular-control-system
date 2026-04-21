@@ -1,30 +1,30 @@
 module uart_port	#(
 	parameter int unsigned DIV_WIDTH				=	9,
 	parameter int unsigned CLK_HZ					=	50_000_000,
-	parameter int unsigned DEFAULT_BAUDRATE	=	9_600,
-	parameter int unsigned RX_FIFO_DEPTH		=	64)
+	parameter int unsigned DEFAULT_BAUDRATE			=	9_600,
+	parameter int unsigned RX_FIFO_DEPTH			=	64)
 	
 	(
 	input	logic				clk,
 	input	logic				rst_n,
 	
 	//serial pins
-	input		logic			uart_rx,
+	input	logic			uart_rx,
 	output	logic			uart_tx,
 	
 	//x16 divider input to modify baudrate in runtime (by mcu)
-	input		logic	[DIV_WIDTH-1:0]	div_x16,
-	input		logic			baud_en,
+	input	logic	[DIV_WIDTH-1:0]	div_x16,
+	input	logic			baud_en,
 	
 	//tx upstream (no FIFO)
-	input		logic			tx_valid,
+	input	logic			tx_valid,
 	output	logic			tx_ready,
-	input		logic	[7:0]	tx_data,
+	input	logic	[7:0]	tx_data,
 	output	logic			tx_busy, 
 	
 	//rx downstream stream (from RX FIFO output)
 	output	logic			rx_valid,
-	input		logic			rx_ready,
+	input	logic			rx_ready,
 	output	logic	[7:0]	rx_data,
 	
 	//status
