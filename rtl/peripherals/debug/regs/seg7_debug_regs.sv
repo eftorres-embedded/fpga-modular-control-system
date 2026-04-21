@@ -193,7 +193,8 @@ module  seg7_debug_regs #(
             unique  case    (req_addr_i[7:0])
             REG_CTRL:
                 begin
-                    ctrl_next   =   ctrl_merged;
+                    ctrl_next                       =   ctrl_merged;
+                    ctrl_next[CTRL_SNAPSHOT_BIT]    =   1'b0;
 
                 end
 
@@ -223,82 +224,78 @@ module  seg7_debug_regs #(
     //--------------------------------------------------------------------
     always_comb
     begin
+        rsp_valid_next  =   rsp_valid_reg;
         rsp_rdata_next  =   rsp_rdata_reg;
-        if(!req_write_i)
-        begin
-            unique  case    (req_addr_i[7:0])
-                REG_CTRL:
-                begin
-                    rsp_rdata_next  =   ctrl_reg;
-                end
+        rsp_err_next    =   rsp_err_reg;
 
-                REG_SW_VALUE:
-                begin
-                    rsp_rdata_next  =   sw_value_reg;
-                end
-
-                REG_DP_N:
-                begin
-                    rsp_rdata_next  =   dp_n_reg;
-                end
-
-                REG_BLANK:
-                begin
-                    rsp_rdata_next  =   blank_reg;
-                end
-
-                REG_LIVE_VALUE:
-                begin
-                    rsp_rdata_next  =   {{DATA_W-(SEV_SEG_W*4){1'b0}},  live_value_i};
-                end
-
-                REG_FROZEN_VALUE:
-                begin
-                    rsp_rdata_next  =   frozen_value_reg;
-                end
-
-                REG_ACTIVE_VALUE:
-                begin
-                    rsp_rdata_next  =   {{DATA_W-(SEV_SEG_W*4){1'b0}},  live_value_o};
-                end
-
-                REG_STATUS:
-                begin
-                    rsp_rdata_next  =   status_rdata;
-                end
-
-                default:
-                begin
-                    rsp_rdata_next  =   '0;
-                    rsp_err_next    =   1'b1;
-                end
-            endcase
-        end
-    end
-
-
-    //----------------------------------------------------------------
-    //response MMIO control
-    //----------------------------------------------------------------
-    always_comb
-    begin
-        rsp_valid_next      =   rsp_valid_reg;
-        rsp_rdata_next      =   rsp_rdata_reg;
-        rsp_err_next        =   rsp_err_reg;
-
-        //Clear response valid once the response is accepted.
+        //if the current response is accepted, clear valid
         if(rsp_fire)
-        begin
             rsp_valid_next  =   1'b0;
-        end
+
+        //if a new request is accepted this cyccle, generate a fresh response
+        //This overrides the clear above, which is what we want when rsp_fire
+        //and req_fire happen in the same cycle
 
         if(req_fire)
         begin
             rsp_valid_next  =   1'b1;
             rsp_rdata_next  =   '0;
             rsp_err_next    =   1'b0;
+
+            //Read response decode
+            if(!req_write_i)
+            begin
+                unique  case    (req_addr_i[7:0])
+                    REG_CTRL:
+                    begin
+                        rsp_rdata_next  =   ctrl_reg;
+                    end
+
+                    REG_SW_VALUE:
+                    begin
+                        rsp_rdata_next  =   sw_value_reg;
+                    end
+
+                    REG_DP_N:
+                    begin
+                        rsp_rdata_next  =   dp_n_reg;
+                    end
+
+                    REG_BLANK:
+                    begin
+                        rsp_rdata_next  =   blank_reg;
+                    end
+
+                    REG_LIVE_VALUE:
+                    begin
+                        rsp_rdata_next  =   {{(DATA_W-(SEV_SEG_W*4)){1'b0}},  live_value_i};
+                    end
+
+                    REG_FROZEN_VALUE:
+                    begin
+                        rsp_rdata_next  =   frozen_value_reg;
+                    end
+
+                    REG_ACTIVE_VALUE:
+                    begin
+                        rsp_rdata_next  =   {{(DATA_W-(SEV_SEG_W*4)){1'b0}},  active_value_o};
+                    end
+
+                    REG_STATUS:
+                    begin
+                        rsp_rdata_next  =   status_rdata;
+                    end
+
+                    default:
+                    begin
+                        rsp_rdata_next  =   '0;
+                        rsp_err_next    =   1'b1;
+                    end
+                endcase
+            end
         end
     end
+
 
     //-------------------------------------------------------------------
     //Response Channel
@@ -321,8 +318,8 @@ module  seg7_debug_regs #(
             if(req_fire)
             begin
                 rsp_valid_reg   <=  1'b1;
-                rsp_rdata_reg   <=  rdata_next;
-                rsp_err_reg     <=  err_next;
+                rsp_rdata_reg   <=  rsp_rdata_next;
+                rsp_err_reg     <=  rsp_err_next;
             end
         end
     end
@@ -336,7 +333,7 @@ module  seg7_debug_regs #(
         begin
             ctrl_reg            <=  '0;
             sw_value_reg        <=  '0;
-            dp_n_reg            <=  '0;
+            dp_n_reg            <=  32'h3F;
             blank_reg           <=  '0;
             frozen_value_reg    <=  '0;
         end
