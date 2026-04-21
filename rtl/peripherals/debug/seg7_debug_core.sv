@@ -47,3 +47,20 @@ module  seg7_debug_core(
     end
 
     hex_to_sseg u_hex5  (.hex(dig5),    .dp_in(final_dp_n[5]),  .sseg(hex5_raw));
+    hex_to_sseg u_hex4  (.hex(dig4),    .dp_in(final_dp_n[4]),  .sseg(hex4_raw));
+    hex_to_sseg u_hex3  (.hex(dig3),    .dp_in(final_dp_n[3]),  .sseg(hex3_raw));
+    hex_to_sseg u_hex2  (.hex(dig2),    .dp_in(final_dp_n[2]),  .sseg(hex2_raw));
+    hex_to_sseg u_hex1  (.hex(dig1),    .dp_in(final_dp_n[1]),  .sseg(hex1_raw));
+    hex_to_sseg u_hex0  (.hex(dig0),    .dp_in(final_dp_n[0]),  .sseg(hex0_raw));
+
+    always_comb
+    begin
+        hex5_o  =   (!enable_i  ||  blank_i[5])  ?   8'hFF   :   hex5_raw;
+        hex4_o  =   (!enable_i  ||  blank_i[4])  ?   8'hFF   :   hex4_raw;
+        hex3_o  =   (!enable_i  ||  blank_i[3])  ?   8'hFF   :   hex3_raw;
+        hex2_o  =   (!enable_i  ||  blank_i[2])  ?   8'hFF   :   hex2_raw;
+        hex1_o  =   (!enable_i  ||  blank_i[1])  ?   8'hFF   :   hex1_raw;
+        hex0_o  =   (!enable_i  ||  blank_i[0])  ?   8'hFF   :   hex0_raw;
+    end
+
+endmodule
