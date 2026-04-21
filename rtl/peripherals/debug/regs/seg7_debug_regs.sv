@@ -375,3 +375,5 @@ module  seg7_debug_regs #(
     assign  active_value_o  =   ctrl_reg[CTRL_SRC_SEL_BIT]  ?   sw_value_reg[(NUM_DIGITS*4)-1:0]     :
                                 ctrl_reg[CTRL_FREEZE_BIT]   ?   frozen_value_reg[(NUM_DIGITS*4)-1:0] :
                                 live_value_i;
+										  
+	endmodule

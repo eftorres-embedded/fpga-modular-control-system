@@ -6,8 +6,8 @@ module  axi_lite_seg7_debug #(
     // -------------------------------------------------------------------------
     // AXI4-Lite slave interface
     // -------------------------------------------------------------------------
-    input  logic                        s_axi_aclk,
-    input  logic                        s_axi_aresetn,
+    input  logic                        clk,
+    input  logic                        rst_n,
 
     input  logic    [ADDR_W-1:0]        s_axi_awaddr,
     input  logic                        s_axi_awvalid,
@@ -157,8 +157,8 @@ module  axi_lite_seg7_debug #(
         .DATA_W     (DATA_W),
         .NUM_DIGITS (NUM_DIGITS))
         u_seg7_debug_regs (
-        .clk_i          (s_axi_aclk),
-        .rst_ni         (s_axi_aresetn),
+        .clk_i          (clk),
+        .rst_ni         (rst_n),
 
         .req_valid_i    (mmio_req_valid),
         .req_ready_o    (mmio_req_ready),
