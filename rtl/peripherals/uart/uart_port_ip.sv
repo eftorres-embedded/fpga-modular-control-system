@@ -128,17 +128,17 @@ module uart_port	#(
 		.WIDTH(8))
 		
 	u_rx_fifo(
-		.clk		(clk),
+		.clk	(clk),
 		.rst_n	(rst_n),
 		
 		//write side
 		.wr_en	(rx_fifo_wr_fire),
-		.din		(rx_engine_data),
-		.full		(rx_fifo_full),
+		.din	(rx_engine_data),
+		.full	(rx_fifo_full),
 		
 		//read side
 		.rd_en	(rx_fifo_rd_en),
-		.dout		(rx_fifo_dout),
+		.dout	(rx_fifo_dout),
 		.empty	(rx_fifo_empty_int), //internal signal: FIFO storage only
 		
 		.count());//how many items in the fifo
