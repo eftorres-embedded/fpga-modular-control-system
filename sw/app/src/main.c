@@ -9,6 +9,7 @@
 #include "mpu6500.h"
 #include "pwm_regs.h"
 #include "motor_pwm.h"
+#include "seg7_debug_regs.h"
 
 /*
  * Combined bring-up / comparison test:
@@ -39,6 +40,8 @@
 #define I2C_DIVISOR_DEFAULT         250u
 #define MOTOR_SMALL_DUTY            2000
 #define STREAM_PERIOD_US            100000u
+#define SEG7_PAGE_HOLD_TICKS        20u   /* 20 * 100 ms = 2.0 s per page */
+#define SEG7_PAGE_COUNT             4u
 
 static void print_adxl_reg_u8(const char *name, uint8_t reg)
 {
@@ -258,6 +261,150 @@ static void motor_start_small_forward(void)
     }
 }
 
+
+//-----------------------------------------------------------------------------------
+//Seg7
+//-----------------------------------------------------------------------------------
+static int32_t adxl345_full_scale_mg_from_data_format(uint8_t data_format)
+{
+    switch (data_format & 0x3u) {
+    case 0u: return 2000;   /* +/-2 g  */
+    case 1u: return 4000;   /* +/-4 g  */
+    case 2u: return 8000;   /* +/-8 g  */
+    default: return 16000;  /* +/-16 g */
+    }
+}
+
+static int32_t mpu6500_full_scale_mg_from_accel_config(uint8_t accel_config)
+{
+    switch ((accel_config >> 3) & 0x3u) {
+    case 0u: return 2000;   /* +/-2 g  */
+    case 1u: return 4000;   /* +/-4 g  */
+    case 2u: return 8000;   /* +/-8 g  */
+    default: return 16000;  /* +/-16 g */
+    }
+}
+
+static int8_t normalize_to_s8(int32_t value, int32_t full_scale_abs)
+{
+    int32_t q;
+
+    if (full_scale_abs <= 0) {
+        return 0;
+    }
+
+    q = div_round_nearest_s32(value * 127, full_scale_abs);
+
+    if (q > 127) {
+        q = 127;
+    } else if (q < -128) {
+        q = -128;
+    }
+
+    return (int8_t)q;
+}
+
+static uint32_t pack_u8x3(uint8_t b2, uint8_t b1, uint8_t b0)
+{
+    return seg7_pack_hex6((uint8_t)(b2 >> 4), (uint8_t)(b2 & 0x0Fu),
+                          (uint8_t)(b1 >> 4), (uint8_t)(b1 & 0x0Fu),
+                          (uint8_t)(b0 >> 4), (uint8_t)(b0 & 0x0Fu));
+}
+
+static uint32_t pack_u12x2(uint16_t hi12, uint16_t lo12)
+{
+    hi12 &= 0x0FFFu;
+    lo12 &= 0x0FFFu;
+
+    return seg7_pack_hex6((uint8_t)((hi12 >> 8) & 0x0Fu),
+                          (uint8_t)((hi12 >> 4) & 0x0Fu),
+                          (uint8_t)( hi12       & 0x0Fu),
+                          (uint8_t)((lo12 >> 8) & 0x0Fu),
+                          (uint8_t)((lo12 >> 4) & 0x0Fu),
+                          (uint8_t)( lo12       & 0x0Fu));
+}
+
+static void seg7_update_page(uint32_t page,
+                             uint8_t adxl_devid,
+                             uint8_t mpu_whoami,
+                             uint8_t mpu_accel_config,
+                             int32_t adxl_x_mg,
+                             int32_t adxl_y_mg,
+                             int32_t adxl_z_mg,
+                             int32_t mpu_ax_mg,
+                             int32_t mpu_ay_mg,
+                             int32_t mpu_az_mg,
+                             int32_t adxl_full_scale_mg,
+                             int32_t mpu_full_scale_mg)
+{
+    switch (page) {
+    case 0u:
+        /*
+         * MODE_FULL6_HEX
+         * Comms / identity page:
+         *   [ADXL_DEVID][MPU_WHO_AM_I][MPU_ACCEL_CONFIG]
+         */
+        seg7_set_mode(SEG7_MODE_FULL6_HEX);
+        seg7_set_dp_n(0x3Fu);
+        seg7_set_blank(0x00u);
+        seg7_set_sw_value(pack_u8x3(adxl_devid, mpu_whoami, mpu_accel_config));
+        break;
+
+    case 1u:
+        /*
+         * MODE_SPLIT2X12
+         * Motor PWM page:
+         *   [left duty][right duty]
+         *
+         * Current test uses same fixed small duty on both motors.
+         * 2000 decimal = 0x7D0, so this page will show 7D0.7D0
+         */
+        seg7_set_mode(SEG7_MODE_SPLIT2X12);
+        seg7_set_dp_n(0x3Fu);
+        seg7_set_blank(0x00u);
+        seg7_set_sw_value(pack_u12x2((uint16_t)MOTOR_SMALL_DUTY,
+                                     (uint16_t)MOTOR_SMALL_DUTY));
+        break;
+
+    case 2u:
+        /*
+         * MODE_SPLIT3X8
+         * ADXL345 normalized X/Y/Z in signed 8-bit two's complement.
+         * Each axis uses one byte -> two hex digits.
+         */
+        seg7_set_mode(SEG7_MODE_SPLIT3X8);
+        seg7_set_dp_n(0x3Fu);
+        seg7_set_blank(0x00u);
+        seg7_set_sw_value(
+            pack_u8x3((uint8_t)normalize_to_s8(adxl_x_mg, adxl_full_scale_mg),
+                      (uint8_t)normalize_to_s8(adxl_y_mg, adxl_full_scale_mg),
+                      (uint8_t)normalize_to_s8(adxl_z_mg, adxl_full_scale_mg))
+        );
+        break;
+
+    default:
+        /*
+         * MODE_DIGIT_RAW
+         * MPU-6500 accel normalized X/Y/Z in signed 8-bit two's complement.
+         * No automatic separator dots in current RTL for this mode.
+         */
+        seg7_set_mode(SEG7_MODE_DIGIT_RAW);
+        seg7_set_dp_n(0x3Fu);
+        seg7_set_blank(0x00u);
+        seg7_set_sw_value(
+            pack_u8x3((uint8_t)normalize_to_s8(mpu_ax_mg, mpu_full_scale_mg),
+                      (uint8_t)normalize_to_s8(mpu_ay_mg, mpu_full_scale_mg),
+                      (uint8_t)normalize_to_s8(mpu_az_mg, mpu_full_scale_mg))
+        );
+        break;
+    }
+}
+
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+
+
 int main(void)
 {
     adxl345_status_t adxl_st;
@@ -271,6 +418,11 @@ int main(void)
     int32_t adxl_lsb_per_g;
     int32_t mpu_lsb_per_g;
     uint32_t led_step = 0u;
+
+    //7seg variables
+    int32_t adxl_full_scale_mg;
+    int32_t mpu_full_scale_mg;
+    uint32_t seg7_tick = 0u;
 
     printf("\nADXL345 + MPU-6500 + MOTOR PWM + LED PWM bring-up test\n");
 
@@ -369,6 +521,10 @@ int main(void)
     adxl_lsb_per_g = adxl345_lsb_per_g_from_data_format(adxl_data_format);
     mpu_lsb_per_g  = mpu6500_lsb_per_g_from_accel_config(mpu_accel_config);
 
+    //seg7 scaler
+    adxl_full_scale_mg = adxl345_full_scale_mg_from_data_format(adxl_data_format);
+    mpu_full_scale_mg  = mpu6500_full_scale_mg_from_accel_config(mpu_accel_config);
+
     printf("\nComputed accel scaling: ADXL=%ld LSB/g, MPU=%ld LSB/g\n",
            (long)adxl_lsb_per_g,
            (long)mpu_lsb_per_g);
@@ -389,7 +545,18 @@ int main(void)
     printf("\nStreaming both IMUs with accel in g and MPU temp in F...\n");
     printf("(Ctrl+C / stop from debugger when done)\n\n");
 
-    while (1) {
+
+    /* ---------------------------------------------------------------------
+     * 7-segment debug display
+     * ------------------------------------------------------------------ */
+    printf("Initializing SEG7 DEBUG at 0x%08X...\n", (unsigned)SEG7_DEBUG_BASE);
+    seg7_init();
+    seg7_select_software();
+    seg7_set_blank(0x00u);
+    seg7_set_dp_n(0x3Fu);
+
+    while (1)
+    {
         adxl_st = adxl345_read_xyz_raw(&adxl_xyz);
         mpu_st  = mpu6500_read_all_raw(&mpu_sample);
 
@@ -401,7 +568,8 @@ int main(void)
             printf("MPU-6500 read failed, status = %d\n", (int)mpu_st);
         }
 
-        if ((adxl_st == ADXL345_OK) && (mpu_st == MPU6500_OK)) {
+        if ((adxl_st == ADXL345_OK) && (mpu_st == MPU6500_OK))
+        {
             const int32_t adxl_x_mg = raw_to_milli_g(adxl_xyz.x, adxl_lsb_per_g);
             const int32_t adxl_y_mg = raw_to_milli_g(adxl_xyz.y, adxl_lsb_per_g);
             const int32_t adxl_z_mg = raw_to_milli_g(adxl_xyz.z, adxl_lsb_per_g);
@@ -428,9 +596,25 @@ int main(void)
                    (int)mpu_sample.gyro.x,
                    (int)mpu_sample.gyro.y,
                    (int)mpu_sample.gyro.z);
+
+                seg7_update_page(
+                (seg7_tick / SEG7_PAGE_HOLD_TICKS) % SEG7_PAGE_COUNT,
+                adxl_devid,
+                mpu_whoami,
+                mpu_accel_config,
+                adxl_x_mg,
+                adxl_y_mg,
+                adxl_z_mg,
+                mpu_ax_mg,
+                mpu_ay_mg,
+                mpu_az_mg,
+                adxl_full_scale_mg,
+                mpu_full_scale_mg
+            );
         }
 
         led_pwm_set_step(led_step++);
+        seg7_tick++;
         usleep(STREAM_PERIOD_US);
     }
 
