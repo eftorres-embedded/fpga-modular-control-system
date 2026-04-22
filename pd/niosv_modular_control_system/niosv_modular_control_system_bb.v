@@ -13,6 +13,7 @@ module niosv_modular_control_system (
 	i2c_master_scl_out,
 	i2c_master_master_receiving_o,
 	led_pwm_raw,
+	live_input_live_value,
 	motor_pwm_pwm,
 	motor_pwm_in1,
 	motor_pwm_in2,
@@ -21,7 +22,9 @@ module niosv_modular_control_system (
 	spi_master_mosi,
 	spi_master_miso,
 	spi_master_cs_n,
-	live_input_live_value);	
+	gpio_gpio_in,
+	gpio_gpio_out,
+	gpio_gpio_oe);	
 
 	input		clk_clk;
 	output	[7:0]	hex0_hex0;
@@ -36,6 +39,7 @@ module niosv_modular_control_system (
 	output		i2c_master_scl_out;
 	output		i2c_master_master_receiving_o;
 	output	[9:0]	led_pwm_raw;
+	input	[23:0]	live_input_live_value;
 	output	[1:0]	motor_pwm_pwm;
 	output	[1:0]	motor_pwm_in1;
 	output	[1:0]	motor_pwm_in2;
@@ -44,5 +48,7 @@ module niosv_modular_control_system (
 	output		spi_master_mosi;
 	input		spi_master_miso;
 	output		spi_master_cs_n;
-	input	[23:0]	live_input_live_value;
+	input	[31:0]	gpio_gpio_in;
+	output	[31:0]	gpio_gpio_out;
+	output	[31:0]	gpio_gpio_oe;
 endmodule

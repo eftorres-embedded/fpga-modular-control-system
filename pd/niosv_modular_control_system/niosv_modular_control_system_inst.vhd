@@ -13,6 +13,7 @@
 			i2c_master_scl_out            : out std_logic;                                        -- scl_out
 			i2c_master_master_receiving_o : out std_logic;                                        -- master_receiving_o
 			led_pwm_raw                   : out std_logic_vector(9 downto 0);                     -- raw
+			live_input_live_value         : in  std_logic_vector(23 downto 0) := (others => 'X'); -- live_value
 			motor_pwm_pwm                 : out std_logic_vector(1 downto 0);                     -- pwm
 			motor_pwm_in1                 : out std_logic_vector(1 downto 0);                     -- in1
 			motor_pwm_in2                 : out std_logic_vector(1 downto 0);                     -- in2
@@ -21,7 +22,9 @@
 			spi_master_mosi               : out std_logic;                                        -- mosi
 			spi_master_miso               : in  std_logic                     := 'X';             -- miso
 			spi_master_cs_n               : out std_logic;                                        -- cs_n
-			live_input_live_value         : in  std_logic_vector(23 downto 0) := (others => 'X')  -- live_value
+			gpio_gpio_in                  : in  std_logic_vector(31 downto 0) := (others => 'X'); -- gpio_in
+			gpio_gpio_out                 : out std_logic_vector(31 downto 0);                    -- gpio_out
+			gpio_gpio_oe                  : out std_logic_vector(31 downto 0)                     -- gpio_oe
 		);
 	end component niosv_modular_control_system;
 
@@ -40,6 +43,7 @@
 			i2c_master_scl_out            => CONNECTED_TO_i2c_master_scl_out,            --           .scl_out
 			i2c_master_master_receiving_o => CONNECTED_TO_i2c_master_master_receiving_o, --           .master_receiving_o
 			led_pwm_raw                   => CONNECTED_TO_led_pwm_raw,                   --    led_pwm.raw
+			live_input_live_value         => CONNECTED_TO_live_input_live_value,         -- live_input.live_value
 			motor_pwm_pwm                 => CONNECTED_TO_motor_pwm_pwm,                 --  motor_pwm.pwm
 			motor_pwm_in1                 => CONNECTED_TO_motor_pwm_in1,                 --           .in1
 			motor_pwm_in2                 => CONNECTED_TO_motor_pwm_in2,                 --           .in2
@@ -48,6 +52,8 @@
 			spi_master_mosi               => CONNECTED_TO_spi_master_mosi,               --           .mosi
 			spi_master_miso               => CONNECTED_TO_spi_master_miso,               --           .miso
 			spi_master_cs_n               => CONNECTED_TO_spi_master_cs_n,               --           .cs_n
-			live_input_live_value         => CONNECTED_TO_live_input_live_value          -- live_input.live_value
+			gpio_gpio_in                  => CONNECTED_TO_gpio_gpio_in,                  --       gpio.gpio_in
+			gpio_gpio_out                 => CONNECTED_TO_gpio_gpio_out,                 --           .gpio_out
+			gpio_gpio_oe                  => CONNECTED_TO_gpio_gpio_oe                   --           .gpio_oe
 		);
 

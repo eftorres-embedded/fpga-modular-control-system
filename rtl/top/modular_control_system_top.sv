@@ -413,6 +413,16 @@ self_balancing_io u_self_balancing_io (
 logic		[9:0]					pwm_out;
 assign	LEDR[9:0]		=	pwm_out;
 
+//GPIO
+logic		[31:0]	gpio_in;
+logic		[31:0]	gpio_oe;
+logic		[31:0]	gpio_out;
+
+//ensures that hardwire switches or buttons are never accidently driven and short out
+//assign	gpio_out	=	gpio_oe	?	{32{1'bz}}	:	{32{1'bz}};
+assign	gpio_in	=	{{20{1'b0}},KEY[1:0],SW[9:0]};
+
+
 
 niosv_modular_control_system u_niosv (
     .clk_clk											(MAX10_CLK1_50),
@@ -436,7 +446,10 @@ niosv_modular_control_system u_niosv (
 	 .hex3_hex3											(HEX3),
 	 .hex4_hex4											(HEX4),
 	 .hex5_hex5											(HEX5),
-	 .live_input_live_value							({16'hBEEF,SW[7:0]}));
+	 .live_input_live_value							({16'hBEEF,SW[7:0]}),
+	 .gpio_gpio_in										(gpio_in),
+	 .gpio_gpio_out									(gpio_out),
+	 .gpio_gpio_oe										(gpio_oe));
 		
 		
 endmodule

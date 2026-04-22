@@ -12,6 +12,7 @@
 		.i2c_master_scl_out            (<connected-to-i2c_master_scl_out>),            //           .scl_out
 		.i2c_master_master_receiving_o (<connected-to-i2c_master_master_receiving_o>), //           .master_receiving_o
 		.led_pwm_raw                   (<connected-to-led_pwm_raw>),                   //    led_pwm.raw
+		.live_input_live_value         (<connected-to-live_input_live_value>),         // live_input.live_value
 		.motor_pwm_pwm                 (<connected-to-motor_pwm_pwm>),                 //  motor_pwm.pwm
 		.motor_pwm_in1                 (<connected-to-motor_pwm_in1>),                 //           .in1
 		.motor_pwm_in2                 (<connected-to-motor_pwm_in2>),                 //           .in2
@@ -20,6 +21,8 @@
 		.spi_master_mosi               (<connected-to-spi_master_mosi>),               //           .mosi
 		.spi_master_miso               (<connected-to-spi_master_miso>),               //           .miso
 		.spi_master_cs_n               (<connected-to-spi_master_cs_n>),               //           .cs_n
-		.live_input_live_value         (<connected-to-live_input_live_value>)          // live_input.live_value
+		.gpio_gpio_in                  (<connected-to-gpio_gpio_in>),                  //       gpio.gpio_in
+		.gpio_gpio_out                 (<connected-to-gpio_gpio_out>),                 //           .gpio_out
+		.gpio_gpio_oe                  (<connected-to-gpio_gpio_oe>)                   //           .gpio_oe
 	);
 

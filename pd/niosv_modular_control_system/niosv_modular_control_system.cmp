@@ -1,6 +1,9 @@
 	component niosv_modular_control_system is
 		port (
 			clk_clk                       : in  std_logic                     := 'X';             -- clk
+			gpio_gpio_in                  : in  std_logic_vector(31 downto 0) := (others => 'X'); -- gpio_in
+			gpio_gpio_out                 : out std_logic_vector(31 downto 0);                    -- gpio_out
+			gpio_gpio_oe                  : out std_logic_vector(31 downto 0);                    -- gpio_oe
 			hex0_hex0                     : out std_logic_vector(7 downto 0);                     -- hex0
 			hex1_hex1                     : out std_logic_vector(7 downto 0);                     -- hex1
 			hex2_hex2                     : out std_logic_vector(7 downto 0);                     -- hex2

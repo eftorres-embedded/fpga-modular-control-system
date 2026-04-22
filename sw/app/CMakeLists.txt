@@ -20,6 +20,7 @@ target_sources(app.elf
         ../drivers/src/motor_pwm.c
         ../drivers/src/mpu6500.c
         ../drivers/src/pwm_regs.c
+        ../drivers/src/seg7_debug_regs.c
         ../drivers/src/spi_regs.c
 )
 
