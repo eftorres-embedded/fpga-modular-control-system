@@ -4,6 +4,7 @@ preplace inst niosv_modular_control_system.led_pwm -pg 1 -lvl 4 -y 610
 preplace inst niosv_modular_control_system.onchip_memory -pg 1 -lvl 4 -y 370
 preplace inst niosv_modular_control_system.intel_niosv.dbg_mod -pg 1
 preplace inst niosv_modular_control_system.intel_niosv.hart -pg 1
+preplace inst niosv_modular_control_system.i2c_master_0 -pg 1 -lvl 4 -y 250
 preplace inst niosv_modular_control_system -pg 1 -lvl 1 -y 40 -regy -20
 preplace inst niosv_modular_control_system.intel_niosv.timer_module -pg 1
 preplace inst niosv_modular_control_system.intel_niosv.reset_bridge -pg 1
@@ -14,14 +15,15 @@ preplace inst niosv_modular_control_system.clock_bridge -pg 1 -lvl 1 -y 70
 preplace inst niosv_modular_control_system.spi_master_0 -pg 1 -lvl 4 -y 130
 preplace inst niosv_modular_control_system.intel_niosv -pg 1 -lvl 3 -y 50
 preplace inst niosv_modular_control_system.jtag_uart -pg 1 -lvl 4 -y 30
-preplace netloc EXPORT<net_container>niosv_modular_control_system</net_container>(SLAVE)reset_bridge.in_reset,(SLAVE)niosv_modular_control_system.rst_n) 1 0 2 NJ 60 NJ
-preplace netloc EXPORT<net_container>niosv_modular_control_system</net_container>(SLAVE)led_pwm.pwm_o,(SLAVE)niosv_modular_control_system.led_pwm) 1 0 4 NJ 640 NJ 640 NJ 640 NJ
-preplace netloc FAN_OUT<net_container>niosv_modular_control_system</net_container>(SLAVE)jtag_uart.irq,(SLAVE)spi_master_0.SPI_Interrupt,(MASTER)intel_niosv.platform_irq_rx) 1 3 1 830
+preplace netloc EXPORT<net_container>niosv_modular_control_system</net_container>(SLAVE)niosv_modular_control_system.led_pwm,(SLAVE)led_pwm.pwm_o) 1 0 4 NJ 640 NJ 640 NJ 640 NJ
+preplace netloc EXPORT<net_container>niosv_modular_control_system</net_container>(SLAVE)niosv_modular_control_system.rst_n,(SLAVE)reset_bridge.in_reset) 1 0 2 NJ 60 NJ
+preplace netloc FAN_OUT<net_container>niosv_modular_control_system</net_container>(MASTER)reset_bridge.out_reset,(SLAVE)spi_master_0.reset,(SLAVE)onchip_memory.reset1,(SLAVE)onchip_memory.reset2,(SLAVE)intel_niosv.reset,(SLAVE)i2c_master_0.reset,(SLAVE)motor_pwm.reset,(SLAVE)led_pwm.reset,(SLAVE)jtag_uart.reset) 1 2 2 420 170 810
 preplace netloc EXPORT<net_container>niosv_modular_control_system</net_container>(SLAVE)niosv_modular_control_system.spi_master,(SLAVE)spi_master_0.SPI_Master) 1 0 4 NJ 190 NJ 190 NJ 190 NJ
-preplace netloc FAN_OUT<net_container>niosv_modular_control_system</net_container>(SLAVE)onchip_memory.reset1,(SLAVE)intel_niosv.reset,(SLAVE)jtag_uart.reset,(SLAVE)led_pwm.reset,(MASTER)reset_bridge.out_reset,(SLAVE)spi_master_0.reset,(SLAVE)onchip_memory.reset2,(SLAVE)motor_pwm.reset) 1 2 2 420 230 850
 preplace netloc EXPORT<net_container>niosv_modular_control_system</net_container>(SLAVE)niosv_modular_control_system.motor_pwm,(SLAVE)motor_pwm.pwm_hbridge) 1 0 4 NJ 540 NJ 540 NJ 540 NJ
 preplace netloc EXPORT<net_container>niosv_modular_control_system</net_container>(SLAVE)clock_bridge.in_clk,(SLAVE)niosv_modular_control_system.clk) 1 0 1 NJ
-preplace netloc INTERCONNECT<net_container>niosv_modular_control_system</net_container>(MASTER)intel_niosv.data_manager,(SLAVE)onchip_memory.s2,(SLAVE)jtag_uart.avalon_jtag_slave,(SLAVE)intel_niosv.timer_sw_agent,(SLAVE)led_pwm.s_axil,(SLAVE)motor_pwm.s_axil,(MASTER)intel_niosv.instruction_manager,(SLAVE)onchip_memory.s1,(SLAVE)intel_niosv.dm_agent,(SLAVE)spi_master_0.s_axil) 1 2 2 460 250 770
-preplace netloc FAN_OUT<net_container>niosv_modular_control_system</net_container>(SLAVE)jtag_uart.clk,(SLAVE)motor_pwm.clock,(SLAVE)reset_bridge.clk,(SLAVE)intel_niosv.clk,(MASTER)clock_bridge.out_clk,(SLAVE)onchip_memory.clk2,(SLAVE)spi_master_0.clock,(SLAVE)onchip_memory.clk1,(SLAVE)led_pwm.clock) 1 1 3 270 140 440 210 810
+preplace netloc FAN_OUT<net_container>niosv_modular_control_system</net_container>(SLAVE)spi_master_0.SPI_Interrupt,(MASTER)intel_niosv.platform_irq_rx,(SLAVE)jtag_uart.irq) 1 3 1 790
+preplace netloc EXPORT<net_container>niosv_modular_control_system</net_container>(SLAVE)i2c_master_0.I2C_Master,(SLAVE)niosv_modular_control_system.i2c_master) 1 0 4 NJ 260 NJ 260 NJ 260 NJ
+preplace netloc FAN_OUT<net_container>niosv_modular_control_system</net_container>(SLAVE)jtag_uart.clk,(SLAVE)i2c_master_0.clock,(MASTER)clock_bridge.out_clk,(SLAVE)intel_niosv.clk,(SLAVE)reset_bridge.clk,(SLAVE)onchip_memory.clk1,(SLAVE)onchip_memory.clk2,(SLAVE)motor_pwm.clock,(SLAVE)spi_master_0.clock,(SLAVE)led_pwm.clock) 1 1 3 270 140 440 210 850
+preplace netloc INTERCONNECT<net_container>niosv_modular_control_system</net_container>(SLAVE)motor_pwm.s_axil,(SLAVE)spi_master_0.s_axil,(MASTER)intel_niosv.data_manager,(MASTER)intel_niosv.instruction_manager,(SLAVE)onchip_memory.s2,(SLAVE)intel_niosv.dm_agent,(SLAVE)i2c_master_0.s_axil,(SLAVE)intel_niosv.timer_sw_agent,(SLAVE)jtag_uart.avalon_jtag_slave,(SLAVE)onchip_memory.s1,(SLAVE)led_pwm.s_axil) 1 2 2 460 230 770
 levelinfo -pg 1 0 80 1040
 levelinfo -hier niosv_modular_control_system 90 120 300 570 890 1030

@@ -13,6 +13,13 @@
 		.spi_master_sclk               (<connected-to-spi_master_sclk>),               // spi_master.sclk
 		.spi_master_mosi               (<connected-to-spi_master_mosi>),               //           .mosi
 		.spi_master_miso               (<connected-to-spi_master_miso>),               //           .miso
-		.spi_master_cs_n               (<connected-to-spi_master_cs_n>)                //           .cs_n
+		.spi_master_cs_n               (<connected-to-spi_master_cs_n>),               //           .cs_n
+		.hex0_hex0                     (<connected-to-hex0_hex0>),                     //       hex0.hex0
+		.hex1_hex1                     (<connected-to-hex1_hex1>),                     //       hex1.hex1
+		.hex2_hex2                     (<connected-to-hex2_hex2>),                     //       hex2.hex2
+		.hex3_hex3                     (<connected-to-hex3_hex3>),                     //       hex3.hex3
+		.hex4_hex4                     (<connected-to-hex4_hex4>),                     //       hex4.hex4
+		.hex5_hex5                     (<connected-to-hex5_hex5>),                     //       hex5.hex5
+		.bcd_input_bcd_input           (<connected-to-bcd_input_bcd_input>)            //  bcd_input.bcd_input
 	);
 

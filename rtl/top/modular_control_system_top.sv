@@ -415,24 +415,29 @@ assign	LEDR[9:0]		=	pwm_out;
 
 
 niosv_modular_control_system u_niosv (
-    .clk_clk                                (MAX10_CLK1_50),
-    .led_pwm_raw                            (pwm_out[9:0]),
-    .rst_n_reset_n                          (rst_n),
-    .spi_master_sclk                        (GSENSOR_SCLK),
-    .spi_master_mosi                        (GSENSOR_SDI),
-    .spi_master_miso                        (GSENSOR_SDO),
-    .spi_master_cs_n                        (GSENSOR_CS_N),
-    .motor_pwm_pwm                          ({motor_a_pwm_o, motor_b_pwm_o}),
-    .motor_pwm_in1                          ({motor_a_in1_o, motor_b_in1_o}),
-    .motor_pwm_in2                          ({motor_a_in2_o, motor_b_in2_o}),
-    .i2c_master_sda_in                      (mpu_sda_in),
-    .i2c_master_sda_out                     (mpu_sda_out),
-    .i2c_master_scl_in                      (mpu_scl_in),
-    .i2c_master_scl_out                     (mpu_scl_out),
-    .i2c_master_master_receiving_o          (mpu_master_receiving));
+    .clk_clk											(MAX10_CLK1_50),
+    .led_pwm_raw										(pwm_out[9:0]),
+    .rst_n_reset_n									(rst_n),
+    .spi_master_sclk									(GSENSOR_SCLK),
+    .spi_master_mosi									(GSENSOR_SDI),
+    .spi_master_miso									(GSENSOR_SDO),
+    .spi_master_cs_n									(GSENSOR_CS_N),
+    .motor_pwm_pwm									({motor_a_pwm_o, motor_b_pwm_o}),
+    .motor_pwm_in1									({motor_a_in1_o, motor_b_in1_o}),
+    .motor_pwm_in2									({motor_a_in2_o, motor_b_in2_o}),
+    .i2c_master_sda_in								(mpu_sda_in),
+    .i2c_master_sda_out								(mpu_sda_out),
+    .i2c_master_scl_in								(mpu_scl_in),
+    .i2c_master_scl_out								(mpu_scl_out),
+    .i2c_master_master_receiving_o				(mpu_master_receiving),
+	 .hex0_hex0											(HEX0),
+	 .hex1_hex1											(HEX1),
+	 .hex2_hex2											(HEX2),
+	 .hex3_hex3											(HEX3),
+	 .hex4_hex4											(HEX4),
+	 .hex5_hex5											(HEX5),
+	 .bcd_input_bcd_input							({0xBEEF,SW[7:0]}));
 		
-//assign LEDR[1]	=	mpu_i2c_scl_drive_low;
-//assign LEDR[2]	=	mpu_i2c_sda_drive_low;
 		
 endmodule
 

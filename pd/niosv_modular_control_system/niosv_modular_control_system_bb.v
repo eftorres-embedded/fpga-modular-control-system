@@ -14,7 +14,14 @@ module niosv_modular_control_system (
 	spi_master_sclk,
 	spi_master_mosi,
 	spi_master_miso,
-	spi_master_cs_n);	
+	spi_master_cs_n,
+	hex0_hex0,
+	hex1_hex1,
+	hex2_hex2,
+	hex3_hex3,
+	hex4_hex4,
+	hex5_hex5,
+	bcd_input_bcd_input);	
 
 	input		clk_clk;
 	input		i2c_master_sda_in;
@@ -31,4 +38,11 @@ module niosv_modular_control_system (
 	output		spi_master_mosi;
 	input		spi_master_miso;
 	output		spi_master_cs_n;
+	output	[7:0]	hex0_hex0;
+	output	[7:0]	hex1_hex1;
+	output	[7:0]	hex2_hex2;
+	output	[7:0]	hex3_hex3;
+	output	[7:0]	hex4_hex4;
+	output	[7:0]	hex5_hex5;
+	input	[23:0]	bcd_input_bcd_input;
 endmodule
