@@ -16,6 +16,7 @@ target_sources(app.elf
     PRIVATE
         src/main.c
         ../drivers/src/adxl345.c
+        ../drivers/src/gpio_regs.c
         ../drivers/src/i2c_regs.c
         ../drivers/src/motor_pwm.c
         ../drivers/src/mpu6500.c
