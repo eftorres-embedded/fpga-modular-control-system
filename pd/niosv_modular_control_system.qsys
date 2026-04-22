@@ -244,6 +244,22 @@
          type = "String";
       }
    }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
    element onchip_memory
    {
       datum _sortIndex
@@ -328,11 +344,7 @@
  <parameter name="timeStamp" value="0" />
  <parameter name="useTestBenchNamingPattern" value="false" />
  <instanceScript></instanceScript>
- <interface
-   name="bcd_input"
-   internal="Seg7_debug_0.bcd_input"
-   type="conduit"
-   dir="end" />
+ <interface name="bcd_input" internal="Seg7_debug_0.bcd_input" />
  <interface name="clk" internal="clock_bridge.in_clk" type="clock" dir="end" />
  <interface name="hex0" internal="Seg7_debug_0.HEX0" type="conduit" dir="end" />
  <interface name="hex1" internal="Seg7_debug_0.HEX1" type="conduit" dir="end" />
@@ -346,6 +358,11 @@
    type="conduit"
    dir="end" />
  <interface name="led_pwm" internal="led_pwm.pwm_o" type="conduit" dir="end" />
+ <interface
+   name="live_input"
+   internal="Seg7_debug_0.live_value"
+   type="conduit"
+   dir="end" />
  <interface
    name="motor_pwm"
    internal="motor_pwm.pwm_hbridge"

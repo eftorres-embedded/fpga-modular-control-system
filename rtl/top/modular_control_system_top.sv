@@ -189,15 +189,15 @@ reset_sync	u_reset_synchronizer(
 
 signal_to_pulse	u0(.clock(MAX10_CLK1_50), 	.signal(!KEY[0]), 	.pulse(KEY0_pulse));
 
-hex_to_sseg			u_SW0(.hex(SW[3:0]), 	.dp_in(dp), 		.sseg(HEX0));
-
-hex_to_sseg			u_SW1(.hex(SW[7:4]), 	.dp_in(dp), 		.sseg(HEX1));
-
-hex_to_sseg			count0(.hex(lcd_fifo_count[3:0]), 	.dp_in(dp), 		.sseg(HEX2));
-
-hex_to_sseg			count1(.hex(lcd_fifo_count[7:4]), 	.dp_in(dp), 		.sseg(HEX3));
-
-hex_to_sseg			count2(.hex({1'b0,1'b0,lcd_fifo_count[9:8]}), 	.dp_in(dp), 		.sseg(HEX4));
+//hex_to_sseg			u_SW0(.hex(SW[3:0]), 	.dp_in(dp), 		.sseg(HEX0));
+//
+//hex_to_sseg			u_SW1(.hex(SW[7:4]), 	.dp_in(dp), 		.sseg(HEX1));
+//
+//hex_to_sseg			count0(.hex(lcd_fifo_count[3:0]), 	.dp_in(dp), 		.sseg(HEX2));
+//
+//hex_to_sseg			count1(.hex(lcd_fifo_count[7:4]), 	.dp_in(dp), 		.sseg(HEX3));
+//
+//hex_to_sseg			count2(.hex({1'b0,1'b0,lcd_fifo_count[9:8]}), 	.dp_in(dp), 		.sseg(HEX4));
 
 
 /////////////////////////////////////////////
@@ -436,7 +436,7 @@ niosv_modular_control_system u_niosv (
 	 .hex3_hex3											(HEX3),
 	 .hex4_hex4											(HEX4),
 	 .hex5_hex5											(HEX5),
-	 .bcd_input_bcd_input							({0xBEEF,SW[7:0]}));
+	 .live_input_live_value							({16'hBEEF,SW[7:0]}));
 		
 		
 endmodule

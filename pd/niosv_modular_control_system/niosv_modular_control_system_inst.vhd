@@ -1,6 +1,12 @@
 	component niosv_modular_control_system is
 		port (
 			clk_clk                       : in  std_logic                     := 'X';             -- clk
+			hex0_hex0                     : out std_logic_vector(7 downto 0);                     -- hex0
+			hex1_hex1                     : out std_logic_vector(7 downto 0);                     -- hex1
+			hex2_hex2                     : out std_logic_vector(7 downto 0);                     -- hex2
+			hex3_hex3                     : out std_logic_vector(7 downto 0);                     -- hex3
+			hex4_hex4                     : out std_logic_vector(7 downto 0);                     -- hex4
+			hex5_hex5                     : out std_logic_vector(7 downto 0);                     -- hex5
 			i2c_master_sda_in             : in  std_logic                     := 'X';             -- sda_in
 			i2c_master_sda_out            : out std_logic;                                        -- sda_out
 			i2c_master_scl_in             : in  std_logic                     := 'X';             -- scl_in
@@ -15,19 +21,19 @@
 			spi_master_mosi               : out std_logic;                                        -- mosi
 			spi_master_miso               : in  std_logic                     := 'X';             -- miso
 			spi_master_cs_n               : out std_logic;                                        -- cs_n
-			hex0_hex0                     : out std_logic_vector(7 downto 0);                     -- hex0
-			hex1_hex1                     : out std_logic_vector(7 downto 0);                     -- hex1
-			hex2_hex2                     : out std_logic_vector(7 downto 0);                     -- hex2
-			hex3_hex3                     : out std_logic_vector(7 downto 0);                     -- hex3
-			hex4_hex4                     : out std_logic_vector(7 downto 0);                     -- hex4
-			hex5_hex5                     : out std_logic_vector(7 downto 0);                     -- hex5
-			bcd_input_bcd_input           : in  std_logic_vector(23 downto 0) := (others => 'X')  -- bcd_input
+			live_input_live_value         : in  std_logic_vector(23 downto 0) := (others => 'X')  -- live_value
 		);
 	end component niosv_modular_control_system;
 
 	u0 : component niosv_modular_control_system
 		port map (
 			clk_clk                       => CONNECTED_TO_clk_clk,                       --        clk.clk
+			hex0_hex0                     => CONNECTED_TO_hex0_hex0,                     --       hex0.hex0
+			hex1_hex1                     => CONNECTED_TO_hex1_hex1,                     --       hex1.hex1
+			hex2_hex2                     => CONNECTED_TO_hex2_hex2,                     --       hex2.hex2
+			hex3_hex3                     => CONNECTED_TO_hex3_hex3,                     --       hex3.hex3
+			hex4_hex4                     => CONNECTED_TO_hex4_hex4,                     --       hex4.hex4
+			hex5_hex5                     => CONNECTED_TO_hex5_hex5,                     --       hex5.hex5
 			i2c_master_sda_in             => CONNECTED_TO_i2c_master_sda_in,             -- i2c_master.sda_in
 			i2c_master_sda_out            => CONNECTED_TO_i2c_master_sda_out,            --           .sda_out
 			i2c_master_scl_in             => CONNECTED_TO_i2c_master_scl_in,             --           .scl_in
@@ -42,12 +48,6 @@
 			spi_master_mosi               => CONNECTED_TO_spi_master_mosi,               --           .mosi
 			spi_master_miso               => CONNECTED_TO_spi_master_miso,               --           .miso
 			spi_master_cs_n               => CONNECTED_TO_spi_master_cs_n,               --           .cs_n
-			hex0_hex0                     => CONNECTED_TO_hex0_hex0,                     --       hex0.hex0
-			hex1_hex1                     => CONNECTED_TO_hex1_hex1,                     --       hex1.hex1
-			hex2_hex2                     => CONNECTED_TO_hex2_hex2,                     --       hex2.hex2
-			hex3_hex3                     => CONNECTED_TO_hex3_hex3,                     --       hex3.hex3
-			hex4_hex4                     => CONNECTED_TO_hex4_hex4,                     --       hex4.hex4
-			hex5_hex5                     => CONNECTED_TO_hex5_hex5,                     --       hex5.hex5
-			bcd_input_bcd_input           => CONNECTED_TO_bcd_input_bcd_input            --  bcd_input.bcd_input
+			live_input_live_value         => CONNECTED_TO_live_input_live_value          -- live_input.live_value
 		);
 

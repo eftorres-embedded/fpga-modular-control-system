@@ -1,6 +1,5 @@
 	component niosv_modular_control_system is
 		port (
-			bcd_input_bcd_input           : in  std_logic_vector(23 downto 0) := (others => 'X'); -- bcd_input
 			clk_clk                       : in  std_logic                     := 'X';             -- clk
 			hex0_hex0                     : out std_logic_vector(7 downto 0);                     -- hex0
 			hex1_hex1                     : out std_logic_vector(7 downto 0);                     -- hex1
@@ -14,6 +13,7 @@
 			i2c_master_scl_out            : out std_logic;                                        -- scl_out
 			i2c_master_master_receiving_o : out std_logic;                                        -- master_receiving_o
 			led_pwm_raw                   : out std_logic_vector(9 downto 0);                     -- raw
+			live_input_live_value         : in  std_logic_vector(23 downto 0) := (others => 'X'); -- live_value
 			motor_pwm_pwm                 : out std_logic_vector(1 downto 0);                     -- pwm
 			motor_pwm_in1                 : out std_logic_vector(1 downto 0);                     -- in1
 			motor_pwm_in2                 : out std_logic_vector(1 downto 0);                     -- in2

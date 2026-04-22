@@ -5,11 +5,11 @@
  version="1.0"
  fabric="QSYS">
  <!-- Format version 25.1 1129 (Future versions may contain additional information.) -->
- <!-- 2026.04.21.18:02:36 -->
+ <!-- 2026.04.22.01:04:28 -->
  <!-- A collection of modules and connections -->
  <parameter name="AUTO_GENERATION_ID">
   <type>java.lang.Integer</type>
-  <value>1776812556</value>
+  <value>1776837868</value>
   <derived>false</derived>
   <enabled>true</enabled>
   <visible>false</visible>
@@ -727,7 +727,7 @@ parameters are a RESULT of the module parameters. -->
     <role>hex5</role>
    </port>
   </interface>
-  <interface name="bcd_input" kind="conduit_end" version="25.1">
+  <interface name="live_value" kind="conduit_end" version="25.1">
    <!-- The connection points exposed by a module instance for the
 particular module parameters. Connection points and their
 parameters are a RESULT of the module parameters. -->
@@ -769,7 +769,7 @@ parameters are a RESULT of the module parameters. -->
     <name>live_value_i</name>
     <direction>Input</direction>
     <width>24</width>
-    <role>bcd_input</role>
+    <role>live_value</role>
    </port>
   </interface>
  </module>
