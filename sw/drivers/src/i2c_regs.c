@@ -1,106 +1,274 @@
 #include "i2c_regs.h"
 
 /*----------------------------------------------------------------------------
- * Basic init
+ * Internal timeout helper
  *----------------------------------------------------------------------------*/
-void i2c_init(uint16_t divisor)
+static bool i2c_timeout_expired(uint32_t *remaining)
 {
-    i2c_write_divisor(divisor);
+    if (*remaining == I2C_WAIT_FOREVER)
+    {
+        return false;
+    }
+
+    if (*remaining == 0u)
+    {
+        return true;
+    }
+
+    *remaining -= 1u;
+    return false;
 }
 
 /*----------------------------------------------------------------------------
- * Polling helpers
- *----------------------------------------------------------------------------*/
-void i2c_wait_cmd_ready(void)
-{
-    while (!i2c_cmd_ready()) {
-    }
-}
-
-void i2c_wait_bus_idle(void)
-{
-    while (!i2c_bus_idle()) {
-    }
-}
-
-/*----------------------------------------------------------------------------
- * Launch one command and wait until the core is ready again.
+ * Internal helper
  *
- * Notes:
- * - REG_CMD is an action register, not retained state.
- * - Software must only launch while cmd_ready = 1.
- * - Because this wrapper is polling-first, we use cmd_ready returning high as
- *   the primary completion condition.
+ * After a command write, the engine should leave CMD_READY and later return to
+ * CMD_READY when complete.
  *----------------------------------------------------------------------------*/
-i2c_status_t i2c_launch_cmd_blocking(uint8_t cmd, bool rd_last)
+static i2c_status_t i2c_wait_cmd_accepted_and_completed_timeout(uint32_t timeout_poll_count)
 {
-    i2c_wait_cmd_ready();
-    i2c_write_cmd_raw(cmd, rd_last);
-    i2c_wait_cmd_ready();
+    uint32_t remaining = timeout_poll_count;
 
-    if (i2c_cmd_illegal()) {
+    while (i2c_cmd_ready())
+    {
+        if (i2c_cmd_illegal())
+        {
+            return I2C_ERR_CMD_ILLEGAL;
+        }
+
+        if (i2c_timeout_expired(&remaining))
+        {
+            return I2C_ERR_TIMEOUT;
+        }
+    }
+
+    while (!i2c_cmd_ready())
+    {
+        if (i2c_cmd_illegal())
+        {
+            return I2C_ERR_CMD_ILLEGAL;
+        }
+
+        if (i2c_timeout_expired(&remaining))
+        {
+            return I2C_ERR_TIMEOUT;
+        }
+    }
+
+    if (i2c_cmd_illegal())
+    {
         return I2C_ERR_CMD_ILLEGAL;
     }
 
     return I2C_OK;
 }
 
+/*----------------------------------------------------------------------------
+ * Public API
+ *----------------------------------------------------------------------------*/
+void i2c_init(uint16_t divisor)
+{
+    i2c_write_divisor(divisor);
+}
+
+void i2c_wait_cmd_ready(void)
+{
+    (void)i2c_wait_cmd_ready_timeout(I2C_WAIT_FOREVER);
+}
+
+void i2c_wait_bus_idle(void)
+{
+    (void)i2c_wait_bus_idle_timeout(I2C_WAIT_FOREVER);
+}
+
+i2c_status_t i2c_wait_cmd_ready_timeout(uint32_t timeout_poll_count)
+{
+    uint32_t remaining = timeout_poll_count;
+
+    while (!i2c_cmd_ready())
+    {
+        if (i2c_cmd_illegal())
+        {
+            return I2C_ERR_CMD_ILLEGAL;
+        }
+
+        if (i2c_timeout_expired(&remaining))
+        {
+            return I2C_ERR_TIMEOUT;
+        }
+    }
+
+    return I2C_OK;
+}
+
+i2c_status_t i2c_wait_bus_idle_timeout(uint32_t timeout_poll_count)
+{
+    uint32_t remaining = timeout_poll_count;
+
+    while (!i2c_bus_idle())
+    {
+        if (i2c_cmd_illegal())
+        {
+            return I2C_ERR_CMD_ILLEGAL;
+        }
+
+        if (i2c_timeout_expired(&remaining))
+        {
+            return I2C_ERR_TIMEOUT;
+        }
+    }
+
+    return I2C_OK;
+}
+
+i2c_status_t i2c_launch_cmd_blocking(uint8_t cmd, bool rd_last)
+{
+    return i2c_launch_cmd_blocking_timeout(cmd, rd_last, I2C_WAIT_FOREVER);
+}
+
+i2c_status_t i2c_launch_cmd_blocking_timeout(uint8_t cmd,
+                                             bool rd_last,
+                                             uint32_t timeout_poll_count)
+{
+    i2c_status_t status;
+
+    status = i2c_wait_cmd_ready_timeout(timeout_poll_count);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    i2c_write_cmd_raw(cmd, rd_last);
+
+    return i2c_wait_cmd_accepted_and_completed_timeout(timeout_poll_count);
+}
+
 i2c_status_t i2c_start_blocking(void)
 {
-    return i2c_launch_cmd_blocking(I2C_CMD_START, false);
+    return i2c_start_blocking_timeout(I2C_WAIT_FOREVER);
+}
+
+i2c_status_t i2c_start_blocking_timeout(uint32_t timeout_poll_count)
+{
+    return i2c_launch_cmd_blocking_timeout(I2C_CMD_START,
+                                           false,
+                                           timeout_poll_count);
 }
 
 i2c_status_t i2c_restart_blocking(void)
 {
-    return i2c_launch_cmd_blocking(I2C_CMD_RESTART, false);
+    return i2c_restart_blocking_timeout(I2C_WAIT_FOREVER);
+}
+
+i2c_status_t i2c_restart_blocking_timeout(uint32_t timeout_poll_count)
+{
+    return i2c_launch_cmd_blocking_timeout(I2C_CMD_RESTART,
+                                           false,
+                                           timeout_poll_count);
 }
 
 i2c_status_t i2c_stop_blocking(void)
 {
-    return i2c_launch_cmd_blocking(I2C_CMD_STOP, false);
+    return i2c_stop_blocking_timeout(I2C_WAIT_FOREVER);
 }
 
-/*----------------------------------------------------------------------------
- * Blocking byte write
- *----------------------------------------------------------------------------*/
+i2c_status_t i2c_stop_blocking_timeout(uint32_t timeout_poll_count)
+{
+    return i2c_launch_cmd_blocking_timeout(I2C_CMD_STOP,
+                                           false,
+                                           timeout_poll_count);
+}
+
 i2c_status_t i2c_write_byte_blocking(uint8_t data)
 {
-    i2c_write_txdata(data);
-    return i2c_launch_cmd_blocking(I2C_CMD_WR, false);
+    return i2c_write_byte_blocking_timeout(data, I2C_WAIT_FOREVER);
 }
 
-/*----------------------------------------------------------------------------
- * Blocking byte read
- *
- * rd_last = true should be used on the final read byte so the core can NACK
- * the last byte appropriately.
- *----------------------------------------------------------------------------*/
+i2c_status_t i2c_write_byte_blocking_timeout(uint8_t data,
+                                             uint32_t timeout_poll_count)
+{
+    i2c_status_t status;
+
+    status = i2c_wait_cmd_ready_timeout(timeout_poll_count);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    i2c_write_txdata(data);
+
+    i2c_write_cmd_raw(I2C_CMD_WR, false);
+
+    status = i2c_wait_cmd_accepted_and_completed_timeout(timeout_poll_count);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    if (i2c_nack_received())
+    {
+        return I2C_ERR_NACK;
+    }
+
+    return I2C_OK;
+}
+
 i2c_status_t i2c_read_byte_blocking(bool rd_last, uint8_t *data)
 {
-    i2c_status_t st;
+    return i2c_read_byte_blocking_timeout(rd_last, data, I2C_WAIT_FOREVER);
+}
 
-    if (data == 0) {
+i2c_status_t i2c_read_byte_blocking_timeout(bool rd_last,
+                                            uint8_t *data,
+                                            uint32_t timeout_poll_count)
+{
+    i2c_status_t status;
+    uint32_t remaining = timeout_poll_count;
+
+    if (data == 0)
+    {
         return I2C_ERR_NULL_PTR;
     }
 
-    st = i2c_launch_cmd_blocking(I2C_CMD_RD, rd_last);
-    if (st != I2C_OK) {
-        return st;
+    status = i2c_launch_cmd_blocking_timeout(I2C_CMD_RD,
+                                             rd_last,
+                                             timeout_poll_count);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    while (!i2c_rd_data_valid())
+    {
+        if (i2c_cmd_illegal())
+        {
+            return I2C_ERR_CMD_ILLEGAL;
+        }
+
+        if (i2c_timeout_expired(&remaining))
+        {
+            return I2C_ERR_TIMEOUT;
+        }
     }
 
     *data = i2c_rxdata_read();
     return I2C_OK;
 }
 
-/*----------------------------------------------------------------------------
- * Write a 7-bit I2C address byte.
- *
- * addr7 is the plain 7-bit address.
- * read=false -> write transfer address byte
- * read=true  -> read  transfer address byte
- *----------------------------------------------------------------------------*/
 i2c_status_t i2c_write_addr7_blocking(uint8_t addr7, bool read)
 {
-    uint8_t addr_byte = (uint8_t)(((addr7 & 0x7Fu) << 1) | (read ? 1u : 0u));
-    return i2c_write_byte_blocking(addr_byte);
+    return i2c_write_addr7_blocking_timeout(addr7,
+                                            read,
+                                            I2C_WAIT_FOREVER);
+}
+
+i2c_status_t i2c_write_addr7_blocking_timeout(uint8_t addr7,
+                                              bool read,
+                                              uint32_t timeout_poll_count)
+{
+    uint8_t addr_byte;
+
+    addr_byte = (uint8_t)(((addr7 & 0x7Fu) << 1) | (read ? 1u : 0u));
+
+    return i2c_write_byte_blocking_timeout(addr_byte, timeout_poll_count);
 }

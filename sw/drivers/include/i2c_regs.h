@@ -3,27 +3,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stddef.h>
 
-#include "system.h"
-
-/*----------------------------------------------------------------------------
- * Base-address mapping
- *
- * Prefer the BSP-generated system.h macro if it exists.
- * Fallback keeps bring-up easy if the generated name changes.
- *----------------------------------------------------------------------------*/
-#ifndef I2C_BASE_ADDR
-    #if defined(I2C_REGS_0_BASE)
-        #define I2C_BASE_ADDR I2C_REGS_0_BASE
-    #elif defined(I2C_MASTER_0_BASE)
-        #define I2C_BASE_ADDR I2C_MASTER_0_BASE
-    #elif defined(I2C_0_BASE)
-        #define I2C_BASE_ADDR I2C_0_BASE
-    #else
-        #define I2C_BASE_ADDR 0x00034000u
-    #endif
-#endif
+#include "mmio.h"
+#include "user_define_system.h"
 
 /*----------------------------------------------------------------------------
  * Register offsets
@@ -33,24 +15,6 @@
 #define I2C_REG_TXDATA_OFFSET       0x08u
 #define I2C_REG_RXDATA_OFFSET       0x0Cu
 #define I2C_REG_CMD_OFFSET          0x10u
-
-/*----------------------------------------------------------------------------
- * Absolute register addresses
- *----------------------------------------------------------------------------*/
-#define I2C_REG_STATUS_ADDR         (I2C_BASE_ADDR + I2C_REG_STATUS_OFFSET)
-#define I2C_REG_DIVISOR_ADDR        (I2C_BASE_ADDR + I2C_REG_DIVISOR_OFFSET)
-#define I2C_REG_TXDATA_ADDR         (I2C_BASE_ADDR + I2C_REG_TXDATA_OFFSET)
-#define I2C_REG_RXDATA_ADDR         (I2C_BASE_ADDR + I2C_REG_RXDATA_OFFSET)
-#define I2C_REG_CMD_ADDR            (I2C_BASE_ADDR + I2C_REG_CMD_OFFSET)
-
-/*----------------------------------------------------------------------------
- * Register access macros
- *----------------------------------------------------------------------------*/
-#define I2C_REG_STATUS              (*(volatile uint32_t *)(uintptr_t)(I2C_REG_STATUS_ADDR))
-#define I2C_REG_DIVISOR             (*(volatile uint32_t *)(uintptr_t)(I2C_REG_DIVISOR_ADDR))
-#define I2C_REG_TXDATA              (*(volatile uint32_t *)(uintptr_t)(I2C_REG_TXDATA_ADDR))
-#define I2C_REG_RXDATA              (*(volatile uint32_t *)(uintptr_t)(I2C_REG_RXDATA_ADDR))
-#define I2C_REG_CMD                 (*(volatile uint32_t *)(uintptr_t)(I2C_REG_CMD_ADDR))
 
 /*----------------------------------------------------------------------------
  * STATUS register bits
@@ -87,54 +51,161 @@
 #define I2C_CMD_RESTART             0x4u
 
 /*----------------------------------------------------------------------------
- * Small status / error codes
+ * Blocking wait special value
+ *
+ * Timeout units are simple software poll iterations, not time in microseconds.
+ *----------------------------------------------------------------------------*/
+#define I2C_WAIT_FOREVER            0xFFFFFFFFu
+
+/*----------------------------------------------------------------------------
+ * Status / error codes
  *----------------------------------------------------------------------------*/
 typedef enum
 {
     I2C_OK = 0,
     I2C_ERR_NULL_PTR = -1,
-    I2C_ERR_CMD_ILLEGAL = -2
+    I2C_ERR_CMD_ILLEGAL = -2,
+    I2C_ERR_NACK = -3,
+    I2C_ERR_TIMEOUT = -4
 } i2c_status_t;
 
 /*----------------------------------------------------------------------------
  * Low-level MMIO helpers
  *----------------------------------------------------------------------------*/
-static inline uint32_t i2c_status_read(void)       { return I2C_REG_STATUS; }
-static inline uint16_t i2c_divisor_read(void)      { return (uint16_t)(I2C_REG_DIVISOR & 0xFFFFu); }
-static inline uint8_t  i2c_txdata_read(void)       { return (uint8_t)(I2C_REG_TXDATA & 0xFFu); }
-static inline uint8_t  i2c_rxdata_read(void)       { return (uint8_t)(I2C_REG_RXDATA & 0xFFu); }
+static inline void i2c_reg_write(uint32_t offset, uint32_t value)
+{
+    mmio_write32(I2C_BASE, offset, value);
+}
 
-static inline bool i2c_cmd_ready(void)             { return (I2C_REG_STATUS & I2C_STATUS_CMD_READY) != 0u; }
-static inline bool i2c_bus_idle(void)              { return (I2C_REG_STATUS & I2C_STATUS_BUS_IDLE) != 0u; }
-static inline bool i2c_done_tick(void)             { return (I2C_REG_STATUS & I2C_STATUS_DONE_TICK) != 0u; }
-static inline bool i2c_ack_valid(void)             { return (I2C_REG_STATUS & I2C_STATUS_ACK_VALID) != 0u; }
-static inline bool i2c_ack_sample(void)            { return (I2C_REG_STATUS & I2C_STATUS_ACK) != 0u; }
-static inline bool i2c_rd_data_valid(void)         { return (I2C_REG_STATUS & I2C_STATUS_RD_DATA_VALID) != 0u; }
-static inline bool i2c_cmd_illegal(void)           { return (I2C_REG_STATUS & I2C_STATUS_CMD_ILLEGAL) != 0u; }
-static inline bool i2c_master_receiving(void)      { return (I2C_REG_STATUS & I2C_STATUS_MASTER_RX) != 0u; }
+static inline uint32_t i2c_reg_read(uint32_t offset)
+{
+    return mmio_read32(I2C_BASE, offset);
+}
 
-static inline void i2c_write_divisor(uint16_t d)   { I2C_REG_DIVISOR = (uint32_t)d; }
-static inline void i2c_write_txdata(uint8_t data)  { I2C_REG_TXDATA = (uint32_t)data; }
+static inline uint32_t i2c_status_read(void)
+{
+    return i2c_reg_read(I2C_REG_STATUS_OFFSET);
+}
+
+static inline uint16_t i2c_divisor_read(void)
+{
+    return (uint16_t)(i2c_reg_read(I2C_REG_DIVISOR_OFFSET) & 0xFFFFu);
+}
+
+static inline uint8_t i2c_txdata_read(void)
+{
+    return (uint8_t)(i2c_reg_read(I2C_REG_TXDATA_OFFSET) & 0xFFu);
+}
+
+static inline uint8_t i2c_rxdata_read(void)
+{
+    return (uint8_t)(i2c_reg_read(I2C_REG_RXDATA_OFFSET) & 0xFFu);
+}
+
+static inline bool i2c_cmd_ready(void)
+{
+    return (i2c_status_read() & I2C_STATUS_CMD_READY) != 0u;
+}
+
+static inline bool i2c_bus_idle(void)
+{
+    return (i2c_status_read() & I2C_STATUS_BUS_IDLE) != 0u;
+}
+
+static inline bool i2c_done_tick(void)
+{
+    return (i2c_status_read() & I2C_STATUS_DONE_TICK) != 0u;
+}
+
+static inline bool i2c_ack_valid(void)
+{
+    return (i2c_status_read() & I2C_STATUS_ACK_VALID) != 0u;
+}
+
+static inline bool i2c_ack_sample_raw(void)
+{
+    return (i2c_status_read() & I2C_STATUS_ACK) != 0u;
+}
+
+static inline bool i2c_ack_received(void)
+{
+    return i2c_ack_valid() && !i2c_ack_sample_raw();
+}
+
+static inline bool i2c_nack_received(void)
+{
+    return i2c_ack_valid() && i2c_ack_sample_raw();
+}
+
+static inline bool i2c_rd_data_valid(void)
+{
+    return (i2c_status_read() & I2C_STATUS_RD_DATA_VALID) != 0u;
+}
+
+static inline bool i2c_cmd_illegal(void)
+{
+    return (i2c_status_read() & I2C_STATUS_CMD_ILLEGAL) != 0u;
+}
+
+static inline bool i2c_master_receiving(void)
+{
+    return (i2c_status_read() & I2C_STATUS_MASTER_RX) != 0u;
+}
+
+static inline void i2c_write_divisor(uint16_t d)
+{
+    i2c_reg_write(I2C_REG_DIVISOR_OFFSET, (uint32_t)d);
+}
+
+static inline void i2c_write_txdata(uint8_t data)
+{
+    i2c_reg_write(I2C_REG_TXDATA_OFFSET, (uint32_t)data);
+}
+
 static inline void i2c_write_cmd_raw(uint8_t cmd, bool rd_last)
 {
     uint32_t value = ((uint32_t)cmd & I2C_CMD_W_FIELD_MASK) |
                      (rd_last ? I2C_CMD_RD_LAST : 0u);
-    I2C_REG_CMD = value;
+    i2c_reg_write(I2C_REG_CMD_OFFSET, value);
 }
 
 /*----------------------------------------------------------------------------
  * Driver API implemented in i2c_regs.c
  *----------------------------------------------------------------------------*/
 void i2c_init(uint16_t divisor);
+
 void i2c_wait_cmd_ready(void);
 void i2c_wait_bus_idle(void);
 
+i2c_status_t i2c_wait_cmd_ready_timeout(uint32_t timeout_poll_count);
+i2c_status_t i2c_wait_bus_idle_timeout(uint32_t timeout_poll_count);
+
 i2c_status_t i2c_launch_cmd_blocking(uint8_t cmd, bool rd_last);
+i2c_status_t i2c_launch_cmd_blocking_timeout(uint8_t cmd,
+                                             bool rd_last,
+                                             uint32_t timeout_poll_count);
+
 i2c_status_t i2c_start_blocking(void);
+i2c_status_t i2c_start_blocking_timeout(uint32_t timeout_poll_count);
+
 i2c_status_t i2c_restart_blocking(void);
+i2c_status_t i2c_restart_blocking_timeout(uint32_t timeout_poll_count);
+
 i2c_status_t i2c_stop_blocking(void);
+i2c_status_t i2c_stop_blocking_timeout(uint32_t timeout_poll_count);
+
 i2c_status_t i2c_write_byte_blocking(uint8_t data);
+i2c_status_t i2c_write_byte_blocking_timeout(uint8_t data,
+                                             uint32_t timeout_poll_count);
+
 i2c_status_t i2c_read_byte_blocking(bool rd_last, uint8_t *data);
+i2c_status_t i2c_read_byte_blocking_timeout(bool rd_last,
+                                            uint8_t *data,
+                                            uint32_t timeout_poll_count);
+
 i2c_status_t i2c_write_addr7_blocking(uint8_t addr7, bool read);
+i2c_status_t i2c_write_addr7_blocking_timeout(uint8_t addr7,
+                                              bool read,
+                                              uint32_t timeout_poll_count);
 
 #endif /* I2C_REGS_H */
