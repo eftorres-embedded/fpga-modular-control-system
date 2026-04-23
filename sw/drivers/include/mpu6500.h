@@ -4,81 +4,79 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "i2c_regs.h"
+#include "i2c_xfer.h"
 
 /*----------------------------------------------------------------------------
- * Device address
- *
- * MPU-6500 7-bit slave address is 0b110100X.
- * AD0 low  -> 0x68
- * AD0 high -> 0x69
+ * I2C addressing
  *----------------------------------------------------------------------------*/
-#ifndef MPU6500_I2C_ADDR
-#define MPU6500_I2C_ADDR        0x68u
-#endif
+#define MPU6500_I2C_ADDR_AD0_LOW        0x68u
+#define MPU6500_I2C_ADDR_AD0_HIGH       0x69u
 
 /*----------------------------------------------------------------------------
  * Common register addresses
+ *
+ * These follow the standard MPU-6500 register map.
  *----------------------------------------------------------------------------*/
-#define MPU6500_REG_SMPLRT_DIV      0x19u
-#define MPU6500_REG_CONFIG          0x1Au
-#define MPU6500_REG_GYRO_CONFIG     0x1Bu
-#define MPU6500_REG_ACCEL_CONFIG    0x1Cu
-#define MPU6500_REG_ACCEL_CONFIG2   0x1Du
-#define MPU6500_REG_INT_ENABLE      0x38u
-#define MPU6500_REG_ACCEL_XOUT_H    0x3Bu
-#define MPU6500_REG_ACCEL_XOUT_L    0x3Cu
-#define MPU6500_REG_ACCEL_YOUT_H    0x3Du
-#define MPU6500_REG_ACCEL_YOUT_L    0x3Eu
-#define MPU6500_REG_ACCEL_ZOUT_H    0x3Fu
-#define MPU6500_REG_ACCEL_ZOUT_L    0x40u
-#define MPU6500_REG_TEMP_OUT_H      0x41u
-#define MPU6500_REG_TEMP_OUT_L      0x42u
-#define MPU6500_REG_GYRO_XOUT_H     0x43u
-#define MPU6500_REG_GYRO_XOUT_L     0x44u
-#define MPU6500_REG_GYRO_YOUT_H     0x45u
-#define MPU6500_REG_GYRO_YOUT_L     0x46u
-#define MPU6500_REG_GYRO_ZOUT_H     0x47u
-#define MPU6500_REG_GYRO_ZOUT_L     0x48u
-#define MPU6500_REG_SIGNAL_PATH_RESET 0x68u
-#define MPU6500_REG_USER_CTRL       0x6Au
-#define MPU6500_REG_PWR_MGMT_1      0x6Bu
-#define MPU6500_REG_PWR_MGMT_2      0x6Cu
-#define MPU6500_REG_WHO_AM_I        0x75u
+#define MPU6500_REG_SMPLRT_DIV          0x19u
+#define MPU6500_REG_CONFIG              0x1Au
+#define MPU6500_REG_GYRO_CONFIG         0x1Bu
+#define MPU6500_REG_ACCEL_CONFIG        0x1Cu
+#define MPU6500_REG_ACCEL_CONFIG2       0x1Du
+#define MPU6500_REG_FIFO_EN             0x23u
+#define MPU6500_REG_INT_PIN_CFG         0x37u
+#define MPU6500_REG_INT_ENABLE          0x38u
+#define MPU6500_REG_INT_STATUS          0x3Au
+#define MPU6500_REG_ACCEL_XOUT_H        0x3Bu
+#define MPU6500_REG_TEMP_OUT_H          0x41u
+#define MPU6500_REG_GYRO_XOUT_H         0x43u
+#define MPU6500_REG_SIGNAL_PATH_RESET   0x68u
+#define MPU6500_REG_USER_CTRL           0x6Au
+#define MPU6500_REG_PWR_MGMT_1          0x6Bu
+#define MPU6500_REG_PWR_MGMT_2          0x6Cu
+#define MPU6500_REG_WHO_AM_I            0x75u
 
 /*----------------------------------------------------------------------------
- * Useful bit values
+ * Common bit values
  *----------------------------------------------------------------------------*/
-#define MPU6500_WHO_AM_I_VALUE      0x70u
+#define MPU6500_PWR_MGMT_1_DEVICE_RESET     0x80u
+#define MPU6500_PWR_MGMT_1_SLEEP            0x40u
+#define MPU6500_PWR_MGMT_1_CLKSEL_INTERNAL  0x00u
+#define MPU6500_PWR_MGMT_1_CLKSEL_PLL_XGYRO 0x01u
 
-#define MPU6500_PWR1_DEVICE_RESET   0x80u
-#define MPU6500_PWR1_SLEEP          0x40u
-#define MPU6500_PWR1_CLKSEL_INTERNAL 0x00u
-#define MPU6500_PWR1_CLKSEL_PLL_XGYRO 0x01u
+#define MPU6500_SIGNAL_PATH_RESET_ALL       0x07u
 
-#define MPU6500_ACCEL_FS_SEL_2G     0x00u
-#define MPU6500_ACCEL_FS_SEL_4G     0x08u
-#define MPU6500_ACCEL_FS_SEL_8G     0x10u
-#define MPU6500_ACCEL_FS_SEL_16G    0x18u
-
-#define MPU6500_GYRO_FS_SEL_250DPS  0x00u
-#define MPU6500_GYRO_FS_SEL_500DPS  0x08u
-#define MPU6500_GYRO_FS_SEL_1000DPS 0x10u
-#define MPU6500_GYRO_FS_SEL_2000DPS 0x18u
-
-#define MPU6500_INT_ENABLE_RAW_RDY  0x01u
-#define MPU6500_INT_ENABLE_MOT      0x40u
+#define MPU6500_WHO_AM_I_EXPECTED           0x70u
 
 /*----------------------------------------------------------------------------
- * Driver status
+ * Full-scale configuration enums
  *----------------------------------------------------------------------------*/
 typedef enum
 {
-    MPU6500_OK = 0,
-    MPU6500_ERR_NULL_PTR = -1,
-    MPU6500_ERR_I2C = -2,
-    MPU6500_ERR_WHOAMI = -3
-} mpu6500_status_t;
+    MPU6500_ACCEL_FS_2G  = 0u,
+    MPU6500_ACCEL_FS_4G  = 1u,
+    MPU6500_ACCEL_FS_8G  = 2u,
+    MPU6500_ACCEL_FS_16G = 3u
+} mpu6500_accel_fs_t;
+
+typedef enum
+{
+    MPU6500_GYRO_FS_250DPS  = 0u,
+    MPU6500_GYRO_FS_500DPS  = 1u,
+    MPU6500_GYRO_FS_1000DPS = 2u,
+    MPU6500_GYRO_FS_2000DPS = 3u
+} mpu6500_gyro_fs_t;
+
+/*----------------------------------------------------------------------------
+ * Driver object
+ *----------------------------------------------------------------------------*/
+typedef struct
+{
+    uint8_t addr7;
+    uint32_t timeout_poll_count;
+
+    mpu6500_accel_fs_t accel_fs;
+    mpu6500_gyro_fs_t  gyro_fs;
+} mpu6500_t;
 
 /*----------------------------------------------------------------------------
  * Raw sample containers
@@ -88,30 +86,66 @@ typedef struct
     int16_t x;
     int16_t y;
     int16_t z;
-} mpu6500_vec3_raw_t;
+} mpu6500_vec3i16_t;
 
 typedef struct
 {
-    mpu6500_vec3_raw_t accel;
-    int16_t            temp;
-    mpu6500_vec3_raw_t gyro;
+    mpu6500_vec3i16_t accel;
+    int16_t temp;
+    mpu6500_vec3i16_t gyro;
 } mpu6500_raw_sample_t;
 
 /*----------------------------------------------------------------------------
- * Register access
+ * Initialization / configuration
  *----------------------------------------------------------------------------*/
-mpu6500_status_t mpu6500_write_reg(uint8_t reg, uint8_t value);
-mpu6500_status_t mpu6500_read_reg(uint8_t reg, uint8_t *value);
-mpu6500_status_t mpu6500_read_regs(uint8_t start_reg, uint8_t *buf, uint32_t len);
+void mpu6500_init_struct(mpu6500_t *dev,
+                         uint8_t addr7,
+                         uint32_t timeout_poll_count);
+
+i2c_status_t mpu6500_soft_reset(const mpu6500_t *dev);
+i2c_status_t mpu6500_signal_path_reset(const mpu6500_t *dev);
+i2c_status_t mpu6500_wake(mpu6500_t *dev);
+i2c_status_t mpu6500_sleep(const mpu6500_t *dev);
+
+i2c_status_t mpu6500_set_accel_fs(mpu6500_t *dev, mpu6500_accel_fs_t fs);
+i2c_status_t mpu6500_set_gyro_fs(mpu6500_t *dev, mpu6500_gyro_fs_t fs);
+
+i2c_status_t mpu6500_init_default(mpu6500_t *dev);
 
 /*----------------------------------------------------------------------------
- * Device helpers
+ * Register access helpers
  *----------------------------------------------------------------------------*/
-mpu6500_status_t mpu6500_read_whoami(uint8_t *value);
-mpu6500_status_t mpu6500_set_sleep(bool enable);
-mpu6500_status_t mpu6500_init_default(void);
-mpu6500_status_t mpu6500_read_accel_raw(mpu6500_vec3_raw_t *accel);
-mpu6500_status_t mpu6500_read_gyro_raw(mpu6500_vec3_raw_t *gyro);
-mpu6500_status_t mpu6500_read_all_raw(mpu6500_raw_sample_t *sample);
+i2c_status_t mpu6500_read_reg(const mpu6500_t *dev, uint8_t reg, uint8_t *value);
+i2c_status_t mpu6500_write_reg(const mpu6500_t *dev, uint8_t reg, uint8_t value);
+
+i2c_status_t mpu6500_read_who_am_i(const mpu6500_t *dev, uint8_t *value);
+bool mpu6500_who_am_i_valid(uint8_t value);
+
+/*----------------------------------------------------------------------------
+ * Sensor reads
+ *----------------------------------------------------------------------------*/
+i2c_status_t mpu6500_read_sample_raw(const mpu6500_t *dev,
+                                     mpu6500_raw_sample_t *sample);
+
+i2c_status_t mpu6500_read_accel_raw(const mpu6500_t *dev,
+                                    mpu6500_vec3i16_t *accel);
+
+i2c_status_t mpu6500_read_gyro_raw(const mpu6500_t *dev,
+                                   mpu6500_vec3i16_t *gyro);
+
+i2c_status_t mpu6500_read_temp_raw(const mpu6500_t *dev,
+                                   int16_t *temp_raw);
+
+/*----------------------------------------------------------------------------
+ * Conversion helpers
+ *----------------------------------------------------------------------------*/
+float mpu6500_accel_lsb_per_g(mpu6500_accel_fs_t fs);
+float mpu6500_gyro_lsb_per_dps(mpu6500_gyro_fs_t fs);
+
+float mpu6500_accel_raw_to_g(int16_t raw, mpu6500_accel_fs_t fs);
+float mpu6500_gyro_raw_to_dps(int16_t raw, mpu6500_gyro_fs_t fs);
+
+float mpu6500_temp_raw_to_c(int16_t raw);
+float mpu6500_temp_raw_to_f(int16_t raw);
 
 #endif /* MPU6500_H */

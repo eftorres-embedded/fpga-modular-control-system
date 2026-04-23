@@ -1,288 +1,275 @@
 #include "mpu6500.h"
 
 /*----------------------------------------------------------------------------
- * Convert low/high byte pair to signed 16-bit.
+ * Internal helpers
  *----------------------------------------------------------------------------*/
-static inline int16_t mpu6500_be16_to_i16(uint8_t hi, uint8_t lo)
+static int16_t mpu6500_be16_to_i16(uint8_t msb, uint8_t lsb)
 {
-    return (int16_t)(((uint16_t)hi << 8) | (uint16_t)lo);
+    return (int16_t)(((uint16_t)msb << 8) | (uint16_t)lsb);
+}
+
+static i2c_status_t mpu6500_read_bytes(const mpu6500_t *dev,
+                                       uint8_t reg,
+                                       uint8_t *data,
+                                       uint32_t len)
+{
+    if ((dev == NULL) || ((data == NULL) && (len != 0u)))
+    {
+        return I2C_ERR_NULL_PTR;
+    }
+
+    return i2c_reg_read_bytes_timeout(dev->addr7,
+                                      reg,
+                                      data,
+                                      (size_t)len,
+                                      dev->timeout_poll_count);
+}
+
+static i2c_status_t mpu6500_write_reg_checked(const mpu6500_t *dev,
+                                              uint8_t reg,
+                                              uint8_t value)
+{
+    if (dev == NULL)
+    {
+        return I2C_ERR_NULL_PTR;
+    }
+
+    return i2c_reg_write8_timeout(dev->addr7,
+                                  reg,
+                                  value,
+                                  dev->timeout_poll_count);
+}
+
+static i2c_status_t mpu6500_read_reg_checked(const mpu6500_t *dev,
+                                             uint8_t reg,
+                                             uint8_t *value)
+{
+    if ((dev == NULL) || (value == NULL))
+    {
+        return I2C_ERR_NULL_PTR;
+    }
+
+    return i2c_reg_read8_timeout(dev->addr7,
+                                 reg,
+                                 value,
+                                 dev->timeout_poll_count);
 }
 
 /*----------------------------------------------------------------------------
- * Low-level register write
+ * Public API
  *----------------------------------------------------------------------------*/
-mpu6500_status_t mpu6500_write_reg(uint8_t reg, uint8_t value)
+void mpu6500_init_struct(mpu6500_t *dev,
+                         uint8_t addr7,
+                         uint32_t timeout_poll_count)
 {
-    if (i2c_start_blocking() != I2C_OK) {
-        return MPU6500_ERR_I2C;
+    if (dev == NULL)
+    {
+        return;
     }
 
-    if (i2c_write_addr7_blocking(MPU6500_I2C_ADDR, false) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_write_byte_blocking(reg) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_write_byte_blocking(value) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_stop_blocking() != I2C_OK) {
-        return MPU6500_ERR_I2C;
-    }
-
-    return MPU6500_OK;
+    dev->addr7 = addr7;
+    dev->timeout_poll_count = timeout_poll_count;
+    dev->accel_fs = MPU6500_ACCEL_FS_2G;
+    dev->gyro_fs  = MPU6500_GYRO_FS_250DPS;
 }
 
-/*----------------------------------------------------------------------------
- * Low-level single-register read
- *----------------------------------------------------------------------------*/
-mpu6500_status_t mpu6500_read_reg(uint8_t reg, uint8_t *value)
+i2c_status_t mpu6500_soft_reset(const mpu6500_t *dev)
 {
-    if (value == 0) {
-        return MPU6500_ERR_NULL_PTR;
-    }
-
-    if (i2c_start_blocking() != I2C_OK) {
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_write_addr7_blocking(MPU6500_I2C_ADDR, false) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_write_byte_blocking(reg) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_restart_blocking() != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_write_addr7_blocking(MPU6500_I2C_ADDR, true) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_read_byte_blocking(true, value) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_stop_blocking() != I2C_OK) {
-        return MPU6500_ERR_I2C;
-    }
-
-    return MPU6500_OK;
+    return mpu6500_write_reg_checked(dev,
+                                     MPU6500_REG_PWR_MGMT_1,
+                                     MPU6500_PWR_MGMT_1_DEVICE_RESET);
 }
 
-/*----------------------------------------------------------------------------
- * Low-level burst read
- *----------------------------------------------------------------------------*/
-mpu6500_status_t mpu6500_read_regs(uint8_t start_reg, uint8_t *buf, uint32_t len)
+i2c_status_t mpu6500_signal_path_reset(const mpu6500_t *dev)
 {
-    uint32_t i;
-
-    if ((buf == 0) || (len == 0u)) {
-        return MPU6500_ERR_NULL_PTR;
-    }
-
-    if (i2c_start_blocking() != I2C_OK) {
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_write_addr7_blocking(MPU6500_I2C_ADDR, false) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_write_byte_blocking(start_reg) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_restart_blocking() != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    if (i2c_write_addr7_blocking(MPU6500_I2C_ADDR, true) != I2C_OK) {
-        (void)i2c_stop_blocking();
-        return MPU6500_ERR_I2C;
-    }
-
-    for (i = 0u; i < len; ++i) {
-        bool rd_last = (i == (len - 1u));
-
-        if (i2c_read_byte_blocking(rd_last, &buf[i]) != I2C_OK) {
-            (void)i2c_stop_blocking();
-            return MPU6500_ERR_I2C;
-        }
-    }
-
-    if (i2c_stop_blocking() != I2C_OK) {
-        return MPU6500_ERR_I2C;
-    }
-
-    return MPU6500_OK;
+    return mpu6500_write_reg_checked(dev,
+                                     MPU6500_REG_SIGNAL_PATH_RESET,
+                                     MPU6500_SIGNAL_PATH_RESET_ALL);
 }
 
-/*----------------------------------------------------------------------------
- * Simple device helpers
- *----------------------------------------------------------------------------*/
-mpu6500_status_t mpu6500_read_whoami(uint8_t *value)
+i2c_status_t mpu6500_wake(mpu6500_t *dev)
 {
-    return mpu6500_read_reg(MPU6500_REG_WHO_AM_I, value);
+    i2c_status_t status;
+
+    if (dev == NULL)
+    {
+        return I2C_ERR_NULL_PTR;
+    }
+
+    status = mpu6500_write_reg_checked(dev,
+                                       MPU6500_REG_PWR_MGMT_1,
+                                       MPU6500_PWR_MGMT_1_CLKSEL_PLL_XGYRO);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    status = mpu6500_write_reg_checked(dev,
+                                       MPU6500_REG_PWR_MGMT_2,
+                                       0x00u);
+    return status;
 }
 
-mpu6500_status_t mpu6500_set_sleep(bool enable)
+i2c_status_t mpu6500_sleep(const mpu6500_t *dev)
 {
+    return mpu6500_write_reg_checked(dev,
+                                     MPU6500_REG_PWR_MGMT_1,
+                                     MPU6500_PWR_MGMT_1_SLEEP);
+}
+
+i2c_status_t mpu6500_set_accel_fs(mpu6500_t *dev, mpu6500_accel_fs_t fs)
+{
+    i2c_status_t status;
     uint8_t value;
-    mpu6500_status_t st;
 
-    st = mpu6500_read_reg(MPU6500_REG_PWR_MGMT_1, &value);
-    if (st != MPU6500_OK) {
-        return st;
+    if (dev == NULL)
+    {
+        return I2C_ERR_NULL_PTR;
     }
 
-    if (enable) {
-        value |= MPU6500_PWR1_SLEEP;
-    } else {
-        value &= (uint8_t)~MPU6500_PWR1_SLEEP;
+    value = (uint8_t)(((uint8_t)fs & 0x03u) << 3);
+
+    status = mpu6500_write_reg_checked(dev,
+                                       MPU6500_REG_ACCEL_CONFIG,
+                                       value);
+    if (status != I2C_OK)
+    {
+        return status;
     }
 
-    return mpu6500_write_reg(MPU6500_REG_PWR_MGMT_1, value);
+    dev->accel_fs = fs;
+    return I2C_OK;
 }
 
-/*----------------------------------------------------------------------------
- * Conservative default init
- *
- * This brings the part out of sleep and selects simple baseline settings:
- * - clock source = PLL with X gyro
- * - sample rate divider = 0
- * - CONFIG = 0x01
- * - GYRO_CONFIG = +/-250 dps
- * - ACCEL_CONFIG = +/-2g
- * - ACCEL_CONFIG2 = 0x01 (184 Hz accel bandwidth)
- * - INT_ENABLE = 0x00
- *----------------------------------------------------------------------------*/
-mpu6500_status_t mpu6500_init_default(void)
+i2c_status_t mpu6500_set_gyro_fs(mpu6500_t *dev, mpu6500_gyro_fs_t fs)
 {
-    uint8_t whoami = 0u;
-    mpu6500_status_t st;
+    i2c_status_t status;
+    uint8_t value;
 
-    st = mpu6500_write_reg(MPU6500_REG_PWR_MGMT_1, MPU6500_PWR1_CLKSEL_PLL_XGYRO);
-    if (st != MPU6500_OK) {
-        return st;
+    if (dev == NULL)
+    {
+        return I2C_ERR_NULL_PTR;
     }
 
-    st = mpu6500_write_reg(MPU6500_REG_SMPLRT_DIV, 0x00u);
-    if (st != MPU6500_OK) {
-        return st;
+    value = (uint8_t)(((uint8_t)fs & 0x03u) << 3);
+
+    status = mpu6500_write_reg_checked(dev,
+                                       MPU6500_REG_GYRO_CONFIG,
+                                       value);
+    if (status != I2C_OK)
+    {
+        return status;
     }
 
-    st = mpu6500_write_reg(MPU6500_REG_CONFIG, 0x01u);
-    if (st != MPU6500_OK) {
-        return st;
-    }
-
-    st = mpu6500_write_reg(MPU6500_REG_GYRO_CONFIG, MPU6500_GYRO_FS_SEL_250DPS);
-    if (st != MPU6500_OK) {
-        return st;
-    }
-
-    st = mpu6500_write_reg(MPU6500_REG_ACCEL_CONFIG, MPU6500_ACCEL_FS_SEL_2G);
-    if (st != MPU6500_OK) {
-        return st;
-    }
-
-    st = mpu6500_write_reg(MPU6500_REG_ACCEL_CONFIG2, 0x01u);
-    if (st != MPU6500_OK) {
-        return st;
-    }
-
-    st = mpu6500_write_reg(MPU6500_REG_INT_ENABLE, 0x00u);
-    if (st != MPU6500_OK) {
-        return st;
-    }
-
-    st = mpu6500_read_whoami(&whoami);
-    if (st != MPU6500_OK) {
-        return st;
-    }
-
-    if (whoami != MPU6500_WHO_AM_I_VALUE) {
-        return MPU6500_ERR_WHOAMI;
-    }
-
-    return MPU6500_OK;
+    dev->gyro_fs = fs;
+    return I2C_OK;
 }
 
-/*----------------------------------------------------------------------------
- * Raw data reads
- *----------------------------------------------------------------------------*/
-mpu6500_status_t mpu6500_read_accel_raw(mpu6500_vec3_raw_t *accel)
+i2c_status_t mpu6500_init_default(mpu6500_t *dev)
 {
-    uint8_t buf[6];
-    mpu6500_status_t st;
+    i2c_status_t status;
 
-    if (accel == 0) {
-        return MPU6500_ERR_NULL_PTR;
+    if (dev == NULL)
+    {
+        return I2C_ERR_NULL_PTR;
     }
 
-    st = mpu6500_read_regs(MPU6500_REG_ACCEL_XOUT_H, buf, 6u);
-    if (st != MPU6500_OK) {
-        return st;
+    status = mpu6500_wake(dev);
+    if (status != I2C_OK)
+    {
+        return status;
     }
 
-    accel->x = mpu6500_be16_to_i16(buf[0], buf[1]);
-    accel->y = mpu6500_be16_to_i16(buf[2], buf[3]);
-    accel->z = mpu6500_be16_to_i16(buf[4], buf[5]);
+    status = mpu6500_write_reg_checked(dev, MPU6500_REG_SMPLRT_DIV, 0x04u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
 
-    return MPU6500_OK;
+    status = mpu6500_write_reg_checked(dev, MPU6500_REG_CONFIG, 0x03u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    status = mpu6500_set_gyro_fs(dev, MPU6500_GYRO_FS_250DPS);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    status = mpu6500_set_accel_fs(dev, MPU6500_ACCEL_FS_2G);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    status = mpu6500_write_reg_checked(dev, MPU6500_REG_ACCEL_CONFIG2, 0x03u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    status = mpu6500_write_reg_checked(dev, MPU6500_REG_FIFO_EN, 0x00u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    status = mpu6500_write_reg_checked(dev, MPU6500_REG_USER_CTRL, 0x00u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    status = mpu6500_write_reg_checked(dev, MPU6500_REG_INT_PIN_CFG, 0x00u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    status = mpu6500_write_reg_checked(dev, MPU6500_REG_INT_ENABLE, 0x00u);
+    return status;
 }
 
-mpu6500_status_t mpu6500_read_gyro_raw(mpu6500_vec3_raw_t *gyro)
+i2c_status_t mpu6500_read_reg(const mpu6500_t *dev, uint8_t reg, uint8_t *value)
 {
-    uint8_t buf[6];
-    mpu6500_status_t st;
-
-    if (gyro == 0) {
-        return MPU6500_ERR_NULL_PTR;
-    }
-
-    st = mpu6500_read_regs(MPU6500_REG_GYRO_XOUT_H, buf, 6u);
-    if (st != MPU6500_OK) {
-        return st;
-    }
-
-    gyro->x = mpu6500_be16_to_i16(buf[0], buf[1]);
-    gyro->y = mpu6500_be16_to_i16(buf[2], buf[3]);
-    gyro->z = mpu6500_be16_to_i16(buf[4], buf[5]);
-
-    return MPU6500_OK;
+    return mpu6500_read_reg_checked(dev, reg, value);
 }
 
-mpu6500_status_t mpu6500_read_all_raw(mpu6500_raw_sample_t *sample)
+i2c_status_t mpu6500_write_reg(const mpu6500_t *dev, uint8_t reg, uint8_t value)
 {
+    return mpu6500_write_reg_checked(dev, reg, value);
+}
+
+i2c_status_t mpu6500_read_who_am_i(const mpu6500_t *dev, uint8_t *value)
+{
+    return mpu6500_read_reg_checked(dev, MPU6500_REG_WHO_AM_I, value);
+}
+
+bool mpu6500_who_am_i_valid(uint8_t value)
+{
+    return value == MPU6500_WHO_AM_I_EXPECTED;
+}
+
+i2c_status_t mpu6500_read_sample_raw(const mpu6500_t *dev,
+                                     mpu6500_raw_sample_t *sample)
+{
+    i2c_status_t status;
     uint8_t buf[14];
-    mpu6500_status_t st;
 
-    if (sample == 0) {
-        return MPU6500_ERR_NULL_PTR;
+    if ((dev == NULL) || (sample == NULL))
+    {
+        return I2C_ERR_NULL_PTR;
     }
 
-    st = mpu6500_read_regs(MPU6500_REG_ACCEL_XOUT_H, buf, 14u);
-    if (st != MPU6500_OK) {
-        return st;
+    status = mpu6500_read_bytes(dev,
+                                MPU6500_REG_ACCEL_XOUT_H,
+                                buf,
+                                14u);
+    if (status != I2C_OK)
+    {
+        return status;
     }
 
     sample->accel.x = mpu6500_be16_to_i16(buf[0],  buf[1]);
@@ -293,5 +280,128 @@ mpu6500_status_t mpu6500_read_all_raw(mpu6500_raw_sample_t *sample)
     sample->gyro.y  = mpu6500_be16_to_i16(buf[10], buf[11]);
     sample->gyro.z  = mpu6500_be16_to_i16(buf[12], buf[13]);
 
-    return MPU6500_OK;
+    return I2C_OK;
+}
+
+i2c_status_t mpu6500_read_accel_raw(const mpu6500_t *dev,
+                                    mpu6500_vec3i16_t *accel)
+{
+    i2c_status_t status;
+    uint8_t buf[6];
+
+    if ((dev == NULL) || (accel == NULL))
+    {
+        return I2C_ERR_NULL_PTR;
+    }
+
+    status = mpu6500_read_bytes(dev,
+                                MPU6500_REG_ACCEL_XOUT_H,
+                                buf,
+                                6u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    accel->x = mpu6500_be16_to_i16(buf[0], buf[1]);
+    accel->y = mpu6500_be16_to_i16(buf[2], buf[3]);
+    accel->z = mpu6500_be16_to_i16(buf[4], buf[5]);
+
+    return I2C_OK;
+}
+
+i2c_status_t mpu6500_read_gyro_raw(const mpu6500_t *dev,
+                                   mpu6500_vec3i16_t *gyro)
+{
+    i2c_status_t status;
+    uint8_t buf[6];
+
+    if ((dev == NULL) || (gyro == NULL))
+    {
+        return I2C_ERR_NULL_PTR;
+    }
+
+    status = mpu6500_read_bytes(dev,
+                                MPU6500_REG_GYRO_XOUT_H,
+                                buf,
+                                6u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    gyro->x = mpu6500_be16_to_i16(buf[0], buf[1]);
+    gyro->y = mpu6500_be16_to_i16(buf[2], buf[3]);
+    gyro->z = mpu6500_be16_to_i16(buf[4], buf[5]);
+
+    return I2C_OK;
+}
+
+i2c_status_t mpu6500_read_temp_raw(const mpu6500_t *dev,
+                                   int16_t *temp_raw)
+{
+    i2c_status_t status;
+    uint8_t buf[2];
+
+    if ((dev == NULL) || (temp_raw == NULL))
+    {
+        return I2C_ERR_NULL_PTR;
+    }
+
+    status = mpu6500_read_bytes(dev,
+                                MPU6500_REG_TEMP_OUT_H,
+                                buf,
+                                2u);
+    if (status != I2C_OK)
+    {
+        return status;
+    }
+
+    *temp_raw = mpu6500_be16_to_i16(buf[0], buf[1]);
+    return I2C_OK;
+}
+
+float mpu6500_accel_lsb_per_g(mpu6500_accel_fs_t fs)
+{
+    switch (fs)
+    {
+        case MPU6500_ACCEL_FS_2G:  return 16384.0f;
+        case MPU6500_ACCEL_FS_4G:  return 8192.0f;
+        case MPU6500_ACCEL_FS_8G:  return 4096.0f;
+        case MPU6500_ACCEL_FS_16G: return 2048.0f;
+        default:                   return 16384.0f;
+    }
+}
+
+float mpu6500_gyro_lsb_per_dps(mpu6500_gyro_fs_t fs)
+{
+    switch (fs)
+    {
+        case MPU6500_GYRO_FS_250DPS:  return 131.0f;
+        case MPU6500_GYRO_FS_500DPS:  return 65.5f;
+        case MPU6500_GYRO_FS_1000DPS: return 32.8f;
+        case MPU6500_GYRO_FS_2000DPS: return 16.4f;
+        default:                      return 131.0f;
+    }
+}
+
+float mpu6500_accel_raw_to_g(int16_t raw, mpu6500_accel_fs_t fs)
+{
+    return ((float)raw) / mpu6500_accel_lsb_per_g(fs);
+}
+
+float mpu6500_gyro_raw_to_dps(int16_t raw, mpu6500_gyro_fs_t fs)
+{
+    return ((float)raw) / mpu6500_gyro_lsb_per_dps(fs);
+}
+
+float mpu6500_temp_raw_to_c(int16_t raw)
+{
+    return (((float)raw) / 333.87f) + 21.0f;
+}
+
+float mpu6500_temp_raw_to_f(int16_t raw)
+{
+    float c = mpu6500_temp_raw_to_c(raw);
+    return (c * 9.0f / 5.0f) + 32.0f;
 }
