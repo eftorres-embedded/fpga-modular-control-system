@@ -49,7 +49,29 @@
 //Assumption for V2:
 //- MMIO register width is 32 bits
 //- Therefore CHANNELS must be <= DATA_W, and in normal use DATA_W = 32
-
+//-------------------------------------------------------------
+//Register Map
+//--------------------------------------------------------------------
+// 0x00 : REG_CTRL       - R/W - Control:
+//                              bit[0]   = EN (global PWM enable)
+//                              bit[31:1]= reserved
+// 0x04 : REG_PERIOD     - R/W - Shadow period register
+// 0x08 : REG_APPLY      -  W  - Write bit[0]=1 to commit shadow -> active
+// 0x0C : REG_CH_ENABLE  - R/W - Per-channel enable mask
+// 0x10 : REG_STATUS     -  R  - Status:
+//                              bit[0] = period_end_i
+//                              bit[1] = apply_pending
+//                              bit[2] = active global enable
+// 0x14 : REG_CNT        -  R  - Live PWM counter value
+// 0x18 : Reserved / unused
+// 0x1C : Reserved / unused
+// 0x20 : REG_DUTY[0]    - R/W - Shadow duty for channel 0
+// 0x24 : REG_DUTY[1]    - R/W - Shadow duty for channel 1
+// 0x28 : REG_DUTY[2]    - R/W - Shadow duty for channel 2
+// 0x2C : REG_DUTY[3]    - R/W - Shadow duty for channel 3
+// ...
+// REG_DUTY[i] = REG_DUTY_BASE + 4*i
+//------------------------------------------------
 module pwm_regs_common #(
     parameter   int unsigned    ADDR_W      =   12,
     parameter   int unsigned    DATA_W      =   32,

@@ -145,6 +145,8 @@ module  axi_lite_i2c    #(
     logic   [DATA_W-1:0]        rsp_rdata;
     logic                       rsp_err;
 
+    logic                       axi_resp_busy;
+
     //----------------------------------------------------------------------
     //MMIO request staging
     //
@@ -178,6 +180,7 @@ module  axi_lite_i2c    #(
     //Once a transaction has been accepted by i2c_regs, keep rsp_ready high
     //until the response returns.
     assign  rsp_ready   =   mmio_busy;
+    assign  axi_resp_busy   =   s_axil_bvalid || s_axil_rvalid;
 
     //--------------------------------------------------------------------
     //AXI ready generation
@@ -213,7 +216,7 @@ module  axi_lite_i2c    #(
         launch_write_req    =   1'b0;
         launch_read_req     =   1'b0;
 
-        if(!req_pending_valid   &&  !mmio_busy)
+        if(!req_pending_valid   &&  !mmio_busy && !axi_resp_busy)
         begin
             if(aw_hold_valid  &&  w_hold_valid)
             begin

@@ -196,18 +196,12 @@ i2c_status_t i2c_write_byte_blocking_timeout(uint8_t data,
     }
 
     i2c_write_txdata(data);
-
     i2c_write_cmd_raw(I2C_CMD_WR, false);
 
     status = i2c_wait_cmd_accepted_and_completed_timeout(timeout_poll_count);
     if (status != I2C_OK)
     {
         return status;
-    }
-
-    if (i2c_nack_received())
-    {
-        return I2C_ERR_NACK;
     }
 
     return I2C_OK;
@@ -223,9 +217,8 @@ i2c_status_t i2c_read_byte_blocking_timeout(bool rd_last,
                                             uint32_t timeout_poll_count)
 {
     i2c_status_t status;
-    uint32_t remaining = timeout_poll_count;
 
-    if (data == 0)
+    if (data == NULL)
     {
         return I2C_ERR_NULL_PTR;
     }
@@ -238,19 +231,11 @@ i2c_status_t i2c_read_byte_blocking_timeout(bool rd_last,
         return status;
     }
 
-    while (!i2c_rd_data_valid())
-    {
-        if (i2c_cmd_illegal())
-        {
-            return I2C_ERR_CMD_ILLEGAL;
-        }
-
-        if (i2c_timeout_expired(&remaining))
-        {
-            return I2C_ERR_TIMEOUT;
-        }
-    }
-
+    /*
+     * Important:
+     * After the read command completes, RXDATA should already hold the byte.
+     * Do not wait again for RD_DATA_VALID here, because some cores pulse it.
+     */
     *data = i2c_rxdata_read();
     return I2C_OK;
 }
