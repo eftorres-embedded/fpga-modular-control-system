@@ -63,27 +63,4 @@ static inline void pwm_apply(uint32_t base)
     PWM_REG32(base, PWM_REG_APPLY_OFFSET) = 1u;
 }
 
-static inline uint32_t pwm_numb_channels(uint32_t base)
-{
-#ifdef MOTOR_PWM_BASE
-#ifdef MOTOR_PWM_NUM_CHANNELS
-    if (base == MOTOR_PWM_BASE)
-    {
-        return MOTOR_PWM_NUM_CHANNELS;
-    }
-#endif
-#endif
-
-#ifdef LED_PWM_BASE
-#ifdef LED_PWM_NUM_CHANNELS
-    if (base == LED_PWM_BASE)
-    {
-        return LED_PWM_NUM_CHANNELS;
-    }
-#endif
-#endif
-
-    return 1u;
-}
-
 #endif /* PWM_REGS_H */
