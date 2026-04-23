@@ -2,66 +2,85 @@
 #define MOTOR_PWM_H
 
 #include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "pwm_regs.h"
 
-/*----------------------------------------------------------------------------
- * Motor-PWM wrapper for the MOTOR_PWM_BASE instance only.
+/*
+ * Channel mask helper.
  *
- * This layer sits on top of pwm_regs.h/.c and provides motor-oriented shadow
- * state plus one-shot apply semantics.
- *
- * Convention used here:
- * - direction bit = 0 -> forward / normal polarity
- * - direction bit = 1 -> reverse polarity
- *
- * The final electrical effect still depends on your downstream H-bridge adapter
- * logic. This wrapper only manages the PWM/mask register model.
- *----------------------------------------------------------------------------*/
-
-#define MOTOR_PWM_LEFT_CHANNEL    0u
-#define MOTOR_PWM_RIGHT_CHANNEL   1u
-
-typedef enum
-{
-    MOTOR_PWM_OK = 0,
-    MOTOR_PWM_ERR_NOT_INITIALIZED = -1,
-    MOTOR_PWM_ERR_BAD_CHANNEL = -2,
-    MOTOR_PWM_ERR_BAD_CHANNEL_COUNT = -3,
-    MOTOR_PWM_ERR_DUTY_GT_PERIOD = -4,
-    MOTOR_PWM_ERR_BRAKE_AND_COAST = -5
-} motor_pwm_status_t;
-
-/* Core setup / apply */
-motor_pwm_status_t motor_pwm_init(size_t channels, uint32_t period);
-motor_pwm_status_t motor_pwm_set_period(uint32_t period);
-uint32_t motor_pwm_get_period(void);
-motor_pwm_status_t motor_pwm_apply(void);
-motor_pwm_status_t motor_pwm_all_off(void);
-
-/* Low-level per-channel control */
-motor_pwm_status_t motor_pwm_set_raw(
-    uint32_t channel,
-    uint32_t duty,
-    bool     reverse,
-    bool     brake,
-    bool     coast,
-    bool     enable);
-
-/* Signed command helper:
- *  positive = forward
- *  negative = reverse
- *  zero     = off
+ * Example:
+ *   MOTOR_PWM_CH(0)
+ *   MOTOR_PWM_CH(0) | MOTOR_PWM_CH(1)
  */
-motor_pwm_status_t motor_pwm_set_signed(uint32_t channel, int32_t command);
+#define MOTOR_PWM_CH(ch)   (1u << (uint32_t)(ch))
 
-/* Convenience helpers */
-motor_pwm_status_t motor_pwm_brake(uint32_t channel);
-motor_pwm_status_t motor_pwm_coast(uint32_t channel);
-motor_pwm_status_t motor_pwm_disable(uint32_t channel);
-motor_pwm_status_t motor_pwm_brake_all(void);
-motor_pwm_status_t motor_pwm_coast_all(void);
+static inline void motor_pwm_set_period(uint32_t period)
+{
+    pwm_set_period(MOTOR_PWM_BASE, period);
+}
+
+static inline void motor_pwm_set_ctrl(uint32_t ctrl)
+{
+    pwm_set_ctrl(MOTOR_PWM_BASE, ctrl);
+}
+
+/*
+ * Full enable-mask write.
+ * bit 0 -> channel 0
+ * bit 1 -> channel 1
+ * ...
+ */
+static inline void motor_pwm_enable_ch(uint32_t channels)
+{
+    pwm_set_ch_enable(MOTOR_PWM_BASE, channels);
+}
+
+static inline uint32_t motor_pwm_read_cnt(void)
+{
+    return pwm_read_cnt(MOTOR_PWM_BASE);
+}
+
+static inline uint32_t motor_pwm_read_max_duty(void)
+{
+    return pwm_read_max_duty(MOTOR_PWM_BASE);
+}
+
+static inline void motor_pwm_set_ch_duty(uint32_t channel, uint32_t duty)
+{
+    pwm_set_duty_ch(MOTOR_PWM_BASE, channel, duty);
+}
+
+/*
+ * Full brake-mask write.
+ * 1 = brake requested for that channel
+ * 0 = brake not requested
+ */
+static inline void motor_pwm_brake_channels(uint32_t channels)
+{
+    pwm_write_brake_mask(MOTOR_PWM_BASE, channels);
+}
+
+/*
+ * Full coast-mask write.
+ * 1 = coast requested for that channel
+ * 0 = coast not requested
+ */
+static inline void motor_pwm_coast_channels(uint32_t channels)
+{
+    pwm_write_coast_mask(MOTOR_PWM_BASE, channels);
+}
+
+/*
+ * Full direction-mask write.
+ * Bit meaning depends on your downstream H-bridge convention.
+ */
+static inline void motor_pwm_dir_channels(uint32_t channels)
+{
+    pwm_write_dir_mask(MOTOR_PWM_BASE, channels);
+}
+
+static inline void motor_pwm_apply(void)
+{
+    pwm_apply(MOTOR_PWM_BASE);
+}
 
 #endif /* MOTOR_PWM_H */

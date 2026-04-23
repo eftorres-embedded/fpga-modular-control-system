@@ -2,180 +2,88 @@
 #define PWM_REGS_H
 
 #include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
+#include "user_define_system.h"
 
 /*----------------------------------------------------------------------------
- * PWM instance base addresses
+ * Register offsets
  *----------------------------------------------------------------------------*/
-#ifndef MOTOR_PWM_BASE
-#define MOTOR_PWM_BASE   0x00030000u
-#endif
+#define PWM_REG_CTRL_OFFSET        0x00u
+#define PWM_REG_PERIOD_OFFSET      0x04u
+#define PWM_REG_APPLY_OFFSET       0x08u
+#define PWM_REG_CH_ENABLE_OFFSET   0x0Cu
+#define PWM_REG_STATUS_OFFSET      0x10u
+#define PWM_REG_CNT_OFFSET         0x14u
+#define PWM_REG_DUTY_BASE_OFFSET   0x20u
 
-#ifndef LED_PWM_BASE
-#define LED_PWM_BASE     0x00032000u
-#endif
-
-/*----------------------------------------------------------------------------
- * Register offsets - common PWM block
- *----------------------------------------------------------------------------*/
-#define PWM_REG_CTRL_OFFSET          0x00u
-#define PWM_REG_PERIOD_OFFSET        0x04u
-#define PWM_REG_APPLY_OFFSET         0x08u
-#define PWM_REG_CH_ENABLE_OFFSET     0x0Cu
-#define PWM_REG_STATUS_OFFSET        0x10u
-#define PWM_REG_CNT_OFFSET           0x14u
-#define PWM_REG_DUTY_BASE_OFFSET     0x20u
+#define PWM_REG_DUTY_OFFSET(ch) \
+    (PWM_REG_DUTY_BASE_OFFSET + (4u * (uint32_t)(ch)))
 
 /*----------------------------------------------------------------------------
- * Register offsets - H-bridge extension
- *----------------------------------------------------------------------------*/
-#define PWM_REG_DIR_MASK_OFFSET      0x40u
-#define PWM_REG_BRAKE_MASK_OFFSET    0x44u
-#define PWM_REG_COAST_MASK_OFFSET    0x48u
-
-/*----------------------------------------------------------------------------
- * CTRL register bits
- *----------------------------------------------------------------------------*/
-#define PWM_CTRL_ENABLE_BIT          0u
-#define PWM_CTRL_ENABLE              (1u << PWM_CTRL_ENABLE_BIT)
-
-/*----------------------------------------------------------------------------
- * STATUS register bits
- *----------------------------------------------------------------------------*/
-#define PWM_STATUS_PERIOD_END_BIT      0u
-#define PWM_STATUS_APPLY_PENDING_BIT   1u
-#define PWM_STATUS_ACTIVE_ENABLE_BIT   2u
-
-#define PWM_STATUS_PERIOD_END        (1u << PWM_STATUS_PERIOD_END_BIT)
-#define PWM_STATUS_APPLY_PENDING     (1u << PWM_STATUS_APPLY_PENDING_BIT)
-#define PWM_STATUS_ACTIVE_ENABLE     (1u << PWM_STATUS_ACTIVE_ENABLE_BIT)
-
-/*----------------------------------------------------------------------------
- * Misc constants
- *----------------------------------------------------------------------------*/
-#define PWM_MAX_CHANNELS             32u
-
-/*----------------------------------------------------------------------------
- * Shared helper status codes
- *----------------------------------------------------------------------------*/
-typedef enum
-{
-    PWM_OK = 0,
-    PWM_ERR_NULL_PTR = -1,
-    PWM_ERR_BAD_CHANNEL_COUNT = -2
-} pwm_status_t;
-
-/*----------------------------------------------------------------------------
- * Generic MMIO access helpers
+ * Simple MMIO helper
  *----------------------------------------------------------------------------*/
 #define PWM_REG32(base, offset) \
     (*(volatile uint32_t *)((uintptr_t)(base) + (uintptr_t)(offset)))
 
-#define PWM_REG_CTRL(base)           PWM_REG32((base), PWM_REG_CTRL_OFFSET)
-#define PWM_REG_PERIOD(base)         PWM_REG32((base), PWM_REG_PERIOD_OFFSET)
-#define PWM_REG_APPLY(base)          PWM_REG32((base), PWM_REG_APPLY_OFFSET)
-#define PWM_REG_CH_ENABLE(base)      PWM_REG32((base), PWM_REG_CH_ENABLE_OFFSET)
-#define PWM_REG_STATUS(base)         PWM_REG32((base), PWM_REG_STATUS_OFFSET)
-#define PWM_REG_CNT(base)            PWM_REG32((base), PWM_REG_CNT_OFFSET)
-
-#define PWM_REG_DIR_MASK(base)       PWM_REG32((base), PWM_REG_DIR_MASK_OFFSET)
-#define PWM_REG_BRAKE_MASK(base)     PWM_REG32((base), PWM_REG_BRAKE_MASK_OFFSET)
-#define PWM_REG_COAST_MASK(base)     PWM_REG32((base), PWM_REG_COAST_MASK_OFFSET)
-
-#define PWM_REG_DUTY_OFFSET(ch)      (PWM_REG_DUTY_BASE_OFFSET + (4u * (uint32_t)(ch)))
-#define PWM_REG_DUTY(base, ch)       PWM_REG32((base), PWM_REG_DUTY_OFFSET(ch))
-
 /*----------------------------------------------------------------------------
- * Low-level MMIO helpers - common PWM block
+ * Basic API
  *----------------------------------------------------------------------------*/
-static inline uint32_t pwm_ctrl_read(uint32_t base)          { return PWM_REG_CTRL(base); }
-static inline uint32_t pwm_status_read(uint32_t base)        { return PWM_REG_STATUS(base); }
-static inline uint32_t pwm_period_read(uint32_t base)        { return PWM_REG_PERIOD(base); }
-static inline uint32_t pwm_counter_read(uint32_t base)       { return PWM_REG_CNT(base); }
-static inline uint32_t pwm_ch_enable_read(uint32_t base)     { return PWM_REG_CH_ENABLE(base); }
-
-static inline void pwm_ctrl_write(uint32_t base, uint32_t value)   { PWM_REG_CTRL(base) = value; }
-static inline void pwm_write_period(uint32_t base, uint32_t value) { PWM_REG_PERIOD(base) = value; }
-static inline void pwm_write_ch_enable(uint32_t base, uint32_t m)  { PWM_REG_CH_ENABLE(base) = m; }
-static inline void pwm_apply(uint32_t base)                        { PWM_REG_APPLY(base) = 1u; }
-
-/*----------------------------------------------------------------------------
- * Duty-bank helpers
- *----------------------------------------------------------------------------*/
-static inline void pwm_write_duty(uint32_t base, uint32_t ch, uint32_t value)
+static inline void pwm_set_period(uint32_t base, uint32_t period)
 {
-    PWM_REG_DUTY(base, ch) = value;
+    PWM_REG32(base, PWM_REG_PERIOD_OFFSET) = period;
 }
 
-static inline uint32_t pwm_read_duty(uint32_t base, uint32_t ch)
+static inline void pwm_set_ctrl(uint32_t base, uint32_t ctrl)
 {
-    return PWM_REG_DUTY(base, ch);
+    PWM_REG32(base, PWM_REG_CTRL_OFFSET) = ctrl;
 }
 
-/*----------------------------------------------------------------------------
- * Common status helpers
- *----------------------------------------------------------------------------*/
-static inline bool pwm_period_end_seen(uint32_t base)
+static inline void pwm_set_ch_enable(uint32_t base, uint32_t channels)
 {
-    return (PWM_REG_STATUS(base) & PWM_STATUS_PERIOD_END) != 0u;
+    PWM_REG32(base, PWM_REG_CH_ENABLE_OFFSET) = channels;
 }
 
-static inline bool pwm_apply_pending(uint32_t base)
+static inline uint32_t pwm_read_cnt(uint32_t base)
 {
-    return (PWM_REG_STATUS(base) & PWM_STATUS_APPLY_PENDING) != 0u;
+    return PWM_REG32(base, PWM_REG_CNT_OFFSET);
 }
 
-static inline bool pwm_active_enabled(uint32_t base)
+/* Small extra helper for multi-channel PWM instances */
+static inline void pwm_set_duty_ch(uint32_t base, uint32_t channel, uint32_t duty)
 {
-    return (PWM_REG_STATUS(base) & PWM_STATUS_ACTIVE_ENABLE) != 0u;
+    PWM_REG32(base, PWM_REG_DUTY_OFFSET(channel)) = duty;
 }
 
-/*----------------------------------------------------------------------------
- * Common control helpers
- *----------------------------------------------------------------------------*/
-static inline void pwm_enable_shadow(uint32_t base)
+static inline uint32_t pwm_read_max_duty(uint32_t base)
 {
-    PWM_REG_CTRL(base) = pwm_ctrl_read(base) | PWM_CTRL_ENABLE;
+    return PWM_REG32(base, PWM_REG_PERIOD_OFFSET);
 }
 
-static inline void pwm_disable_shadow(uint32_t base)
+static inline void pwm_apply(uint32_t base)
 {
-    PWM_REG_CTRL(base) = pwm_ctrl_read(base) & ~PWM_CTRL_ENABLE;
+    PWM_REG32(base, PWM_REG_APPLY_OFFSET) = 1u;
 }
 
-/*----------------------------------------------------------------------------
- * H-bridge extension helpers
- *----------------------------------------------------------------------------*/
-static inline uint32_t pwm_dir_mask_read(uint32_t base)      { return PWM_REG_DIR_MASK(base); }
-static inline uint32_t pwm_brake_mask_read(uint32_t base)    { return PWM_REG_BRAKE_MASK(base); }
-static inline uint32_t pwm_coast_mask_read(uint32_t base)    { return PWM_REG_COAST_MASK(base); }
+static inline uint32_t pwm_numb_channels(uint32_t base)
+{
+#ifdef MOTOR_PWM_BASE
+#ifdef MOTOR_PWM_NUM_CHANNELS
+    if (base == MOTOR_PWM_BASE)
+    {
+        return MOTOR_PWM_NUM_CHANNELS;
+    }
+#endif
+#endif
 
-static inline void pwm_write_dir_mask(uint32_t base, uint32_t m)   { PWM_REG_DIR_MASK(base) = m; }
-static inline void pwm_write_brake_mask(uint32_t base, uint32_t m) { PWM_REG_BRAKE_MASK(base) = m; }
-static inline void pwm_write_coast_mask(uint32_t base, uint32_t m) { PWM_REG_COAST_MASK(base) = m; }
+#ifdef LED_PWM_BASE
+#ifdef LED_PWM_NUM_CHANNELS
+    if (base == LED_PWM_BASE)
+    {
+        return LED_PWM_NUM_CHANNELS;
+    }
+#endif
+#endif
 
-/*----------------------------------------------------------------------------
- * Shared common-PWM helper API implemented in pwm_regs.c
- *----------------------------------------------------------------------------*/
-pwm_status_t pwm_common_prepare_frame(
-    uint32_t        base,
-    uint32_t        period,
-    const uint32_t *duty_values,
-    size_t          channels,
-    uint32_t        ch_enable_mask,
-    bool            enable_core);
-
-pwm_status_t pwm_common_apply_frame(
-    uint32_t        base,
-    uint32_t        period,
-    const uint32_t *duty_values,
-    size_t          channels,
-    uint32_t        ch_enable_mask,
-    bool            enable_core);
-
-pwm_status_t pwm_common_all_off(
-    uint32_t        base,
-    size_t          channels);
+    return 1u;
+}
 
 #endif /* PWM_REGS_H */

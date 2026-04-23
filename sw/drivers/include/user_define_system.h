@@ -7,6 +7,11 @@
  * Platform base addresses
  * Update these if the Platform Designer address map changes.
  */
+#define MOTOR_PWM_BASE          0x00030000u
+#define MOTOR_PWM_NUM_CHANNELS  2u
+
+#define LED_PWM_BASE            0x00032000u
+#define LED_PWM_NUM_CHANNELS    10u
 
 #define GPIO_BASE               0x00036000u
 
