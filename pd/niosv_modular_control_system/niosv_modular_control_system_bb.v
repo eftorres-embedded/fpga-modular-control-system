@@ -1,6 +1,9 @@
 
 module niosv_modular_control_system (
 	clk_clk,
+	gpio_gpio_in,
+	gpio_gpio_out,
+	gpio_gpio_oe,
 	hex0_hex0,
 	hex1_hex1,
 	hex2_hex2,
@@ -21,12 +24,12 @@ module niosv_modular_control_system (
 	spi_master_sclk,
 	spi_master_mosi,
 	spi_master_miso,
-	spi_master_cs_n,
-	gpio_gpio_in,
-	gpio_gpio_out,
-	gpio_gpio_oe);	
+	spi_master_cs_n);	
 
 	input		clk_clk;
+	input	[31:0]	gpio_gpio_in;
+	output	[31:0]	gpio_gpio_out;
+	output	[31:0]	gpio_gpio_oe;
 	output	[7:0]	hex0_hex0;
 	output	[7:0]	hex1_hex1;
 	output	[7:0]	hex2_hex2;
@@ -48,7 +51,4 @@ module niosv_modular_control_system (
 	output		spi_master_mosi;
 	input		spi_master_miso;
 	output		spi_master_cs_n;
-	input	[31:0]	gpio_gpio_in;
-	output	[31:0]	gpio_gpio_out;
-	output	[31:0]	gpio_gpio_oe;
 endmodule

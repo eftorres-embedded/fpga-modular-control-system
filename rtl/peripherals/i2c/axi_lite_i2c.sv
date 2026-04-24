@@ -216,7 +216,7 @@ module  axi_lite_i2c    #(
         launch_write_req    =   1'b0;
         launch_read_req     =   1'b0;
 
-        if(!req_pending_valid   &&  !mmio_busy && !axi_resp_busy)
+        if(!req_pending_valid   &&  !mmio_busy && !axi_resp_busy )
         begin
             if(aw_hold_valid  &&  w_hold_valid)
             begin

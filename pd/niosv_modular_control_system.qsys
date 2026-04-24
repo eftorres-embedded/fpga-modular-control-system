@@ -281,6 +281,30 @@
          type = "String";
       }
    }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
+         type = "String";
+      }
+   }
    element onchip_memory
    {
       datum _sortIndex

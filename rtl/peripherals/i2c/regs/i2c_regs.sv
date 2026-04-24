@@ -104,6 +104,7 @@ module i2c_regs #(
     localparam logic [ADDR_W-1:0] REG_TXDATA   = 12'h008;
     localparam logic [ADDR_W-1:0] REG_RXDATA   = 12'h00C;
     localparam logic [ADDR_W-1:0] REG_CMD      = 12'h010;
+	 localparam logic	[ADDR_W-1:0] REG_DEBUG	  = 12'h014;
 
     //--------------------------------------------------------------------------
     // Status bit positions
@@ -172,21 +173,22 @@ module i2c_regs #(
     //--------------------------------------------------------------------------
     // Helper function: byte-write merge for a generic DATA_W register
     //--------------------------------------------------------------------------
-    function automatic logic [DATA_W-1:0] merge_wstrb(
-        input logic [DATA_W-1:0]      old_val,
-        input logic [DATA_W-1:0]      new_val,
-        input logic [(DATA_W/8)-1:0]  strb
-    );
-        logic [DATA_W-1:0] write_mask;
-        int i;
-        begin
-            write_mask = '0;
-            for (i = 0; i < (DATA_W/8); i++) begin
-                write_mask[i*8 +: 8] = {8{strb[i]}};
-            end
+    function    automatic   logic   [DATA_W-1:0]    merge_wstrb(
+    input   logic   [DATA_W-1:0]        old_val,
+    input   logic   [DATA_W-1:0]        new_val,
+    input   logic   [(DATA_W/8)-1:0]    strb);
 
-            return (old_val & ~write_mask) | (new_val & write_mask);
-        end
+    logic   [DATA_W-1:0]    write_mask;
+    begin
+        write_mask  =   {
+            {8{strb[3]}},
+            {8{strb[2]}},
+            {8{strb[1]}},
+            {8{strb[0]}}
+        };
+        
+        return  (old_val    &   ~write_mask)    |   (new_val & write_mask);
+    end
     endfunction
 
     //--------------------------------------------------------------------------
@@ -253,14 +255,26 @@ module i2c_regs #(
 
         unique case (req_addr)
             REG_STATUS: begin
-                if (!req_write) begin
+                if (!req_write)
+					 begin
                     rdata_next = status_rdata;
                 end
                 // writes are allowed for W1C clearing of sticky bits
             end
+				
+				REG_DEBUG: begin
+                if (req_write)
+					 begin
+						err_next	=	1'b1;
+					end
+					else
+					begin
+						rdata_next = 32'hDECAFBAD;
+					end
+            end
 
             REG_DIVISOR: begin
-                rdata_next = {{(DATA_W-DIVISOR_W){1'b0}}, divisor_reg};
+                rdata_next =	32'hD06A0000	| {{(DATA_W-DIVISOR_W){1'b0}}, divisor_reg};
             end
 
             REG_TXDATA: begin

@@ -1,6 +1,9 @@
 	component niosv_modular_control_system is
 		port (
 			clk_clk                       : in  std_logic                     := 'X';             -- clk
+			gpio_gpio_in                  : in  std_logic_vector(31 downto 0) := (others => 'X'); -- gpio_in
+			gpio_gpio_out                 : out std_logic_vector(31 downto 0);                    -- gpio_out
+			gpio_gpio_oe                  : out std_logic_vector(31 downto 0);                    -- gpio_oe
 			hex0_hex0                     : out std_logic_vector(7 downto 0);                     -- hex0
 			hex1_hex1                     : out std_logic_vector(7 downto 0);                     -- hex1
 			hex2_hex2                     : out std_logic_vector(7 downto 0);                     -- hex2
@@ -21,16 +24,16 @@
 			spi_master_sclk               : out std_logic;                                        -- sclk
 			spi_master_mosi               : out std_logic;                                        -- mosi
 			spi_master_miso               : in  std_logic                     := 'X';             -- miso
-			spi_master_cs_n               : out std_logic;                                        -- cs_n
-			gpio_gpio_in                  : in  std_logic_vector(31 downto 0) := (others => 'X'); -- gpio_in
-			gpio_gpio_out                 : out std_logic_vector(31 downto 0);                    -- gpio_out
-			gpio_gpio_oe                  : out std_logic_vector(31 downto 0)                     -- gpio_oe
+			spi_master_cs_n               : out std_logic                                         -- cs_n
 		);
 	end component niosv_modular_control_system;
 
 	u0 : component niosv_modular_control_system
 		port map (
 			clk_clk                       => CONNECTED_TO_clk_clk,                       --        clk.clk
+			gpio_gpio_in                  => CONNECTED_TO_gpio_gpio_in,                  --       gpio.gpio_in
+			gpio_gpio_out                 => CONNECTED_TO_gpio_gpio_out,                 --           .gpio_out
+			gpio_gpio_oe                  => CONNECTED_TO_gpio_gpio_oe,                  --           .gpio_oe
 			hex0_hex0                     => CONNECTED_TO_hex0_hex0,                     --       hex0.hex0
 			hex1_hex1                     => CONNECTED_TO_hex1_hex1,                     --       hex1.hex1
 			hex2_hex2                     => CONNECTED_TO_hex2_hex2,                     --       hex2.hex2
@@ -51,9 +54,6 @@
 			spi_master_sclk               => CONNECTED_TO_spi_master_sclk,               -- spi_master.sclk
 			spi_master_mosi               => CONNECTED_TO_spi_master_mosi,               --           .mosi
 			spi_master_miso               => CONNECTED_TO_spi_master_miso,               --           .miso
-			spi_master_cs_n               => CONNECTED_TO_spi_master_cs_n,               --           .cs_n
-			gpio_gpio_in                  => CONNECTED_TO_gpio_gpio_in,                  --       gpio.gpio_in
-			gpio_gpio_out                 => CONNECTED_TO_gpio_gpio_out,                 --           .gpio_out
-			gpio_gpio_oe                  => CONNECTED_TO_gpio_gpio_oe                   --           .gpio_oe
+			spi_master_cs_n               => CONNECTED_TO_spi_master_cs_n                --           .cs_n
 		);
 

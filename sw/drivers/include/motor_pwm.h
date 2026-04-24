@@ -13,6 +13,16 @@
  */
 #define MOTOR_PWM_CH(ch)   (1u << (uint32_t)(ch))
 
+/*
+ * Motor-PWM extension register offsets.
+ *
+ * These exist only for the motor/H-bridge PWM personality.
+ * They are not part of the generic pwm_regs.h API.
+ */
+#define MOTOR_PWM_REG_DIR_MASK_OFFSET      0x40u
+#define MOTOR_PWM_REG_BRAKE_MASK_OFFSET    0x44u
+#define MOTOR_PWM_REG_COAST_MASK_OFFSET    0x48u
+
 static inline void motor_pwm_set_period(uint32_t period)
 {
     pwm_set_period(MOTOR_PWM_BASE, period);
@@ -53,29 +63,35 @@ static inline void motor_pwm_set_ch_duty(uint32_t channel, uint32_t duty)
  * Full brake-mask write.
  * 1 = brake requested for that channel
  * 0 = brake not requested
+ *
+ * Shadow register write; call motor_pwm_apply() to commit.
  */
 static inline void motor_pwm_brake_channels(uint32_t channels)
 {
-    pwm_write_brake_mask(MOTOR_PWM_BASE, channels);
+    PWM_REG32(MOTOR_PWM_BASE, MOTOR_PWM_REG_BRAKE_MASK_OFFSET) = channels;
 }
 
 /*
  * Full coast-mask write.
  * 1 = coast requested for that channel
  * 0 = coast not requested
+ *
+ * Shadow register write; call motor_pwm_apply() to commit.
  */
 static inline void motor_pwm_coast_channels(uint32_t channels)
 {
-    pwm_write_coast_mask(MOTOR_PWM_BASE, channels);
+    PWM_REG32(MOTOR_PWM_BASE, MOTOR_PWM_REG_COAST_MASK_OFFSET) = channels;
 }
 
 /*
  * Full direction-mask write.
  * Bit meaning depends on your downstream H-bridge convention.
+ *
+ * Shadow register write; call motor_pwm_apply() to commit.
  */
 static inline void motor_pwm_dir_channels(uint32_t channels)
 {
-    pwm_write_dir_mask(MOTOR_PWM_BASE, channels);
+    PWM_REG32(MOTOR_PWM_BASE, MOTOR_PWM_REG_DIR_MASK_OFFSET) = channels;
 }
 
 static inline void motor_pwm_apply(void)

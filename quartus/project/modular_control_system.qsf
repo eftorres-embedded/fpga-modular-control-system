@@ -480,7 +480,6 @@ set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/common/reset_sync.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/common/hex_to_sseg.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/top/modular_control_system_top.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/core/pwm_core_ip.sv
-set_global_assignment -name SIGNALTAP_FILE debug_spi_adx1345.stp
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/subsystems/pwm_subsystem_motor.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/adapters/pwm_hbridge_adapter.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/peripherals/pwm/regs/pwm_regs_hbridge_ext.sv

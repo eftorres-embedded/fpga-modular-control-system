@@ -2,7 +2,10 @@
 #define PWM_REGS_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
 #include "user_define_system.h"
+
 
 /*----------------------------------------------------------------------------
  * Register offsets

@@ -1,5 +1,8 @@
 	niosv_modular_control_system u0 (
 		.clk_clk                       (<connected-to-clk_clk>),                       //        clk.clk
+		.gpio_gpio_in                  (<connected-to-gpio_gpio_in>),                  //       gpio.gpio_in
+		.gpio_gpio_out                 (<connected-to-gpio_gpio_out>),                 //           .gpio_out
+		.gpio_gpio_oe                  (<connected-to-gpio_gpio_oe>),                  //           .gpio_oe
 		.hex0_hex0                     (<connected-to-hex0_hex0>),                     //       hex0.hex0
 		.hex1_hex1                     (<connected-to-hex1_hex1>),                     //       hex1.hex1
 		.hex2_hex2                     (<connected-to-hex2_hex2>),                     //       hex2.hex2
@@ -20,9 +23,6 @@
 		.spi_master_sclk               (<connected-to-spi_master_sclk>),               // spi_master.sclk
 		.spi_master_mosi               (<connected-to-spi_master_mosi>),               //           .mosi
 		.spi_master_miso               (<connected-to-spi_master_miso>),               //           .miso
-		.spi_master_cs_n               (<connected-to-spi_master_cs_n>),               //           .cs_n
-		.gpio_gpio_in                  (<connected-to-gpio_gpio_in>),                  //       gpio.gpio_in
-		.gpio_gpio_out                 (<connected-to-gpio_gpio_out>),                 //           .gpio_out
-		.gpio_gpio_oe                  (<connected-to-gpio_gpio_oe>)                   //           .gpio_oe
+		.spi_master_cs_n               (<connected-to-spi_master_cs_n>)                //           .cs_n
 	);
 

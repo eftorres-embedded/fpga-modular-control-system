@@ -1,259 +1,582 @@
 #include "i2c_regs.h"
 
 /*----------------------------------------------------------------------------
- * Internal timeout helper
+ * Internal polling limits
  *----------------------------------------------------------------------------*/
-static bool i2c_timeout_expired(uint32_t *remaining)
-{
-    if (*remaining == I2C_WAIT_FOREVER)
-    {
-        return false;
-    }
+#define I2C_POLL_LIMIT               1000000u
+#define I2C_TX_ERR_DATA_NACK_SAT     0xFFu
 
-    if (*remaining == 0u)
-    {
+/*----------------------------------------------------------------------------
+ * Private helpers
+ *----------------------------------------------------------------------------*/
+
+/* Try to launch a low-level command and return true if the launch was rejected. */
+static bool i2c_priv_issue_cmd(uint32_t base, uint8_t cmd, bool rd_last)
+{
+    if (!i2c_status_cmd_ready(base)) {
         return true;
     }
 
-    *remaining -= 1u;
+    i2c_write_cmd_raw(base, cmd, rd_last);
     return false;
 }
 
+/* Wait until cmd_ready becomes true. */
+static bool i2c_priv_wait_cmd_ready(uint32_t base)
+{
+    uint32_t i;
+
+    for (i = 0u; i < I2C_POLL_LIMIT; i++) {
+        if (i2c_status_cmd_ready(base)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/* Wait until done becomes true. */
+static bool i2c_priv_wait_done(uint32_t base)
+{
+    uint32_t i;
+
+    for (i = 0u; i < I2C_POLL_LIMIT; i++) {
+        if (i2c_status_done(base)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/* Wait until rd_data_valid becomes true. */
+static bool i2c_priv_wait_rd_valid(uint32_t base)
+{
+    uint32_t i;
+
+    for (i = 0u; i < I2C_POLL_LIMIT; i++) {
+        if (i2c_rd_data_valid(base)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/*
+ * Wait for a non-data command to complete by observing cmd_ready
+ * go low and then high again.
+ */
+static bool i2c_priv_wait_cmd_cycle(uint32_t base)
+{
+    uint32_t i;
+    bool saw_busy = false;
+
+    for (i = 0u; i < I2C_POLL_LIMIT; i++) {
+        if (!i2c_status_cmd_ready(base)) {
+            saw_busy = true;
+        } else if (saw_busy) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/* Build address byte for write phase from a 7-bit slave address. */
+static uint8_t i2c_priv_addr_wr(uint8_t slave_address)
+{
+    return (uint8_t)(((slave_address & 0x7Fu) << 1) | 0u);
+}
+
+/* Build address byte for read phase from a 7-bit slave address. */
+static uint8_t i2c_priv_addr_rd(uint8_t slave_address)
+{
+    return (uint8_t)(((slave_address & 0x7Fu) << 1) | 1u);
+}
+
+/* Convert a data-byte index into the requested TX error code scheme. */
+static uint8_t i2c_priv_data_nack_flag(uint16_t index)
+{
+    uint16_t code = (uint16_t)I2C_TX_ERR_DATA_NACK_BASE + index;
+
+    if (code > 0xFFu) {
+        return I2C_TX_ERR_DATA_NACK_SAT;
+    }
+
+    return (uint8_t)code;
+}
+
+/*
+ * Send one write-phase byte on the bus and return:
+ *   I2C_TX_OK
+ *   nack_code
+ *   I2C_TX_ERR_CMD
+ */
+static uint8_t i2c_priv_write_phase_byte(uint32_t base, uint8_t byte, uint8_t nack_code)
+{
+    uint8_t ack_info;
+
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    i2c_write_txdata(base, byte);
+
+    if (i2c_cmd_wr(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (!i2c_priv_wait_done(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    ack_info = i2c_ack(base);
+
+    /* bit1 = valid, bit0 = ack value */
+    if ((ack_info & 0x2u) == 0u) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    /* ack bit = 0 means ACK, ack bit = 1 means NACK */
+    if ((ack_info & 0x1u) != 0u) {
+        return nack_code;
+    }
+
+    return I2C_TX_OK;
+}
+
 /*----------------------------------------------------------------------------
- * Internal helper
- *
- * After a command write, the engine should leave CMD_READY and later return to
- * CMD_READY when complete.
+ * Public low-level command helpers
  *----------------------------------------------------------------------------*/
-static i2c_status_t i2c_wait_cmd_accepted_and_completed_timeout(uint32_t timeout_poll_count)
+
+bool i2c_cmd_start(uint32_t base)
 {
-    uint32_t remaining = timeout_poll_count;
+    return i2c_priv_issue_cmd(base, I2C_CMD_START, false);
+}
 
-    while (i2c_cmd_ready())
-    {
-        if (i2c_cmd_illegal())
-        {
-            return I2C_ERR_CMD_ILLEGAL;
-        }
+bool i2c_cmd_wr(uint32_t base)
+{
+    return i2c_priv_issue_cmd(base, I2C_CMD_WR, false);
+}
 
-        if (i2c_timeout_expired(&remaining))
-        {
-            return I2C_ERR_TIMEOUT;
-        }
+bool i2c_cmd_rd(uint32_t base, bool rd_last)
+{
+    return i2c_priv_issue_cmd(base, I2C_CMD_RD, rd_last);
+}
+
+bool i2c_cmd_stop(uint32_t base)
+{
+    return i2c_priv_issue_cmd(base, I2C_CMD_STOP, false);
+}
+
+bool i2c_cmd_restart(uint32_t base)
+{
+    return i2c_priv_issue_cmd(base, I2C_CMD_RESTART, false);
+}
+
+void i2c_set_divisor(uint32_t base, uint16_t freq_kHz, uint8_t core_MHz)
+{
+    uint32_t numerator;
+    uint32_t denominator;
+    uint32_t divisor32;
+
+    if ((freq_kHz == 0u) || (core_MHz == 0u)) {
+        i2c_write_divisor_raw(base, 1u);
+        return;
     }
 
-    while (!i2c_cmd_ready())
-    {
-        if (i2c_cmd_illegal())
-        {
-            return I2C_ERR_CMD_ILLEGAL;
-        }
+    numerator   = (uint32_t)core_MHz * 1000u;
+    denominator = 4u * (uint32_t)freq_kHz;
+    divisor32   = numerator / denominator;
 
-        if (i2c_timeout_expired(&remaining))
-        {
-            return I2C_ERR_TIMEOUT;
-        }
+    if (divisor32 == 0u) {
+        divisor32 = 1u;
+    } else if (divisor32 > 0xFFFFu) {
+        divisor32 = 0xFFFFu;
     }
 
-    if (i2c_cmd_illegal())
-    {
-        return I2C_ERR_CMD_ILLEGAL;
-    }
-
-    return I2C_OK;
+    i2c_write_divisor_raw(base, (uint16_t)divisor32);
 }
 
 /*----------------------------------------------------------------------------
- * Public API
+ * Public higher-level helpers
  *----------------------------------------------------------------------------*/
-void i2c_init(uint16_t divisor)
+
+void i2c_init(uint32_t base, uint16_t freq_kHz, uint8_t core_MHz)
 {
-    i2c_write_divisor(divisor);
+    i2c_set_divisor(base, freq_kHz, core_MHz);
 }
 
-void i2c_wait_cmd_ready(void)
+uint8_t i2c_tx_byte(uint32_t base, uint8_t slave_address, uint8_t data)
 {
-    (void)i2c_wait_cmd_ready_timeout(I2C_WAIT_FOREVER);
-}
+    uint8_t status;
 
-void i2c_wait_bus_idle(void)
-{
-    (void)i2c_wait_bus_idle_timeout(I2C_WAIT_FOREVER);
-}
-
-i2c_status_t i2c_wait_cmd_ready_timeout(uint32_t timeout_poll_count)
-{
-    uint32_t remaining = timeout_poll_count;
-
-    while (!i2c_cmd_ready())
-    {
-        if (i2c_cmd_illegal())
-        {
-            return I2C_ERR_CMD_ILLEGAL;
-        }
-
-        if (i2c_timeout_expired(&remaining))
-        {
-            return I2C_ERR_TIMEOUT;
-        }
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return I2C_TX_ERR_CMD;
     }
 
-    return I2C_OK;
-}
-
-i2c_status_t i2c_wait_bus_idle_timeout(uint32_t timeout_poll_count)
-{
-    uint32_t remaining = timeout_poll_count;
-
-    while (!i2c_bus_idle())
-    {
-        if (i2c_cmd_illegal())
-        {
-            return I2C_ERR_CMD_ILLEGAL;
-        }
-
-        if (i2c_timeout_expired(&remaining))
-        {
-            return I2C_ERR_TIMEOUT;
-        }
+    if (i2c_cmd_start(base)) {
+        return I2C_TX_ERR_CMD;
     }
 
-    return I2C_OK;
-}
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return I2C_TX_ERR_CMD;
+    }
 
-i2c_status_t i2c_launch_cmd_blocking(uint8_t cmd, bool rd_last)
-{
-    return i2c_launch_cmd_blocking_timeout(cmd, rd_last, I2C_WAIT_FOREVER);
-}
-
-i2c_status_t i2c_launch_cmd_blocking_timeout(uint8_t cmd,
-                                             bool rd_last,
-                                             uint32_t timeout_poll_count)
-{
-    i2c_status_t status;
-
-    status = i2c_wait_cmd_ready_timeout(timeout_poll_count);
-    if (status != I2C_OK)
-    {
+    status = i2c_priv_write_phase_byte(base,
+                                       i2c_priv_addr_wr(slave_address),
+                                       I2C_TX_ERR_ADDR_NACK);
+    if (status != I2C_TX_OK) {
+        (void)i2c_cmd_stop(base);
+        (void)i2c_priv_wait_cmd_cycle(base);
         return status;
     }
 
-    i2c_write_cmd_raw(cmd, rd_last);
-
-    return i2c_wait_cmd_accepted_and_completed_timeout(timeout_poll_count);
-}
-
-i2c_status_t i2c_start_blocking(void)
-{
-    return i2c_start_blocking_timeout(I2C_WAIT_FOREVER);
-}
-
-i2c_status_t i2c_start_blocking_timeout(uint32_t timeout_poll_count)
-{
-    return i2c_launch_cmd_blocking_timeout(I2C_CMD_START,
-                                           false,
-                                           timeout_poll_count);
-}
-
-i2c_status_t i2c_restart_blocking(void)
-{
-    return i2c_restart_blocking_timeout(I2C_WAIT_FOREVER);
-}
-
-i2c_status_t i2c_restart_blocking_timeout(uint32_t timeout_poll_count)
-{
-    return i2c_launch_cmd_blocking_timeout(I2C_CMD_RESTART,
-                                           false,
-                                           timeout_poll_count);
-}
-
-i2c_status_t i2c_stop_blocking(void)
-{
-    return i2c_stop_blocking_timeout(I2C_WAIT_FOREVER);
-}
-
-i2c_status_t i2c_stop_blocking_timeout(uint32_t timeout_poll_count)
-{
-    return i2c_launch_cmd_blocking_timeout(I2C_CMD_STOP,
-                                           false,
-                                           timeout_poll_count);
-}
-
-i2c_status_t i2c_write_byte_blocking(uint8_t data)
-{
-    return i2c_write_byte_blocking_timeout(data, I2C_WAIT_FOREVER);
-}
-
-i2c_status_t i2c_write_byte_blocking_timeout(uint8_t data,
-                                             uint32_t timeout_poll_count)
-{
-    i2c_status_t status;
-
-    status = i2c_wait_cmd_ready_timeout(timeout_poll_count);
-    if (status != I2C_OK)
-    {
+    status = i2c_priv_write_phase_byte(base,
+                                       data,
+                                       i2c_priv_data_nack_flag(0u));
+    if (status != I2C_TX_OK) {
+        (void)i2c_cmd_stop(base);
+        (void)i2c_priv_wait_cmd_cycle(base);
         return status;
     }
 
-    i2c_write_txdata(data);
-    i2c_write_cmd_raw(I2C_CMD_WR, false);
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return I2C_TX_ERR_CMD;
+    }
 
-    status = i2c_wait_cmd_accepted_and_completed_timeout(timeout_poll_count);
-    if (status != I2C_OK)
-    {
+    if (i2c_cmd_stop(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    return I2C_TX_OK;
+}
+
+uint8_t i2c_tx_pkg(uint32_t base, uint8_t slave_address, const char *msg)
+{
+    uint16_t index;
+    uint8_t status;
+
+    if (msg == NULL) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (i2c_cmd_start(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    status = i2c_priv_write_phase_byte(base,
+                                       i2c_priv_addr_wr(slave_address),
+                                       I2C_TX_ERR_ADDR_NACK);
+    if (status != I2C_TX_OK) {
+        (void)i2c_cmd_stop(base);
+        (void)i2c_priv_wait_cmd_cycle(base);
         return status;
     }
 
-    return I2C_OK;
-}
-
-i2c_status_t i2c_read_byte_blocking(bool rd_last, uint8_t *data)
-{
-    return i2c_read_byte_blocking_timeout(rd_last, data, I2C_WAIT_FOREVER);
-}
-
-i2c_status_t i2c_read_byte_blocking_timeout(bool rd_last,
-                                            uint8_t *data,
-                                            uint32_t timeout_poll_count)
-{
-    i2c_status_t status;
-
-    if (data == NULL)
-    {
-        return I2C_ERR_NULL_PTR;
+    for (index = 0u; msg[index] != '\0'; index++) {
+        status = i2c_priv_write_phase_byte(base,
+                                           (uint8_t)msg[index],
+                                           i2c_priv_data_nack_flag(index));
+        if (status != I2C_TX_OK) {
+            (void)i2c_cmd_stop(base);
+            (void)i2c_priv_wait_cmd_cycle(base);
+            return status;
+        }
     }
 
-    status = i2c_launch_cmd_blocking_timeout(I2C_CMD_RD,
-                                             rd_last,
-                                             timeout_poll_count);
-    if (status != I2C_OK)
-    {
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (i2c_cmd_stop(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    return I2C_TX_OK;
+}
+
+uint8_t i2c_tx_buf(uint32_t base, uint8_t slave_address, const uint8_t *data, uint8_t length)
+{
+    uint16_t index;
+    uint8_t status;
+
+    if ((data == NULL) && (length != 0u)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (i2c_cmd_start(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    status = i2c_priv_write_phase_byte(base,
+                                       i2c_priv_addr_wr(slave_address),
+                                       I2C_TX_ERR_ADDR_NACK);
+    if (status != I2C_TX_OK) {
+        (void)i2c_cmd_stop(base);
+        (void)i2c_priv_wait_cmd_cycle(base);
         return status;
+    }
+
+    for (index = 0u; index < (uint16_t)length; index++) {
+        status = i2c_priv_write_phase_byte(base,
+                                           data[index],
+                                           i2c_priv_data_nack_flag(index));
+        if (status != I2C_TX_OK) {
+            (void)i2c_cmd_stop(base);
+            (void)i2c_priv_wait_cmd_cycle(base);
+            return status;
+        }
+    }
+
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (i2c_cmd_stop(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return I2C_TX_ERR_CMD;
+    }
+
+    return I2C_TX_OK;
+}
+
+bool i2c_rx_pkg(uint32_t base, uint8_t slave_address, uint8_t *buffer, uint8_t length)
+{
+    uint16_t index;
+
+    if ((buffer == NULL) && (length != 0u)) {
+        return false;
+    }
+
+    if (length == 0u) {
+        return true;
+    }
+
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return false;
+    }
+
+    if (i2c_cmd_start(base)) {
+        return false;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return false;
+    }
+
+    if (i2c_priv_write_phase_byte(base,
+                                  i2c_priv_addr_rd(slave_address),
+                                  I2C_TX_ERR_ADDR_NACK) != I2C_TX_OK) {
+        (void)i2c_cmd_stop(base);
+        (void)i2c_priv_wait_cmd_cycle(base);
+        return false;
+    }
+
+    for (index = 0u; index < (uint16_t)length; index++) {
+        bool rd_last = (index == ((uint16_t)length - 1u));
+
+        if (!i2c_priv_wait_cmd_ready(base)) {
+            (void)i2c_cmd_stop(base);
+            (void)i2c_priv_wait_cmd_cycle(base);
+            return false;
+        }
+
+        if (i2c_cmd_rd(base, rd_last)) {
+            (void)i2c_cmd_stop(base);
+            (void)i2c_priv_wait_cmd_cycle(base);
+            return false;
+        }
+
+        if (!i2c_priv_wait_rd_valid(base)) {
+            (void)i2c_cmd_stop(base);
+            (void)i2c_priv_wait_cmd_cycle(base);
+            return false;
+        }
+
+        buffer[index] = i2c_read_rxdata(base);
+    }
+
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return false;
+    }
+
+    if (i2c_cmd_stop(base)) {
+        return false;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool i2c_rx_byte(uint32_t base, uint8_t slave_address, uint8_t *data)
+{
+    if (data == NULL) {
+        return false;
+    }
+
+    return i2c_rx_pkg(base, slave_address, data, 1u);
+}
+
+/* Transmit tx_len bytes, then issue RESTART and receive rx_len bytes from a 7-bit slave address, returning true on success. */
+bool i2c_txrx_buf(uint32_t base,
+                  uint8_t slave_address,
+                  const uint8_t *tx_data,
+                  uint8_t tx_len,
+                  uint8_t *rx_data,
+                  uint8_t rx_len)
+{
+    uint16_t index;
+
+    if ((tx_data == NULL) && (tx_len != 0u)) {
+        return false;
+    }
+
+    if ((rx_data == NULL) && (rx_len != 0u)) {
+        return false;
+    }
+
+    if ((tx_len == 0u) && (rx_len == 0u)) {
+        return true;
+    }
+
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return false;
+    }
+
+    if (i2c_cmd_start(base)) {
+        return false;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return false;
     }
 
     /*
-     * Important:
-     * After the read command completes, RXDATA should already hold the byte.
-     * Do not wait again for RD_DATA_VALID here, because some cores pulse it.
+     * Write phase:
+     * Send address+W only if there is transmit data.
      */
-    *data = i2c_rxdata_read();
-    return I2C_OK;
-}
+    if (tx_len != 0u) {
+        if (i2c_priv_write_phase_byte(base,
+                                      i2c_priv_addr_wr(slave_address),
+                                      I2C_TX_ERR_ADDR_NACK) != I2C_TX_OK) {
+            (void)i2c_cmd_stop(base);
+            (void)i2c_priv_wait_cmd_cycle(base);
+            return false;
+        }
 
-i2c_status_t i2c_write_addr7_blocking(uint8_t addr7, bool read)
-{
-    return i2c_write_addr7_blocking_timeout(addr7,
-                                            read,
-                                            I2C_WAIT_FOREVER);
-}
+        for (index = 0u; index < (uint16_t)tx_len; index++) {
+            if (i2c_priv_write_phase_byte(base,
+                                          tx_data[index],
+                                          i2c_priv_data_nack_flag(index)) != I2C_TX_OK) {
+                (void)i2c_cmd_stop(base);
+                (void)i2c_priv_wait_cmd_cycle(base);
+                return false;
+            }
+        }
+    }
 
-i2c_status_t i2c_write_addr7_blocking_timeout(uint8_t addr7,
-                                              bool read,
-                                              uint32_t timeout_poll_count)
-{
-    uint8_t addr_byte;
+    /*
+     * Read phase:
+     * If both TX and RX exist, insert RESTART between phases.
+     * If RX only, address+R is sent immediately after START.
+     */
+    if (rx_len != 0u) {
+        if (tx_len != 0u) {
+            if (!i2c_priv_wait_cmd_ready(base)) {
+                (void)i2c_cmd_stop(base);
+                (void)i2c_priv_wait_cmd_cycle(base);
+                return false;
+            }
 
-    addr_byte = (uint8_t)(((addr7 & 0x7Fu) << 1) | (read ? 1u : 0u));
+            if (i2c_cmd_restart(base)) {
+                (void)i2c_cmd_stop(base);
+                (void)i2c_priv_wait_cmd_cycle(base);
+                return false;
+            }
 
-    return i2c_write_byte_blocking_timeout(addr_byte, timeout_poll_count);
+            if (!i2c_priv_wait_cmd_cycle(base)) {
+                (void)i2c_cmd_stop(base);
+                (void)i2c_priv_wait_cmd_cycle(base);
+                return false;
+            }
+        }
+
+        if (i2c_priv_write_phase_byte(base,
+                                      i2c_priv_addr_rd(slave_address),
+                                      I2C_TX_ERR_ADDR_NACK) != I2C_TX_OK) {
+            (void)i2c_cmd_stop(base);
+            (void)i2c_priv_wait_cmd_cycle(base);
+            return false;
+        }
+
+        for (index = 0u; index < (uint16_t)rx_len; index++) {
+            bool rd_last = (index == ((uint16_t)rx_len - 1u));
+
+            if (!i2c_priv_wait_cmd_ready(base)) {
+                (void)i2c_cmd_stop(base);
+                (void)i2c_priv_wait_cmd_cycle(base);
+                return false;
+            }
+
+            if (i2c_cmd_rd(base, rd_last)) {
+                (void)i2c_cmd_stop(base);
+                (void)i2c_priv_wait_cmd_cycle(base);
+                return false;
+            }
+
+            if (!i2c_priv_wait_rd_valid(base)) {
+                (void)i2c_cmd_stop(base);
+                (void)i2c_priv_wait_cmd_cycle(base);
+                return false;
+            }
+
+            rx_data[index] = i2c_read_rxdata(base);
+        }
+    }
+
+    if (!i2c_priv_wait_cmd_ready(base)) {
+        return false;
+    }
+
+    if (i2c_cmd_stop(base)) {
+        return false;
+    }
+
+    if (!i2c_priv_wait_cmd_cycle(base)) {
+        return false;
+    }
+
+    return true;
 }
