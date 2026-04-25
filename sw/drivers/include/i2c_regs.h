@@ -22,6 +22,8 @@
 #define I2C_REG_TXDATA_OFFSET      0x08u
 #define I2C_REG_RXDATA_OFFSET      0x0Cu
 #define I2C_REG_CMD_OFFSET         0x10u
+#define I2C_REG_DEBUG_OFFSET       0x14u
+#define I2C_REG_FAULT_OFFSET       0x18u
 
 /*----------------------------------------------------------------------------
  * REG_STATUS bit positions
@@ -48,20 +50,39 @@
 #define I2C_STATUS_MASTER_RECEIVING_MASK  (1u << I2C_STATUS_MASTER_RECEIVING_BIT)
 
 /*----------------------------------------------------------------------------
+ * REG_FAULT bit positions
+ *----------------------------------------------------------------------------*/
+#define I2C_FAULT_ANY_BIT               0u
+#define I2C_FAULT_ABORT_SEEN_BIT        1u
+#define I2C_FAULT_SDA_UNSTABLE_BIT      2u
+#define I2C_FAULT_SCL_HIGH_TIMEOUT_BIT  3u
+
+/*----------------------------------------------------------------------------
+ * REG_FAULT bit masks
+ *----------------------------------------------------------------------------*/
+#define I2C_FAULT_ANY_MASK               (1u << I2C_FAULT_ANY_BIT)
+#define I2C_FAULT_ABORT_SEEN_MASK        (1u << I2C_FAULT_ABORT_SEEN_BIT)
+#define I2C_FAULT_SDA_UNSTABLE_MASK      (1u << I2C_FAULT_SDA_UNSTABLE_BIT)
+#define I2C_FAULT_SCL_HIGH_TIMEOUT_MASK  (1u << I2C_FAULT_SCL_HIGH_TIMEOUT_BIT)
+
+/*----------------------------------------------------------------------------
  * REG_CMD encoding
  *
  * REG_CMD[2:0] = command
+ * REG_CMD[7]   = abort
  * REG_CMD[8]   = rd_last
  *----------------------------------------------------------------------------*/
-#define I2C_CMD_START        0u
-#define I2C_CMD_WR           1u
-#define I2C_CMD_RD           2u
-#define I2C_CMD_STOP         3u
-#define I2C_CMD_RESTART      4u
+#define I2C_CMD_START         0u
+#define I2C_CMD_WR            1u
+#define I2C_CMD_RD            2u
+#define I2C_CMD_STOP          3u
+#define I2C_CMD_RESTART       4u
 
-#define I2C_CMD_FIELD_MASK   0x7u
-#define I2C_CMD_RD_LAST_BIT  8u
-#define I2C_CMD_RD_LAST_MASK (1u << I2C_CMD_RD_LAST_BIT)
+#define I2C_CMD_FIELD_MASK    0x7u
+#define I2C_CMD_ABORT_BIT     7u
+#define I2C_CMD_ABORT_MASK    (1u << I2C_CMD_ABORT_BIT)
+#define I2C_CMD_RD_LAST_BIT   8u
+#define I2C_CMD_RD_LAST_MASK  (1u << I2C_CMD_RD_LAST_BIT)
 
 /*----------------------------------------------------------------------------
  * TX status flag encoding
@@ -83,6 +104,12 @@
 static inline uint32_t i2c_get_status(uint32_t base)
 {
     return mmio_read32(base, I2C_REG_STATUS_OFFSET);
+}
+
+/* Read and return the raw 32-bit I2C fault register. */
+static inline uint32_t i2c_get_fault(uint32_t base)
+{
+    return mmio_read32(base, I2C_REG_FAULT_OFFSET);
 }
 
 /* Write the raw 16-bit divider value into REG_DIVISOR. */
@@ -133,6 +160,12 @@ static inline bool i2c_cmd_illegal(uint32_t base)
     return (i2c_get_status(base) & I2C_STATUS_CMD_ILLEGAL_MASK) != 0u;
 }
 
+/* Return true when the core indicates master-receiving mode. */
+static inline bool i2c_master_receiving(uint32_t base)
+{
+    return (i2c_get_status(base) & I2C_STATUS_MASTER_RECEIVING_MASK) != 0u;
+}
+
 /* Return ACK info packed as bit1=valid and bit0=ack value. */
 static inline uint8_t i2c_ack(uint32_t base)
 {
@@ -143,12 +176,57 @@ static inline uint8_t i2c_ack(uint32_t base)
     return (uint8_t)((ack_valid << 1) | ack_value);
 }
 
-/* Pack a REG_CMD word from command code and rd_last flag. */
-static inline uint32_t i2c_pack_cmd(uint8_t cmd, bool rd_last)
+/* Return true if any sticky hardware fault is present. */
+static inline bool i2c_fault_any(uint32_t base)
+{
+    return (i2c_get_fault(base) & I2C_FAULT_ANY_MASK) != 0u;
+}
+
+/* Return true if the core entered the abort/recovery path. */
+static inline bool i2c_fault_abort_seen(uint32_t base)
+{
+    return (i2c_get_fault(base) & I2C_FAULT_ABORT_SEEN_MASK) != 0u;
+}
+
+/* Return true if SDA changed unexpectedly while SCL was high. */
+static inline bool i2c_fault_sda_unstable(uint32_t base)
+{
+    return (i2c_get_fault(base) & I2C_FAULT_SDA_UNSTABLE_MASK) != 0u;
+}
+
+/* Return true if SCL failed to reach qualified-high in time. */
+static inline bool i2c_fault_scl_high_timeout(uint32_t base)
+{
+    return (i2c_get_fault(base) & I2C_FAULT_SCL_HIGH_TIMEOUT_MASK) != 0u;
+}
+
+/* Clear sticky fault bits by writing a W1C mask into REG_FAULT. */
+static inline void i2c_clear_fault(uint32_t base, uint32_t fault_mask)
+{
+    mmio_write32(base, I2C_REG_FAULT_OFFSET, fault_mask);
+}
+
+/* Clear all sticky fault bits. */
+static inline void i2c_clear_all_faults(uint32_t base)
+{
+    i2c_clear_fault(base,
+                    I2C_FAULT_ABORT_SEEN_MASK |
+                    I2C_FAULT_SDA_UNSTABLE_MASK |
+                    I2C_FAULT_SCL_HIGH_TIMEOUT_MASK);
+}
+
+/* Pack a REG_CMD word from command code, abort flag, and rd_last flag. */
+static inline uint32_t i2c_pack_cmd(uint8_t cmd, bool abort, bool rd_last)
 {
     uint32_t value = ((uint32_t)cmd & I2C_CMD_FIELD_MASK);
 
-    if (rd_last) {
+    if (abort)
+    {
+        value |= I2C_CMD_ABORT_MASK;
+    }
+
+    if (rd_last)
+    {
         value |= I2C_CMD_RD_LAST_MASK;
     }
 
@@ -156,9 +234,9 @@ static inline uint32_t i2c_pack_cmd(uint8_t cmd, bool rd_last)
 }
 
 /* Write a raw command word into REG_CMD. */
-static inline void i2c_write_cmd_raw(uint32_t base, uint8_t cmd, bool rd_last)
+static inline void i2c_write_cmd_raw(uint32_t base, uint8_t cmd, bool abort, bool rd_last)
 {
-    mmio_write32(base, I2C_REG_CMD_OFFSET, i2c_pack_cmd(cmd, rd_last));
+    mmio_write32(base, I2C_REG_CMD_OFFSET, i2c_pack_cmd(cmd, abort, rd_last));
 }
 
 /*----------------------------------------------------------------------------
@@ -179,6 +257,9 @@ bool i2c_cmd_stop(uint32_t base);
 
 /* Send RESTART and return true if the command was not accepted. */
 bool i2c_cmd_restart(uint32_t base);
+
+/* Send ABORT and return true if the command was not accepted. */
+bool i2c_cmd_abort(uint32_t base);
 
 /* Compute and program the I2C clock divisor from target bus frequency. */
 void i2c_set_divisor(uint32_t base, uint16_t freq_kHz, uint8_t core_MHz);
