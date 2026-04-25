@@ -26,7 +26,7 @@
       }
       datum baseAddress
       {
-         value = "217088";
+         value = "331776";
          type = "String";
       }
    }
@@ -55,7 +55,7 @@
       }
       datum baseAddress
       {
-         value = "221184";
+         value = "327680";
          type = "String";
       }
    }
@@ -76,7 +76,7 @@
       }
       datum baseAddress
       {
-         value = "212992";
+         value = "335872";
          type = "String";
       }
    }
@@ -97,7 +97,7 @@
       }
       datum baseAddress
       {
-         value = "131072";
+         value = "262144";
          type = "String";
       }
    }
@@ -110,7 +110,7 @@
       }
       datum baseAddress
       {
-         value = "208960";
+         value = "352256";
          type = "String";
       }
    }
@@ -131,7 +131,7 @@
       }
       datum baseAddress
       {
-         value = "209024";
+         value = "352320";
          type = "String";
       }
    }
@@ -152,7 +152,7 @@
       }
       datum baseAddress
       {
-         value = "204800";
+         value = "344064";
          type = "String";
       }
    }
@@ -173,7 +173,15 @@
       }
       datum baseAddress
       {
-         value = "196608";
+         value = "339968";
+         type = "String";
+      }
+   }
+   element niosv_modular_control_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "MAX 10";
          type = "String";
       }
    }
@@ -364,7 +372,7 @@
       }
       datum baseAddress
       {
-         value = "200704";
+         value = "348160";
          type = "String";
       }
    }
@@ -454,7 +462,7 @@
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="6" />
   <parameter name="AUTO_PLATFORM_IRQ_RX_INTERRUPTS_USED" value="7" />
   <parameter name="clockFrequency" value="50000000" />
-  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s2' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s2' /><slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /><slave name='motor_pwm.s_axil' start='0x30000' end='0x31000' type='pwm_hbridge_axi4lite.s_axil' /><slave name='spi_master_0.s_axil' start='0x31000' end='0x32000' type='spi_master.s_axil' /><slave name='led_pwm.s_axil' start='0x32000' end='0x33000' type='AXI_Lite_PWM_Raw.s_axil' /><slave name='intel_niosv.timer_sw_agent' start='0x33040' end='0x33080' type='intel_niosv_m.timer_sw_agent' /><slave name='jtag_uart.avalon_jtag_slave' start='0x33080' end='0x33088' type='altera_avalon_jtag_uart.avalon_jtag_slave' /><slave name='i2c_master_0.s_axil' start='0x34000' end='0x35000' type='i2c_master.s_axil' /><slave name='Seg7_debug_0.s_axil' start='0x35000' end='0x36000' type='Seg7_debug.s_axil' /><slave name='gpio_axi4lite_0.s_axil' start='0x36000' end='0x37000' type='gpio_axi4lite.s_axil' /></address-map>]]></parameter>
+  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s2' start='0x0' end='0x28000' type='altera_avalon_onchip_memory2.s2' /><slave name='intel_niosv.dm_agent' start='0x40000' end='0x50000' type='intel_niosv_m.dm_agent' /><slave name='gpio_axi4lite_0.s_axil' start='0x50000' end='0x51000' type='gpio_axi4lite.s_axil' /><slave name='Seg7_debug_0.s_axil' start='0x51000' end='0x52000' type='Seg7_debug.s_axil' /><slave name='i2c_master_0.s_axil' start='0x52000' end='0x53000' type='i2c_master.s_axil' /><slave name='motor_pwm.s_axil' start='0x53000' end='0x54000' type='pwm_hbridge_axi4lite.s_axil' /><slave name='led_pwm.s_axil' start='0x54000' end='0x55000' type='AXI_Lite_PWM_Raw.s_axil' /><slave name='spi_master_0.s_axil' start='0x55000' end='0x56000' type='spi_master.s_axil' /><slave name='intel_niosv.timer_sw_agent' start='0x56000' end='0x56040' type='intel_niosv_m.timer_sw_agent' /><slave name='jtag_uart.avalon_jtag_slave' start='0x56040' end='0x56048' type='altera_avalon_jtag_uart.avalon_jtag_slave' /></address-map>]]></parameter>
   <parameter name="deviceFamily" value="MAX 10" />
   <parameter name="enableAvalonInterface" value="false" />
   <parameter name="enableDebug" value="true" />
@@ -462,7 +470,7 @@
   <parameter name="enableECCFull" value="false" />
   <parameter name="enableECCLite" value="false" />
   <parameter name="hartId" value="0" />
-  <parameter name="instSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s1' start='0x0' end='0x20000' type='altera_avalon_onchip_memory2.s1' /><slave name='intel_niosv.dm_agent' start='0x20000' end='0x30000' type='intel_niosv_m.dm_agent' /></address-map>]]></parameter>
+  <parameter name="instSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s1' start='0x0' end='0x28000' type='altera_avalon_onchip_memory2.s1' /><slave name='intel_niosv.dm_agent' start='0x40000' end='0x50000' type='intel_niosv_m.dm_agent' /></address-map>]]></parameter>
   <parameter name="interruptMode" value="0" />
   <parameter name="numGpr" value="32" />
   <parameter name="pipelineArch" value="true" />
@@ -524,7 +532,7 @@
   <parameter name="initMemContent" value="false" />
   <parameter name="initializationFileName">D:/fpga_projects/fpga-modular-control-system/ram.hex</parameter>
   <parameter name="instanceID" value="NONE" />
-  <parameter name="memorySize" value="131072" />
+  <parameter name="memorySize" value="163840" />
   <parameter name="readDuringWriteMode" value="DONT_CARE" />
   <parameter name="resetrequest_enabled" value="true" />
   <parameter name="simAllowMRAMContentsFile" value="false" />
@@ -561,7 +569,7 @@
    start="intel_niosv.data_manager"
    end="jtag_uart.avalon_jtag_slave">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00033080" />
+  <parameter name="baseAddress" value="0x00056040" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -570,7 +578,7 @@
    start="intel_niosv.data_manager"
    end="intel_niosv.dm_agent">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00020000" />
+  <parameter name="baseAddress" value="0x00040000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -588,7 +596,7 @@
    start="intel_niosv.data_manager"
    end="spi_master_0.s_axil">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00031000" />
+  <parameter name="baseAddress" value="0x00055000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -597,7 +605,7 @@
    start="intel_niosv.data_manager"
    end="led_pwm.s_axil">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00032000" />
+  <parameter name="baseAddress" value="0x00054000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -606,7 +614,7 @@
    start="intel_niosv.data_manager"
    end="motor_pwm.s_axil">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00030000" />
+  <parameter name="baseAddress" value="0x00053000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -615,7 +623,7 @@
    start="intel_niosv.data_manager"
    end="i2c_master_0.s_axil">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00034000" />
+  <parameter name="baseAddress" value="0x00052000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -624,7 +632,7 @@
    start="intel_niosv.data_manager"
    end="Seg7_debug_0.s_axil">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00035000" />
+  <parameter name="baseAddress" value="0x00051000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -633,7 +641,7 @@
    start="intel_niosv.data_manager"
    end="gpio_axi4lite_0.s_axil">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00036000" />
+  <parameter name="baseAddress" value="0x00050000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -642,7 +650,7 @@
    start="intel_niosv.data_manager"
    end="intel_niosv.timer_sw_agent">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00033040" />
+  <parameter name="baseAddress" value="0x00056000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -651,7 +659,7 @@
    start="intel_niosv.instruction_manager"
    end="intel_niosv.dm_agent">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00020000" />
+  <parameter name="baseAddress" value="0x00040000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
