@@ -17,10 +17,8 @@ target_sources(app.elf
         src/main.c
         ../drivers/src/adxl345.c
         ../drivers/src/gpio_regs.c
+        ../drivers/src/i2c_mpu6500.c
         ../drivers/src/i2c_regs.c
-        ../drivers/src/motor_pwm.c
-        ../drivers/src/mpu6500.c
-        ../drivers/src/pwm_regs.c
         ../drivers/src/seg7_debug_regs.c
         ../drivers/src/spi_regs.c
 )
@@ -67,7 +65,7 @@ add_custom_target(niosv-stack-report ALL DEPENDS "${stack_report_file}")
 add_custom_command(
     OUTPUT "onchip_memory.hex"
     DEPENDS app.elf
-    COMMAND elf2hex app.elf -o onchip_memory.hex -b 0x00000000 -w 32 -e 0x0001FFFF -r 4
+    COMMAND elf2hex app.elf -o onchip_memory.hex -b 0x00000000 -w 32 -e 0x00027FFF -r 4
     COMMENT "Creating onchip_memory.hex."
     VERBATIM
 )

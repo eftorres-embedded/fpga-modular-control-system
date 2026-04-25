@@ -4,15 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "system.h"
-
-#ifndef SEG7_DEBUG_BASE
-    #if defined(SEG7_DEBUG_0_BASE)
-        #define SEG7_DEBUG_BASE  SEG7_DEBUG_0_BASE
-    #else
-        #define SEG7_DEBUG_BASE  0x00035000u
-    #endif
-#endif
+#include "user_define_system.h"
 
 /* --------------------------------------------------------------------------
  * Register offsets
