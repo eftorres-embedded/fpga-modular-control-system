@@ -392,3 +392,167 @@ This makes it a strong foundation for the next stage of work, which is expected 
 - integrate the wrapper into the system interconnect
 - perform real-device polling tests
 - evaluate whether V2 should add interrupts or remain strictly polling-first
+
+## I2C Robustness Investigation and V1.5 Core Improvement Plan
+
+### Date
+2026-04-24
+
+### Context
+The custom FPGA I2C master successfully communicates with the MPU-6500 over AXI4-Lite/MMIO. Low-level and higher-level software tests both confirmed:
+
+- valid MMIO access to the I2C peripheral
+- working divisor programming
+- successful address probe at `0x68`
+- successful register writes to `PWR_MGMT_1` and `PWR_MGMT_2`
+- repeated-start register reads
+- stable `WHO_AM_I = 0x70`
+- repeated 14-byte burst reads of accel / temp / gyro data
+
+Example successful bring-up results included:
+
+- `I2C status = 0x00000003`
+- `I2C debug reg = 0xDECAFBAD`
+- `I2C divisor(after set) = 0x0000007D`
+- `PROBE RESULT: address 0x68 ACKed`
+- repeated `WHO_AM_I = 0x70` reads
+
+### Problem Observed
+Although the design works most of the time, occasional higher-level burst reads fail with:
+
+```text
+ERROR: burst read failed
+```
+
+After one of these failures, the bus may appear to stop making progress, and software may no longer observe normal clock activity until the transaction path is recovered.
+
+### Electrical / Scope Observation Summary
+Oscilloscope captures showed that the I2C bus is generally well-formed from a digital perspective:
+
+- byte-group clock bursts are present
+- SDA transitions mostly align with SCL low phases
+- no severe ringing or obvious false-edge behavior was observed
+- mild undershoot / small edge imperfections are visible, but not enough by themselves to explain the intermittent failures
+
+Conclusion: the failures are more likely caused by transaction robustness / recovery corner cases than by gross signal-integrity problems.
+
+### Root Cause Hypothesis
+The most likely failure mechanism is a logic / recovery corner case, not a fundamentally broken bus.
+
+The strongest candidates are:
+
+1. **Core advances based on internal timing only**
+   - The current V1 core releases SCL high, but does not use `scl_in` to verify the bus has actually risen before advancing state.
+   - This makes the design sensitive to slow rise time, wiring capacitance, and marginal pull-up conditions.
+
+2. **SDA is sampled at a fixed internal point**
+   - The core samples SDA during read / ACK phases based on internal timing rather than confirmed bus-high timing.
+   - This can create occasional mis-sampling even when the analog waveform looks mostly acceptable.
+
+3. **`done_tick_o` occurs before the core is ready for the next command**
+   - In the original V1 core, `done_tick_o` asserts at the end of `S_DATA_4`, before the FSM finishes `S_DATA_END` and returns to `S_HOLD`.
+   - Software can therefore see “done” before `cmd_ready_o` is high again.
+
+4. **No explicit abort / recovery path exists inside the core**
+   - If a higher-level helper exits after a timeout or partial failure, the bus may not be driven back to a known STOP / IDLE condition.
+
+These corner cases are consistent with the observed behavior:
+- most transactions succeed
+- failures are rare
+- when a failure occurs, recovery is not always graceful
+
+### Original V1 Core Review Notes
+The following design characteristics were identified in the current `i2c_master_core.sv`:
+
+- `cmd_ready_o` is only true in `S_IDLE` and `S_HOLD`
+- `done_tick_o` is generated at the end of `S_DATA_4`
+- `scl_in` is currently unused
+- SDA sampling is tied to one internal timing point in `S_DATA_2`
+- there is no `abort_i` or equivalent transaction recovery input
+
+These observations indicate that the core assumes the real bus exactly follows the internal timing model, which is acceptable for an idealized V1 but fragile for real hardware.
+
+### V1.5 Improvement Plan
+A revised V1.5 version of the core was proposed with the following improvements:
+
+#### 1. Add `abort_i`
+Add a new input:
+
+```systemverilog
+input logic abort_i;
+```
+
+Purpose:
+- allow software or wrapper logic to request a best-effort forced cleanup
+- drive the core toward a STOP / IDLE recovery path after a timeout or failed transaction
+
+#### 2. Align `done_tick_o` with real completion
+Move `done_tick_o` later so it asserts at the end of `S_DATA_END`, closer to the point where the core is actually prepared to accept the next command.
+
+Benefit:
+- reduces race conditions between `done_tick_o` and `cmd_ready_o`
+- makes the software contract cleaner
+
+#### 3. Use `scl_in` as a bus-high qualifier
+In phases where SCL is supposed to be high, do not advance state purely because the internal timer expired. Instead, require the bus to actually be high:
+
+```systemverilog
+high_phase_ready = scl_in;
+```
+
+Benefit:
+- improves tolerance to slow rise time
+- improves robustness with real wiring and pull-up behavior
+- partially mitigates edge-rate / capacitance sensitivity even without full clock-stretch support
+
+#### 4. Sample SDA only after confirmed SCL-high
+Qualify SDA sampling with real bus-high timing rather than fixed internal timing alone.
+
+Benefit:
+- reduces risk of occasional ACK / data mis-sampling
+- improves read reliability
+
+#### 5. Add explicit abort states
+Introduce dedicated abort states, for example:
+
+- `S_ABORT_1`
+- `S_ABORT_2`
+
+These states perform a best-effort STOP-like cleanup sequence and return to `S_IDLE`.
+
+### Expected Benefit of V1.5
+The V1.5 changes are intended to improve real-world robustness without requiring a full clock-stretch implementation.
+
+Expected benefits:
+
+- fewer random burst-read failures
+- better tolerance to non-ideal rise times
+- clearer command-completion semantics
+- cleaner recovery after a timeout or partial transaction failure
+
+### Software Implication
+Even with V1.5, software should still treat `cmd_ready_o` as the authoritative indication that the next command may be issued.
+
+Recommended software rule:
+
+- do not treat `done_tick_o` alone as permission to launch the next command
+- always wait for `cmd_ready_o`
+
+In addition, higher-level helper functions should converge to a single cleanup path on failure so the bus is always driven back toward STOP / IDLE as best as possible.
+
+### Current Status
+At the end of this investigation:
+
+- the I2C block is confirmed working
+- the MPU-6500 is confirmed responding at `0x68`
+- burst reads are functional
+- random failures remain infrequent but real
+- V1.5 architectural changes have been identified and drafted as the next robustness step
+
+### Next Actions
+1. Integrate the V1.5 `i2c_master_core` changes
+2. Retest higher-level burst reads at 100 kHz
+3. Measure whether random failures are reduced or eliminated
+4. Add software-accessible abort / recovery support in the wrapper/register layer
+5. Only after logic recovery is improved, revisit any remaining electrical margin tuning if needed
+
